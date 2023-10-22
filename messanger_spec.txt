@@ -1,0 +1,197 @@
+messanger app spec
+
+os <-> i/o content <-> socket(i/o object) <-> program
+
+boost 비동기에는 strand라는 원리가 작동함
+각 비동기 콜백은 동시에 실행될 수 없음. 즉 별도의 mutex 없이 상호배제가 동작함.
+각 비동기 콜백의 실행 순서는 보장되지 않음. 코드만 봤을 때 A라는 콜백이 먼저 수행될거 같아도 B라는 콜백이 먼저 수행될 수도 있음
+
+클라이언트 - 서버 통신 방식은 중앙서버가 존재하는 p2p를 기반으로 함
+클라이언트(서버) - 중앙서버 방식
+
+프론트엔드 : qml
+클라이언트 : qt, c++, boost.asio / 비동기 병렬
+백엔드 : c++, boost.asio / 비동기 병렬
+
+db : PostgreSQL
+db, c++ 연동 : SOCI
+
+DB table 구조
+
+유저: id[char 32], session_id[char 64], pw[char 256], profile_img_path[char 256]
+특정 세션: talk_id[char 530](유저 id + '_' + 숫자), chat_msg_path[char 256](과거 채팅 이력 파일 이름 규칙이 있음)
+chat_msg_path는 "talk_id_날짜"로 구성됨.
+새로운 컴퓨터에서 로긴하면 특정 세션의 모든 chat_msg_path를 로드함
+날짜가 변경되고 사용자가 처음 로그인하면 각 세션의 "session_id_날짜" 파일을 생성하고 db에 업데이트 함
+
+
+table name: USER_TB / key: USER_ID
+USER_ID => varchar 50
+USER_NM => varchar 50
+PASSWORD => varchar 50
+IMAGE_PATH => varchar 255
+LOGIN_IP => varchar 40
+LOGIN_PORT => integer
+
+LOGIN_IP가 null 이면 로그인 상태가 아닌 것임
+
+
+table name: SESSION_TB / key: SESSION_ID + CREATOR_ID
+SESSION_ID => 세션 생성일 + '-' + 6자리 -> 16자리 varchar
+CREATOR_ID => USER_TB의 USER_ID와 동일
+SESSION_NM => varchar 255
+
+CREATE TABLE SESSION_TB
+(
+    SESSION_ID	VARCHAR(16) NOT NULL,
+    CREATOR_ID	VARCHAR(50) NOT NULL,
+	SESSION_NM	VARCHAR(255) NOT NULL,
+    PRIMARY KEY (SESSION_ID, CREATOR_ID)
+)
+
+- 채팅 기록 저장 방식
+일단 SESSION_ID + '_' + CREATOR_ID 폴더명에 각 날짜별 채팅 기록이 위치함
+각 날짜별 채팅 기록의 파일명은 '일짜.json' 와 같음
+SESSION_ID + '_' + CREATOR_ID 폴더명에는 세션에 대한 정보를 담고 있는 'session_info.json' 파일도 존재함
+
+폴더 계층을 보면 밑과 같음
+~ CREATOR_ID 폴더
+	L SESSION_ID 폴더
+		session_info.json
+		session_img.png
+		L 년
+			L 월
+				L 일짜.json
+
+- 'session_info.json' 포맷
+{
+	"session_id": "해당하는 session id",
+	"session_name": "채팅방 이름",
+	"creator_id": "채팅방 생성자"
+}
+
+- '일짜.json' 포맷
+{
+	"chat": [
+		{
+			"user_id": "채팅 유저 id",
+			"chat_time": "채팅 시각",
+			"chat_type": "이미지, 글자, 이모티콘 등등..."
+			"content": "채팅 내용(당연히 base64 인코딩되어야 함)"
+		},
+		{
+			"user_id": "채팅 유저 id",
+			"chat_time": "채팅 시각",
+			"chat_type": "이미지, 글자, 이모티콘 등등..."
+			"content": "채팅 내용"
+		},
+		...
+	]
+}
+
+
+// 세션에 묶인 사용자들을 알기 위함
+table name: SESSION_USER_RELATION_TB / key: SESSION_ID + CREATOR_ID + USER_ID
+SESSION_ID => 세션 생성일 + '_' + 6자리 -> 16자리 varchar
+CREATOR_ID
+USER_ID
+
+CREATE TABLE SESSION_USER_RELATION_TB
+(
+    SESSION_ID	VARCHAR(16) NOT NULL,
+    CREATOR_ID	VARCHAR(50) NOT NULL,
+	USER_ID		VARCHAR(50) NOT NULL,
+    PRIMARY KEY (SESSION_ID, CREATOR_ID, USER_ID)
+)
+
+
+
+// 밑에 꺼 해야 특정 ID로 DB 쿼리문 수행 가능함
+RANT SELECT ON ALL TABLES IN SCHEMA public TO 유저이름;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO 유저이름;
+
+
+
+
+INSERT INTO
+	session_tb
+VALUES
+(
+	'20230914_000001',
+	'tongstar',
+	'test session'
+);
+
+
+- 채팅방 초기화시 전송 포맷
+{
+	"chatroom_init_data": [
+		{
+			"creator_id": "채팅방 생성자 id",
+			"session_id": "세션 id",
+			"session_name": "세션 이름",
+			"session_img": "세션 이미지 이진 파일",
+			
+			// content는 일단 최근 3일치만 보냄
+			// 물론 클라 쪽에서 content 캐시가 있다면 해당 session_id 채팅방에 대한 content는 요청하지 말아야 함
+			"content": [
+				{
+					"chat_date": "채팅 날짜",
+					"content": "'채팅 시점의 날짜.json' 파일 내용(당연히 base64 인코딩되어야 함)"
+				},
+				{
+					"chat_date": "채팅 날짜",
+					"content": "'채팅 시점의 날짜.json' 파일 내용"
+				},
+				...
+			]					
+		},
+		{
+			"creator_id": "채팅방 생성",
+			"session_id": "세션 id",
+			"session_name": "세션 이름",
+			"session_img": "세션 이미지 이진 파일",
+			"content": [
+				{
+					"chat_date": "채팅 날짜",
+					"content": "'채팅 시점의 날짜.json' 파일 내용(당연히 base64 인코딩되어야 함)"
+				},
+				{
+					"chat_date": "채팅 날짜",
+					"content": "'채팅 시점의 날짜.json' 파일 내용"
+				},
+				...
+			]					
+		},
+		...
+	]
+}
+
+- 특정 채팅방에서 캐시에 없는 과거 채팅 기록을 요구할 때 전송 포맷, 마찬가지로 3일치가 적당할 듯
+{
+	"content": [
+		{
+			"chat_date": "채팅 날짜",
+			"content": "'채팅 시점의 날짜.json' 파일 내용(당연히 base64 인코딩되어야 함)"
+		},
+		{
+			"chat_date": "채팅 날짜",
+			"content": "'채팅 시점의 날짜.json' 파일 내용"
+		},
+		...
+	]
+}
+
+
+
+처리해야할 문제.
+
+1. 일단 기본적으로 클라에서 connect async 호출후 write하면 서버에서 read하고 write하고 클라에서 read하는 순서로 이뤄짐
+	문제는 클라에서 메시지를 받을 준비가 항상 되어 있지 않아서 server에서 언제든 write하면 받을 준비가 되어 있어야함
+	
+	일단 생각난 해결책은 client에서도 서버를 열어두는 것...
+	
+2. 단체 채팅방에 메시지를 뿌리는 경우 db에서 해당 채팅방에 소속된 user_id는 획득이 가능한데 이거 이용해서 해당 유저들한테 알림을 줄 수 있어야 함.
+	
+	당장 생각난 해결책은 로그인될 때 로그인 된 ip를 획득하여 db에 기록하고 현재 접속 중이라면 해당 ip로 바로 alert 메시지를 쏴주면 될 것이고
+	접속중이 아니라면... 채팅방 초기화할 때 최신 채팅 내용 차이점으로 구별이 가능할 듯

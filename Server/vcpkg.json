@@ -1,0 +1,35 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "messenger-server",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "boost-asio",
+      "features": [
+        "ssl"
+      ]
+    },
+    {
+      "name": "soci",
+      "features": [
+        "postgresql"
+      ]
+    },
+    {
+      "name": "boost-dll"
+    },
+    {
+      "name": "boost-filesystem"
+    },
+    {
+      "name": "boost-json"
+    },
+    {
+      "name": "boost-algorithm"
+    },
+    {
+      "name": "mongo-cxx-driver"
+    }
+  ],
+  "builtin-baseline": "e57b2167e66c847f991bd6bce1355b85acd944e8"
+}
