@@ -86,18 +86,21 @@ CREATE TABLE participant_tb
 
 밑은 과거 채팅 이력을 가져올 때 서버-클라 호출을 최소화 하기 위한 요소
 {
-	"existing_year_root": "2021;2022;2023"
+	"date_relation": "root",
+	"valid_year": "2021|2022|2023"
 }
 
 {
-	"existing_year_child": "2021",
-	"existing_month_root": "3;4;7;10"
+	"date_relation": "child",
+	"valid_year": "2021",
+	"valid_month": "3|4|7|10"
 }
 
 {
-	"existing_year_leaf": "2021",
-	"existing_month_child": "3"
-	"existing_day_root": "1;26;31"
+	"date_relation": "leaf",
+	"valid_year": "2021",
+	"valid_month": "3"
+	"valid_day": "1|26|31"
 }
 활용되는 단계는 밑과 같음
 1. 채팅 이력을 클라이언트 화면에 출력할 때 로컬 캐시 파일이 있는지 확인

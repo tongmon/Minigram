@@ -5,6 +5,9 @@
 #include "TCPClient.hpp"
 #include "Utility.hpp"
 
+#include <stb_image.h>
+#include <stb_image_write.h>
+
 #include <boost/algorithm/string.hpp>
 #include <boost/dll.hpp>
 #include <boost/filesystem.hpp>
@@ -16,9 +19,13 @@
 #include <fstream>
 #include <iostream>
 #include <regex>
+#include <set>
 #include <sstream>
-#include <stb_image.h>
-#include <stb_image_write.h>
+#include <unordered_set>
+
+using bsoncxx::builder::basic::kvp;
+using bsoncxx::builder::basic::make_array;
+using bsoncxx::builder::basic::make_document;
 
 MessengerService::MessengerService(std::shared_ptr<TCPClient> peer, std::shared_ptr<boost::asio::ip::tcp::socket> sock)
     : Service(peer, sock)
@@ -115,8 +122,12 @@ void MessengerService::MessageHandling()
 
 void MessengerService::ChatRoomListInitHandling()
 {
+    std::vector<std::string> parsed;
+    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    std::string user_id = parsed[0], request_y = parsed[1], request_m = parsed[2], request_d = parsed[3]; // string_view로 속도 개선 가능
+
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
-                                  soci::use(m_client_request, "id"));
+                                  soci::use(user_id, "id"));
 
     auto mongo_client = MongoDBPool::Get().acquire();
     auto mongo_db = (*mongo_client)["Minigram"];
@@ -128,6 +139,19 @@ void MessengerService::ChatRoomListInitHandling()
         std::string collection_name = it->get<std::string>(0) + "_log";
 
         auto mongo_coll = mongo_db[collection_name];
+        auto root_date_info = mongo_coll.find_one(make_document(kvp("date_relation", "root")));
+
+        std::unordered_set<std::string> valid_years;
+        boost::split(valid_years, root_date_info.value()["valid_year"].get_string().value, boost::is_any_of("|"));
+
+        if (valid_years.empty())
+        {
+            continue;
+        }
+
+        for (int i = valid_years.size() - 1; i >= 0; i--)
+        {
+        }
 
         // mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("")));
 
