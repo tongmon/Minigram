@@ -17,6 +17,10 @@ find_package(SOCI CONFIG REQUIRED)
 # Boost Asio 포함
 find_package(Boost REQUIRED COMPONENTS system filesystem json)
 
+# MongoDB CXX Driver 포함
+find_package(bsoncxx CONFIG REQUIRED)
+find_package(mongocxx CONFIG REQUIRED)
+
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
 target_link_libraries(${PROJECT_NAME} PUBLIC 
@@ -26,6 +30,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     Boost::json
     SOCI::soci_core
     SOCI::soci_postgresql
+    mongo::bsoncxx_shared
+    mongo::mongocxx_shared
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
