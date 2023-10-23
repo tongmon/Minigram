@@ -40,9 +40,9 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
 
-#include "DBConnectionPool.hpp"
 #include "MessengerService.hpp"
 #include "NetworkDefinition.hpp"
+#include "PostgreDBPool.hpp"
 #include "TCPClient.hpp"
 #include "TCPServer.hpp"
 
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     try
     {
         // DB 연결 정보 초기화
-        DBConnectionPool::Get(4, {"localhost", "5432", "messenger_db", "tongstar", "@Lsy12131213"});
+        PostgreDBPool::Get(4, {"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213"});
 
         // TCP 서버 생성
         TCPServer<MessengerService> server(std::make_shared<TCPClient>(2), SERVER_PORT, 2);

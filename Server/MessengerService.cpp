@@ -1,6 +1,6 @@
 ﻿#include "MessengerService.hpp"
-#include "DBConnectionPool.hpp"
 #include "NetworkDefinition.hpp"
+#include "PostgreDBPool.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
 
@@ -8,6 +8,7 @@
 #include <boost/dll.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/json.hpp>
+
 #include <chrono>
 #include <ctime>
 #include <format>
@@ -21,7 +22,7 @@
 MessengerService::MessengerService(std::shared_ptr<TCPClient> peer, std::shared_ptr<boost::asio::ip::tcp::socket> sock)
     : Service(peer, sock)
 {
-    m_sql = std::make_unique<soci::session>(DBConnectionPool::Get());
+    m_sql = std::make_unique<soci::session>(PostgreDBPool::Get());
 }
 
 // 서비스 종료 시 추가적으로 해제해야 할 것들 소멸자에 기입

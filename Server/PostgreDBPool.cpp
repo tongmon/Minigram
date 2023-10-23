@@ -1,8 +1,8 @@
-﻿#include "DBConnectionPool.hpp"
+﻿#include "PostgreDBPool.hpp"
 
 #include <regex>
 
-DBConnectionPool::DBConnectionPool(int pool_size, const DBConnectionInfo &connection_info)
+PostgreDBPool::PostgreDBPool(int pool_size, const PostgreConnectionInfo &connection_info)
 {
     m_connection_pool = std::make_unique<soci::connection_pool>(pool_size);
 
@@ -20,6 +20,6 @@ DBConnectionPool::DBConnectionPool(int pool_size, const DBConnectionInfo &connec
     }
 }
 
-DBConnectionPool::~DBConnectionPool()
+PostgreDBPool::~PostgreDBPool()
 {
 }

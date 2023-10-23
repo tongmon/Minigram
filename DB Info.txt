@@ -2,6 +2,14 @@
 
 -- MongoDB
 Port: 27017
+User: tongstar, PW: @***********
+DB Name: Minigram
+
+--- 주의점
+계정이 생성되는 DB 개인별로 존재할 수 있기에 특정 DB에서 계정 인증을 받고 특정 DB로 이동해야 됨.
+즉 계정 이름과 비번이 모두 같은 계정이 존재할 수 있음.
+계정을 인증 받는 DB가 중요.
+
 
 -- Postgre
 Port: 5432
@@ -96,3 +104,5 @@ CREATE TABLE participant_tb
 	2-2. YES, 해당 년도와 `existing_year_child`가 동일한 곳으로 가서 `existing_month_root` 중 가장 가까운 month를 찾고 년도가 existing_year_leaf에 속하고 월은 existing_month_child에 속하는 정보가 있는지 확인
 		2-3. YES, `existing_day_root`에서 최신 날짜 3일 획득하고 해당 3일에 대한 채팅 내용 화면에 띄움
 3. NO, 가장 가까운 year를 찾고 2번 항목 반복 
+
+
