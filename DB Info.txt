@@ -5,6 +5,8 @@ Port: 27017
 User: tongstar, PW: @***********
 DB Name: Minigram
 
+mongodb://localhost:27017/?minPoolSize=3&maxPoolSize=3와 같이 스레드 풀 개수도 정해줄 수 있음
+
 --- 주의점
 계정이 생성되는 DB 개인별로 존재할 수 있기에 특정 DB에서 계정 인증을 받고 특정 DB로 이동해야 됨.
 즉 계정 이름과 비번이 모두 같은 계정이 존재할 수 있음.

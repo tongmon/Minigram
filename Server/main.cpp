@@ -41,6 +41,7 @@
 #include <stb_image_write.h>
 
 #include "MessengerService.hpp"
+#include "MongoDBPool.hpp"
 #include "NetworkDefinition.hpp"
 #include "PostgreDBPool.hpp"
 #include "TCPClient.hpp"
@@ -50,7 +51,10 @@ int main(int argc, char *argv[])
 {
     try
     {
-        // DB 연결 정보 초기화
+        // MongoDB 연결 정보 초기화
+        MongoDBPool::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213"});
+
+        // PostgreDB 연결 정보 초기화
         PostgreDBPool::Get(4, {"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213"});
 
         // TCP 서버 생성

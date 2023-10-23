@@ -1,4 +1,5 @@
 ﻿#include "MessengerService.hpp"
+#include "MongoDBPool.hpp"
 #include "NetworkDefinition.hpp"
 #include "PostgreDBPool.hpp"
 #include "TCPClient.hpp"
@@ -117,11 +118,18 @@ void MessengerService::ChatRoomListInitHandling()
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
                                   soci::use(m_client_request, "id"));
 
+    auto mongo_client = MongoDBPool::Get().acquire();
+    auto mongo_db = (*mongo_client)["Minigram"];
+
     boost::json::array chat_room_array;
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         std::string collection_name = it->get<std::string>(0) + "_log";
+
+        auto mongo_coll = mongo_db[collection_name];
+
+        // mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("")));
 
         // chat_room_path = boost::dll::program_location().parent_path().string() + "/" + creator_id + "/" + session_id;
 
