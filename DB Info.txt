@@ -4,68 +4,95 @@
 Port: 27017
 
 -- Postgre
-Port: 회사: 3000, 집: 5432
+Port: 5432
 User: tongstar, PW: @***********
 DB Name: Minigram
 
 
 ## Postgre 테이블 생성
 
-### USER_TB
+### user_tb
 설명: 유저 정보가 담기는 table
 
-CREATE TABLE USER_TB
+CREATE TABLE user_tb
 (
-    USER_ID			VARCHAR(50) NOT NULL,
-    USER_NM			VARCHAR(50) NOT NULL,
-	PASSWORD		VARCHAR(50) NOT NULL,
-	IMAGE_PATH		VARCHAR(255) NOT NULL,
-	FRIEND_LIST 	TEXT,
-	LOGIN_IP		VARCHAR(40),
-	LOGIN_PORT		INTEGER,
-	PROFILE_INFO	TEXT,
-    PRIMARY KEY (USER_ID)
+    user_id			VARCHAR(32) NOT NULL,
+    user_nm			VARCHAR(64) NOT NULL,
+	user_info		TEXT,
+	password		VARCHAR(32) NOT NULL,
+	img_path		VARCHAR(255),
+	friend_list 	TEXT,
+	login_ip		VARCHAR(40),
+	login_port		INTEGER,
+	CONSTRAINT chk_user_id CHECK (user_id ~* '/^\w{6,31}$/')	
+	CONSTRAINT chk_password CHECK (password ~* '/^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,31}$/')
+    PRIMARY KEY (user_id)
 )
 
 
-### CHATROOM_TB
+### chatroom_tb
 설명: 채팅방 관련 테이블
 
-CREATE TABLE CHATROOM_TB
+CREATE TABLE chatroom_tb
 (
-    SESSION_ID	VARCHAR(16) NOT NULL,
-    CREATOR_ID	VARCHAR(50) NOT NULL,
-	SESSION_NM	VARCHAR(255) NOT NULL,
-	CONSTRAINT fk_creator_id FOREIGN KEY(creator_id) REFERENCES "user_tb"(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-    PRIMARY KEY (SESSION_ID, CREATOR_ID)
+    session_id		VARCHAR(65) NOT NULL,
+	session_nm		VARCHAR(255) NOT NULL,
+	session_info 	TEXT,
+	img_path		VARCHAR(255),
+	CONSTRAINT chk_session_id CHECK (session_id ~* '/^\w{6,31}-\d{4}(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[01])-\d{6}$/')
+    PRIMARY KEY (session_id)
 )
 
+session_id 제약: 생성자 ID + '-' + 세션 생성일 + '-' + 생성일 기준 생성 순서 6자리
+ex) tongstar-20231023-000001 / tongstar 사용자가 2023/10/23에 첫번째로 만든 채팅방이라는 정보가 담김
 
-### PARTICIPANT_TB
+
+### participant_tb
 설명: 유저와 채팅방 사이 관계 정의 테이블
 
-CREATE TABLE PARTICIPANT_TB
+CREATE TABLE participant_tb
 (
-    SESSION_ID		VARCHAR(16) NOT NULL,
-    CREATOR_ID		VARCHAR(50) NOT NULL,
-	PARTICIPANT_ID	VARCHAR(50) NOT NULL,
-	CONSTRAINT fk_session_id FOREIGN KEY(session_id) REFERENCES "chatroom_tb"(session_id) ON DELETE CASCADE ON UPDATE CASCADE
-	CONSTRAINT fk_creator_id FOREIGN KEY(creator_id) REFERENCES "user_tb"(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-	CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES "user_tb"(user_id) ON DELETE CASCADE ON UPDATE CASCADE
-    PRIMARY KEY (SESSION_ID, CREATOR_ID, USER_ID)
+    session_id		VARCHAR(65) NOT NULL,
+	participant_id	VARCHAR(32) NOT NULL,
+	CONSTRAINT fk_session_id FOREIGN KEY(session_id) REFERENCES chatroom_tb(session_id) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE
+    PRIMARY KEY (session_id, participant_id)
 )
 
 
 ## MongoDB 컬렉션 생성
 
-### [SESSION_ID]_[CREATOR_ID]_LOG 구조 / SESSION_ID, CREATOR_ID에 따라 동적으로 생성됨
+### [SESSION_ID]_log 구조 / SESSION_ID에 따라 동적으로 생성됨
+설명: 채팅방 하나당 `[SESSION_ID]_log`라는 컬렉션이 하나씩 생김
 
+밑은 말풍선 하나당 컬렉션에 저장되는 정보
 {
 	"sender_id": 	"보낸 사람 USER_ID"
-	"send_year": 	"2023",
-	"send_month": 	"10",
-	"send_day": 	"19",
-	"send_time": 	"13:21:40::11"
+	"send_date": 	"2023-10-19",
+	"send_time": 	"13:21:40:11"
 	"content_type": "text"
 	"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
 }
+
+밑은 과거 채팅 이력을 가져올 때 서버-클라 호출을 최소화 하기 위한 요소
+{
+	"existing_year_root": "2021;2022;2023"
+}
+
+{
+	"existing_year_child": "2021",
+	"existing_month_root": "3;4;7;10"
+}
+
+{
+	"existing_year_leaf": "2021",
+	"existing_month_child": "3"
+	"existing_day_root": "1;26;31"
+}
+활용되는 단계는 밑과 같음
+1. 채팅 이력을 클라이언트 화면에 출력할 때 로컬 캐시 파일이 있는지 확인
+	1-2. YES, 해당 내용을 화면에 띄움
+2. NO, 현재 년도가 `existing_year_root` 관련 정보에 속해 있는지 확인
+	2-2. YES, 해당 년도와 `existing_year_child`가 동일한 곳으로 가서 `existing_month_root` 중 가장 가까운 month를 찾고 년도가 existing_year_leaf에 속하고 월은 existing_month_child에 속하는 정보가 있는지 확인
+		2-3. YES, `existing_day_root`에서 최신 날짜 3일 획득하고 해당 3일에 대한 채팅 내용 화면에 띄움
+3. NO, 가장 가까운 year를 찾고 2번 항목 반복 
