@@ -34,8 +34,8 @@ CREATE TABLE user_tb
 	friend_list 	TEXT,
 	login_ip		VARCHAR(40),
 	login_port		INTEGER,
-	CONSTRAINT chk_user_id CHECK (user_id ~* '/^\w{6,31}$/')	
-	CONSTRAINT chk_password CHECK (password ~* '/^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,31}$/')
+	CONSTRAINT chk_user_id CHECK (user_id ~* '/^\w{6,31}$/'),	
+	CONSTRAINT chk_password CHECK (password ~* '/^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,31}$/'),
     PRIMARY KEY (user_id)
 )
 
@@ -49,7 +49,7 @@ CREATE TABLE chatroom_tb
 	session_nm		VARCHAR(255) NOT NULL,
 	session_info 	TEXT,
 	img_path		VARCHAR(255),
-	CONSTRAINT chk_session_id CHECK (session_id ~* '/^\w{6,31}-\d{4}(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[01])-\d{6}$/')
+	CONSTRAINT chk_session_id CHECK (session_id ~* '/^\w{6,31}-\d{4}(0[1-9]|1[012])(0[1-9]|[12][0-9]|3[01])-\d{6}$/'),
     PRIMARY KEY (session_id)
 )
 
@@ -65,7 +65,7 @@ CREATE TABLE participant_tb
     session_id		VARCHAR(65) NOT NULL,
 	participant_id	VARCHAR(32) NOT NULL,
 	CONSTRAINT fk_session_id FOREIGN KEY(session_id) REFERENCES chatroom_tb(session_id) ON DELETE CASCADE ON UPDATE CASCADE,
-	CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE
+	CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (session_id, participant_id)
 )
 

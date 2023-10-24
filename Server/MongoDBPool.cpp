@@ -1,4 +1,5 @@
 ﻿#include "MongoDBPool.hpp"
+#include "Utility.hpp"
 
 #include <regex>
 
@@ -11,7 +12,7 @@ MongoDBPool::MongoDBPool(const MongoConnectionInfo &connection_info)
     session_info = std::regex_replace(session_info, std::regex("%DB_PORT%"), connection_info.db_port);
     session_info = std::regex_replace(session_info, std::regex("%DB_NAME%"), connection_info.db_name);
     session_info = std::regex_replace(session_info, std::regex("%DB_USER%"), connection_info.db_user);
-    session_info = std::regex_replace(session_info, std::regex("%DB_PASSWORD%"), connection_info.db_password);
+    session_info = std::regex_replace(session_info, std::regex("%DB_PASSWORD%"), EncodeURL(connection_info.db_password));
 
     mongocxx::uri uri(session_info);
 

@@ -1,34 +1,9 @@
-﻿#pragma region standard header
-#include <algorithm>
-#include <array>
-#include <bitset>
-#include <cmath>
-#include <coroutine>
-#include <cstdio>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <future>
-#include <iostream>
-#include <limits>
-#include <map>
-#include <memory>
-#include <mutex>
-#include <numeric>
-#include <queue>
-#include <random>
-#include <regex>
-#include <sstream>
-#include <stack>
-#include <stdexcept>
-#include <string>
-#include <thread>
-#include <typeinfo>
-#include <unordered_map>
-#include <unordered_set>
-#include <variant>
-#include <vector>
-#pragma endregion
+﻿#include "MessengerService.hpp"
+#include "MongoDBPool.hpp"
+#include "NetworkDefinition.hpp"
+#include "PostgreDBPool.hpp"
+#include "TCPClient.hpp"
+#include "TCPServer.hpp"
 
 #include <boost/system.hpp>
 
@@ -39,13 +14,6 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image_write.h>
-
-#include "MessengerService.hpp"
-#include "MongoDBPool.hpp"
-#include "NetworkDefinition.hpp"
-#include "PostgreDBPool.hpp"
-#include "TCPClient.hpp"
-#include "TCPServer.hpp"
 
 int main(int argc, char *argv[])
 {
