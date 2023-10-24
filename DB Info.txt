@@ -111,3 +111,19 @@ CREATE TABLE participant_tb
 3. NO, 가장 가까운 year를 찾고 2번 항목 반복 
 
 
+날짜 사이 값 구하기
+db.mycollection.find({
+  "dateTime" : {
+    "$gte" : ISODate("2023-02-01T00:00:00.000Z"),
+    "$lte" : ISODate("2023-02-02T00:00:00.000Z")
+  } 
+})
+
+mongodbcxx에서 날짜 넣기
+bsoncxx::builder::basic::make_document(
+	bsoncxx::builder::basic::kvp("datetime", bsoncxx::types::b_date{
+	    std::chrono::system_clock::from_time_t(tt)
+	})
+);
+
+db.stock.find().sort({_id:1}).limit(3); -> 마지막 3개

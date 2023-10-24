@@ -117,8 +117,9 @@ void MessengerService::MessageHandling()
 }
 
 // client send 형식
-// user_id | session_id / YYYY-MM-DD hh:mm:ss:ms | session_id / YYYY-MM-DD hh:mm:ss:ms ...
-// client에서 특정 채팅방 캐시 파일이 없다면 0000-00-00 00:00:00:00으로 넘김
+// user_id | session_id / YYYY-MM-DD hh:mm:ss.ms | session_id / YYYY-MM-DD hh:mm:ss.ms ...
+// client에서 특정 채팅방 캐시 파일이 없다면 0000-00-00 00:00:00.00으로 넘김
+// 날짜 포맷은 chrono의 time_point 형식임
 void MessengerService::ChatRoomListInitHandling()
 {
     std::vector<std::string> parsed;
@@ -145,16 +146,9 @@ void MessengerService::ChatRoomListInitHandling()
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         std::string session_id = it->get<std::string>(0), collection_name = session_id + "_log", session_nm, session_info, img_path;
-        std::string_view recent_date, recent_time;
 
-        if (chatroom_recent_date.find(session_id) != chatroom_recent_date.end())
-        {
-            parsed.clear();
-            boost::split(parsed, chatroom_recent_date[session_id], boost::is_any_of(" "));
-            recent_date = parsed[0], recent_time = parsed[1];
-        }
         // 클라에는 채팅방이 있는데 서버쪽에 없는 경우... 강퇴나 추방에 해당됨
-        else
+        if (chatroom_recent_date.find(session_id) == chatroom_recent_date.end())
         {
             continue;
         }
@@ -172,49 +166,68 @@ void MessengerService::ChatRoomListInitHandling()
         chat_obj["session_img"] = EncodeBase64(img_buffer);
 
         auto mongo_coll = mongo_db[collection_name];
-        auto root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "root")));
 
-        std::set<std::string> valid_years, valid_months, valid_days;
-        boost::split(valid_years, root_date_info.value()["valid_year"].get_string().value, boost::is_any_of("|"));
-
-        std::vector<std::string> valid_dates;
-        boost::json::array content_array;
-
-        // 대화기록이 하나도 없는 경우
-        if (valid_years.empty())
+        // 클라이언트에서 해당 채팅방 캐싱을 처음하는 경우(혹은 캐시 파일이 날라갔거나)
+        if (chatroom_recent_date[session_id][0] == '0')
         {
-            chat_obj["content"] = content_array;
-            chat_room_array.push_back(chat_obj);
-            continue;
+        }
+        else
+        {
+            std::istringstream time_in(chatroom_recent_date[session_id]);
+            std::chrono::system_clock::time_point tp;
+            time_in >> std::chrono::parse("%F %T", tp);
+
+            mongo_coll.find(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("send_date",
+                                                                                                bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("$gt",
+                                                                                                                                                                    bsoncxx::types::b_date{tp})))));
         }
 
-        for (auto y = valid_years.rbegin(); y != valid_years.rend(); y++)
-        {
-            root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "child"),
-                                                                                        bsoncxx::builder::basic::kvp("valid_year", *y)));
+        // 밑에서 부터 mongodb 자체의 sort로 해결 가능이라 지울지 고민중...
 
-            boost::split(valid_months, root_date_info.value()["valid_month"].get_string().value, boost::is_any_of("|"));
-            for (auto m = valid_months.rbegin(); m != valid_months.rend(); m++)
-            {
-                root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "leaf"),
-                                                                                            bsoncxx::builder::basic::kvp("valid_year", *y),
-                                                                                            bsoncxx::builder::basic::kvp("valid_month", *m)));
-
-                boost::split(valid_days, root_date_info.value()["valid_day"].get_string().value, boost::is_any_of("|"));
-                for (auto d = valid_days.rbegin(); d != valid_days.rend(); d++)
-                {
-                    std::string date = std::format("{}-{}-{}", *y, *m, *d);
-                    if (recent_date <= date)
-                    {
-                        valid_dates.push_back(date);
-                    }
-                    else
-                    {
-                        // 3중 for문 탈출
-                    }
-                }
-            }
-        }
+        // auto mongo_coll = mongo_db[collection_name];
+        // auto root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "root")));
+        //
+        // std::set<std::string> valid_years, valid_months, valid_days;
+        // boost::split(valid_years, root_date_info.value()["valid_year"].get_string().value, boost::is_any_of("|"));
+        //
+        // std::vector<std::string> valid_dates;
+        // boost::json::array content_array;
+        //
+        // // 대화기록이 하나도 없는 경우
+        // if (valid_years.empty())
+        // {
+        //     chat_obj["content"] = content_array;
+        //     chat_room_array.push_back(chat_obj);
+        //     continue;
+        // }
+        //
+        // for (auto y = valid_years.rbegin(); y != valid_years.rend(); y++)
+        // {
+        //     root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "child"),
+        //                                                                                 bsoncxx::builder::basic::kvp("valid_year", *y)));
+        //
+        //     boost::split(valid_months, root_date_info.value()["valid_month"].get_string().value, boost::is_any_of("|"));
+        //     for (auto m = valid_months.rbegin(); m != valid_months.rend(); m++)
+        //     {
+        //         root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "leaf"),
+        //                                                                                     bsoncxx::builder::basic::kvp("valid_year", *y),
+        //                                                                                     bsoncxx::builder::basic::kvp("valid_month", *m)));
+        //
+        //         boost::split(valid_days, root_date_info.value()["valid_day"].get_string().value, boost::is_any_of("|"));
+        //         for (auto d = valid_days.rbegin(); d != valid_days.rend(); d++)
+        //         {
+        //             std::string date = std::format("{}-{}-{}", *y, *m, *d);
+        //             if (recent_date <= date)
+        //             {
+        //                 valid_dates.push_back(date);
+        //             }
+        //             else
+        //             {
+        //                 // 3중 for문 탈출
+        //             }
+        //         }
+        //     }
+        // }
 
         // mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("")));
 
