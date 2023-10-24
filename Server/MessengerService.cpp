@@ -23,10 +23,6 @@
 #include <sstream>
 #include <unordered_set>
 
-using bsoncxx::builder::basic::kvp;
-using bsoncxx::builder::basic::make_array;
-using bsoncxx::builder::basic::make_document;
-
 MessengerService::MessengerService(std::shared_ptr<TCPClient> peer, std::shared_ptr<boost::asio::ip::tcp::socket> sock)
     : Service(peer, sock)
 {
@@ -120,11 +116,22 @@ void MessengerService::MessageHandling()
     delete this;
 }
 
+// client send 형식
+// user_id | session_id / YYYY-MM-DD hh:mm:ss:ms | session_id / YYYY-MM-DD hh:mm:ss:ms ...
 void MessengerService::ChatRoomListInitHandling()
 {
     std::vector<std::string> parsed;
+    std::unordered_map<std::string, std::string> chatroom_recent_date;
+
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    std::string user_id = parsed[0], request_y = parsed[1], request_m = parsed[2], request_d = parsed[3]; // string_view로 속도 개선 가능
+    std::string user_id = parsed[0]; // string_view로 속도 개선 가능
+
+    for (int i = 1; i < parsed.size(); i++)
+    {
+        std::vector<std::string> chatroom_data;
+        boost::split(chatroom_data, parsed[i], boost::is_any_of("|"));
+        chatroom_recent_date[chatroom_data[0]] = chatroom_data[1];
+    }
 
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
                                   soci::use(user_id, "id"));
@@ -136,21 +143,55 @@ void MessengerService::ChatRoomListInitHandling()
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
-        std::string collection_name = it->get<std::string>(0) + "_log";
+        std::string session_id = it->get<std::string>(0), collection_name = session_id + "_log", session_nm, session_info, img_path;
+
+        *m_sql << "select session_nm, session_info, img_path where session_id=:id",
+            soci::into(session_nm), soci::into(session_info), soci::into(img_path), soci::use(session_id);
+
+        int width, height, channels;
+        unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
+        std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
+
+        boost::json::object chat_obj;
+        chat_obj["session_id"] = session_id;
+        chat_obj["session_name"] = session_nm;
+        chat_obj["session_img"] = EncodeBase64(img_buffer);
 
         auto mongo_coll = mongo_db[collection_name];
-        auto root_date_info = mongo_coll.find_one(make_document(kvp("date_relation", "root")));
+        auto root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "root")));
 
-        std::unordered_set<std::string> valid_years;
+        std::set<std::string> valid_years, valid_months, valid_days;
         boost::split(valid_years, root_date_info.value()["valid_year"].get_string().value, boost::is_any_of("|"));
+
+        std::vector<std::string> valid_dates;
+        boost::json::array content_array;
 
         if (valid_years.empty())
         {
+            chat_obj["content"] = content_array;
+            chat_room_array.push_back(chat_obj);
             continue;
         }
 
-        for (int i = valid_years.size() - 1; i >= 0; i--)
+        for (auto y = valid_years.rbegin(); y != valid_years.rend(); y++)
         {
+            root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "child"),
+                                                                                        bsoncxx::builder::basic::kvp("valid_year", *y)));
+
+            boost::split(valid_months, root_date_info.value()["valid_month"].get_string().value, boost::is_any_of("|"));
+            for (auto m = valid_months.rbegin(); m != valid_months.rend(); m++)
+            {
+                root_date_info = mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("date_relation", "leaf"),
+                                                                                            bsoncxx::builder::basic::kvp("valid_year", *y),
+                                                                                            bsoncxx::builder::basic::kvp("valid_month", *m)));
+
+                boost::split(valid_days, root_date_info.value()["valid_day"].get_string().value, boost::is_any_of("|"));
+                for (auto d = valid_days.rbegin(); d != valid_days.rend(); d++)
+                {
+                    // 여기서 년도가 map에 있는 것과 같아지면 중지
+                    valid_dates.push_back(std::format("{}-{}-{}", *y, *m, *d));
+                }
+            }
         }
 
         // mongo_coll.find_one(bsoncxx::builder::basic::make_document(bsoncxx::builder::basic::kvp("")));
