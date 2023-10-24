@@ -118,6 +118,7 @@ void MessengerService::MessageHandling()
 
 // client send 형식
 // user_id | session_id / YYYY-MM-DD hh:mm:ss:ms | session_id / YYYY-MM-DD hh:mm:ss:ms ...
+// client에서 특정 채팅방 캐시 파일이 없다면 0000-00-00 00:00:00:00으로 넘김
 void MessengerService::ChatRoomListInitHandling()
 {
     std::vector<std::string> parsed;
@@ -144,6 +145,19 @@ void MessengerService::ChatRoomListInitHandling()
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         std::string session_id = it->get<std::string>(0), collection_name = session_id + "_log", session_nm, session_info, img_path;
+        std::string_view recent_date, recent_time;
+
+        if (chatroom_recent_date.find(session_id) != chatroom_recent_date.end())
+        {
+            parsed.clear();
+            boost::split(parsed, chatroom_recent_date[session_id], boost::is_any_of(" "));
+            recent_date = parsed[0], recent_time = parsed[1];
+        }
+        // 클라에는 채팅방이 있는데 서버쪽에 없는 경우... 강퇴나 추방에 해당됨
+        else
+        {
+            continue;
+        }
 
         *m_sql << "select session_nm, session_info, img_path where session_id=:id",
             soci::into(session_nm), soci::into(session_info), soci::into(img_path), soci::use(session_id);
@@ -166,6 +180,7 @@ void MessengerService::ChatRoomListInitHandling()
         std::vector<std::string> valid_dates;
         boost::json::array content_array;
 
+        // 대화기록이 하나도 없는 경우
         if (valid_years.empty())
         {
             chat_obj["content"] = content_array;
@@ -188,8 +203,15 @@ void MessengerService::ChatRoomListInitHandling()
                 boost::split(valid_days, root_date_info.value()["valid_day"].get_string().value, boost::is_any_of("|"));
                 for (auto d = valid_days.rbegin(); d != valid_days.rend(); d++)
                 {
-                    // 여기서 년도가 map에 있는 것과 같아지면 중지
-                    valid_dates.push_back(std::format("{}-{}-{}", *y, *m, *d));
+                    std::string date = std::format("{}-{}-{}", *y, *m, *d);
+                    if (recent_date <= date)
+                    {
+                        valid_dates.push_back(date);
+                    }
+                    else
+                    {
+                        // 3중 for문 탈출
+                    }
                 }
             }
         }
