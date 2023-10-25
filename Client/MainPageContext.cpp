@@ -5,6 +5,7 @@
 #include "Utility.hpp"
 #include "WinQuickWindow.hpp"
 
+#include <boost/dll.hpp>
 #include <boost/json.hpp>
 
 MainPageContext::MainPageContext(WinQuickWindow *window)
@@ -49,6 +50,8 @@ void MainPageContext::trySendTextChat(const QString &room_id, const QString &sen
 // 현재 존재하는 채팅방에 대한 캐시 파일 읽는 로직 추가해야 됨 / 미완성
 void MainPageContext::initialChatRoomList(const QString &user_id)
 {
+    std::string file_path = boost::dll::program_location().parent_path().string() + "/cache/";
+
     auto &central_server = m_window->GetServerHandle();
 
     int request_id = central_server.MakeRequestID();

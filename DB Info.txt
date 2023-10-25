@@ -88,6 +88,8 @@ CREATE TABLE participant_tb
 
 ### Server -> Client
 
+#### 
+
 #### Chat Room Init
 채팅방 초기화시 밑과 같은 형식을 서버와 클라이언트가 주고 받음
 {
@@ -141,3 +143,16 @@ CREATE TABLE participant_tb
 		...
 	]
 }
+
+## Client Cache 파일 정보  
+
+캐시 파일 경로는 밑과 같다.
+Minigram.exe
+cache
+	L session_id
+		L 2023
+			L 
+			
+			
+## 참고할 만한 글
+https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/
