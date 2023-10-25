@@ -78,52 +78,7 @@ CREATE TABLE participant_tb
 밑은 말풍선 하나당 컬렉션에 저장되는 정보
 {
 	"sender_id": 	"보낸 사람 USER_ID"
-	"send_date": 	"2023-10-19",
-	"send_time": 	"13:21:40:11"
+	"send_date": 	ISODate("2023-10-19T13:21:40.125"),
 	"content_type": "text"
 	"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
 }
-
-밑은 과거 채팅 이력을 가져올 때 DB-서버 호출을 최소화 하기 위한 요소
-{
-	"date_relation": "root",
-	"valid_year": "2021|2022|2023"
-}
-
-{
-	"date_relation": "child",
-	"valid_year": "2021",
-	"valid_month": "03|04|07|10"
-}
-
-{
-	"date_relation": "leaf",
-	"valid_year": "2021",
-	"valid_month": "3"
-	"valid_day": "01|26|31"
-}
-활용되는 단계는 밑과 같음
-1. 채팅 이력을 클라이언트 화면에 출력할 때 로컬 캐시 파일이 있는지 확인
-	1-2. YES, 해당 내용을 화면에 띄움
-2. NO, 현재 년도가 `existing_year_root` 관련 정보에 속해 있는지 확인
-	2-2. YES, 해당 년도와 `existing_year_child`가 동일한 곳으로 가서 `existing_month_root` 중 가장 가까운 month를 찾고 년도가 existing_year_leaf에 속하고 월은 existing_month_child에 속하는 정보가 있는지 확인
-		2-3. YES, `existing_day_root`에서 최신 날짜 3일 획득하고 해당 3일에 대한 채팅 내용 화면에 띄움
-3. NO, 가장 가까운 year를 찾고 2번 항목 반복 
-
-
-날짜 사이 값 구하기
-db.mycollection.find({
-  "dateTime" : {
-    "$gte" : ISODate("2023-02-01T00:00:00.000Z"),
-    "$lte" : ISODate("2023-02-02T00:00:00.000Z")
-  } 
-})
-
-mongodbcxx에서 날짜 넣기
-bsoncxx::builder::basic::make_document(
-	bsoncxx::builder::basic::kvp("datetime", bsoncxx::types::b_date{
-	    std::chrono::system_clock::from_time_t(tt)
-	})
-);
-
-db.stock.find().sort({_id:1}).limit(3); -> 마지막 3개
