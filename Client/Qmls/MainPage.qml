@@ -296,13 +296,12 @@ Rectangle {
                                 if(!text.length)
                                     return
 
-                                var chatTime = Qt.formatDateTime(new Date(), "yyyy-MM-dd hh:mm:ss.zzz")
+                                // var chatTime = Qt.formatDateTime(new Date(), "yyyy-MM-dd hh:mm:ss.zzz")
 
                                 // 서버로 채팅 내용 전송
-                                mainPageContext.trySendTextChat(currentRoomID, 
-                                                                chatTime, 
-                                                                text)
+                                mainPageContext.trySendTextChat(currentRoomID, text)
 
+                                // c++ 단에서 수행해야 함, 밑에꺼 삭제 요망
                                 addChatBubbleText(currentRoomID, 
                                                   true, 
                                                   "tongstar",

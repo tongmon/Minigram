@@ -21,7 +21,7 @@ void MainPageContext::RecieveTextChat(const std::string &content)
 {
 }
 
-void MainPageContext::trySendTextChat(const QString &room_id, const QString &send_date, const QString &content)
+void MainPageContext::trySendTextChat(const QString &room_id, const QString &content)
 {
     auto &central_server = m_window->GetServerHandle();
 
@@ -30,7 +30,6 @@ void MainPageContext::trySendTextChat(const QString &room_id, const QString &sen
 
     std::string request = m_window->GetContextProperty<LoginPageContext *>()->GetUserID() + "|" +
                           room_id.toStdString() + "|" +
-                          send_date.toStdString() + "|" +
                           "text" + "|" +
                           EncodeBase64(StrToUtf8(content.toStdString()));
 
@@ -41,7 +40,24 @@ void MainPageContext::trySendTextChat(const QString &room_id, const QString &sen
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.CloseRequest(session->GetID());
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            TCPHeader header(session->GetResponse());
+
+            auto connection_type = header.GetConnectionType();
+            auto data_size = header.GetDataSize();
+
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                // 챗 버블 실제로 추가하는 로직
+
+                central_server.CloseRequest(session->GetID());
+            });
+        });
     });
 
     return;
@@ -50,7 +66,7 @@ void MainPageContext::trySendTextChat(const QString &room_id, const QString &sen
 // 현재 존재하는 채팅방에 대한 캐시 파일 읽는 로직 추가해야 됨 / 미완성
 void MainPageContext::initialChatRoomList(const QString &user_id)
 {
-    std::string file_path = boost::dll::program_location().parent_path().string() + "/cache/";
+    std::string file_path = boost::dll::program_location().parent_path().string() + "/cache";
 
     auto &central_server = m_window->GetServerHandle();
 
@@ -73,12 +89,6 @@ void MainPageContext::initialChatRoomList(const QString &user_id)
 
             auto connection_type = header.GetConnectionType();
             auto data_size = header.GetDataSize();
-
-            if (connection_type != CHATROOMLIST_INITIAL_TYPE)
-            {
-                central_server.CloseRequest(session->GetID());
-                return;
-            }
 
             central_server.AsyncRead(session->GetID(), data_size, [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())

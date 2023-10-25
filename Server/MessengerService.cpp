@@ -75,12 +75,12 @@ void MessengerService::LoginHandling()
 }
 
 // client send 형식
-// 보낸 사람 id | 채팅방 id | 보낸 시각 | 컨텐츠 타입 | 채팅 내용
+// 보낸 사람 id | 채팅방 id | 컨텐츠 타입 | 채팅 내용
 void MessengerService::MessageHandling()
 {
     std::vector<std::string> parsed;
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    std::string sender_id = parsed[0], session_id = parsed[1], send_date = parsed[2], content_type = parsed[3], content = parsed[4];
+    std::string sender_id = parsed[0], session_id = parsed[1], content_type = parsed[2], content = parsed[3];
 
     // session_id에서 정보 뜯어오는 건데 안쓸거 같음
     // parsed.clear();
@@ -95,9 +95,8 @@ void MessengerService::MessageHandling()
     auto mongo_db = (*mongo_client)["Minigram"];
     auto mongo_coll = mongo_db[session_id];
 
-    std::istringstream time_in(send_date);
-    std::chrono::system_clock::time_point tp;
-    time_in >> std::chrono::parse("%F %T", tp);
+    std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
+    std::string send_date = std::format("{0:%F %T}", tp);
 
     mongo_coll.insert_one(basic::make_document(basic::kvp("sender_id", sender_id),
                                                basic::kvp("send_date", types::b_date{tp}),
@@ -120,6 +119,10 @@ void MessengerService::MessageHandling()
         *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
             soci::into(login_ip), soci::into(login_port), soci::use(participant_id);
 
+        // 로그인 중이 아니면 푸시알림 건너뜀
+        if (login_ip.empty())
+            continue;
+
         auto request_id = m_peer->MakeRequestID();
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
@@ -135,7 +138,20 @@ void MessengerService::MessageHandling()
         });
     }
 
-    delete this;
+    TCPHeader header(TEXTCHAT_CONNECTION_TYPE, send_date.size());
+    m_request = header.GetHeaderBuffer() + send_date;
+
+    // 채팅 송신이 완료되었으면 보낸 사람 클라이언트로 송신 시점을 보냄
+    boost::asio::async_write(*m_sock,
+                             boost::asio::buffer(m_request),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
 }
 
 // client send 형식
