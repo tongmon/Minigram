@@ -20,10 +20,10 @@ int main(int argc, char *argv[])
     try
     {
         // MongoDB 연결 정보 초기화
-        MongoDBPool::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213"});
+        MongoDBPool::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213", 4, 4});
 
         // PostgreDB 연결 정보 초기화
-        PostgreDBPool::Get(4, {"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213"});
+        PostgreDBPool::Get({"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213", 4});
 
         // TCP 서버 생성
         TCPServer<MessengerService> server(std::make_shared<TCPClient>(2), SERVER_PORT, 2);

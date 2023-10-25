@@ -2,9 +2,9 @@
 
 #include <regex>
 
-PostgreDBPool::PostgreDBPool(int pool_size, const PostgreConnectionInfo &connection_info)
+PostgreDBPool::PostgreDBPool(const PostgreConnectionInfo &connection_info)
 {
-    m_connection_pool = std::make_unique<soci::connection_pool>(pool_size);
+    m_connection_pool = std::make_unique<soci::connection_pool>(connection_info.pool_size);
 
     std::string session_info = "host=%DB_HOST% port=%DB_PORT% dbname=%DB_NAME% user=%DB_USER% password=%DB_PASSWORD%";
     session_info = std::regex_replace(session_info, std::regex("%DB_HOST%"), connection_info.db_host);
@@ -13,7 +13,7 @@ PostgreDBPool::PostgreDBPool(int pool_size, const PostgreConnectionInfo &connect
     session_info = std::regex_replace(session_info, std::regex("%DB_USER%"), connection_info.db_user);
     session_info = std::regex_replace(session_info, std::regex("%DB_PASSWORD%"), connection_info.db_password);
 
-    for (size_t i = 0; i != pool_size; ++i)
+    for (size_t i = 0; i != connection_info.pool_size; ++i)
     {
         soci::session &sql = m_connection_pool->at(i);
         sql.open(*soci::factory_postgresql(), session_info);

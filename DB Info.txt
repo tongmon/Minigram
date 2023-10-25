@@ -82,3 +82,62 @@ CREATE TABLE participant_tb
 	"content_type": "text"
 	"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
 }
+
+
+## Client - Server 통신 규격
+
+### Server -> Client
+
+#### Chat Room Init
+채팅방 초기화시 밑과 같은 형식을 서버와 클라이언트가 주고 받음
+{
+	"chatroom_init_data": [
+		{
+			"session_id": "세션 id",
+			"session_name": "세션 이름",
+			"session_img": "Base64 인코딩된 세션 이미지",
+			
+			// 날짜 오름차순으로 정렬된 상태임
+			// content는 utf-8 Base64 인코딩된 상태임
+			"content": [
+				{
+					"sender_id": 	"보낸 사람 USER_ID"
+					"send_date": 	ISODate("2023-10-19T13:21:40.125"),
+					"content_type": "text"
+					"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
+				},
+				{
+					"sender_id": 	"보낸 사람 USER_ID"
+					"send_date": 	ISODate("2023-10-21T17:01:07.144"),
+					"content_type": "text"
+					"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
+				},
+				...
+			]					
+		},
+		{
+			"session_id": "세션 id",
+			"session_name": "세션 이름",
+			"session_img": "Base64 인코딩된 세션 이미지",
+			
+			// 날짜 오름차순으로 정렬된 상태임
+			// content는 utf-8 Base64 인코딩된 상태임
+			"content": [
+				{
+					"sender_id": 	"보낸 사람 USER_ID"
+					"send_date": 	ISODate("2023-10-19T13:21:40.125"),
+					"content_type": "text"
+					"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
+				},
+				{
+					"sender_id": 	"보낸 사람 USER_ID"
+					"send_date": 	ISODate("2023-10-21T17:01:07.144"),
+					"content_type": "text"
+					"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
+				},
+				...
+			]					
+		},
+		...
+	]
+}

@@ -72,6 +72,28 @@ Rectangle {
                             text: "Chat"
                         }
                         `)
+                
+                addItem(String.raw`
+                        Rectangle {
+                            height: parent.height
+                            width: 200
+                            radius: 10
+
+                            TextField {
+                                anchors.fill: parent
+                                selectByMouse: true
+                                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText                    
+
+                                Keys.onReturnPressed: {
+
+                                }
+
+                                background: Rectangle {
+                                    color: "transparent"
+                                }
+                            }
+                        }
+                        `)
             }
         }
 

@@ -192,18 +192,21 @@ void MessengerService::ChatRoomListInitHandling()
 
         auto mongo_coll = mongo_db[collection_name];
         auto opts = mongocxx::options::find{};
-        opts.sort(basic::make_document(basic::kvp("send_date", 1)).view());
         std::unique_ptr<mongocxx::cursor> mongo_cursor;
 
         // 클라이언트에서 해당 채팅방 캐싱을 처음하는 경우(혹은 캐시 파일이 날라갔거나)
         // 최신 날짜가 맨 뒤로 정렬되게 50개 가져옴
         if (chatroom_recent_date[session_id][0] == '0')
         {
-            opts.limit(50);
+            opts.sort(basic::make_document(basic::kvp("send_date", -1)).view())
+                .limit(50)
+                .sort(basic::make_document(basic::kvp("send_date", 1)).view());
             mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find({}, opts));
         }
         else
         {
+            opts.sort(basic::make_document(basic::kvp("send_date", 1)).view());
+
             std::istringstream time_in(chatroom_recent_date[session_id]);
             std::chrono::system_clock::time_point tp;
             time_in >> std::chrono::parse("%F %T", tp);

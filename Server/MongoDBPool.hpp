@@ -23,6 +23,8 @@ struct MongoConnectionInfo
     std::string db_name;
     std::string db_user;
     std::string db_password;
+    int min_pool_size = 8;
+    int max_pool_size = 8;
 };
 
 class MongoDBPool
