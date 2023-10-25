@@ -1,4 +1,5 @@
 ﻿#include "MainPageContext.hpp"
+#include "LoginPageContext.hpp"
 #include "NetworkDefinition.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
@@ -19,14 +20,19 @@ void MainPageContext::RecieveTextChat(const std::string &content)
 {
 }
 
-void MainPageContext::trySendTextChat(const QString &room_id, const QString &content)
+void MainPageContext::trySendTextChat(const QString &room_id, const QString &send_date, const QString &content)
 {
     auto &central_server = m_window->GetServerHandle();
 
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = std::string("보낸 사람 User ID") + "|" + room_id.toStdString() + "|" + EncodeBase64(StrToUtf8(content.toStdString()));
+    std::string request = m_window->GetContextProperty<LoginPageContext *>()->GetUserID() + "|" +
+                          room_id.toStdString() + "|" +
+                          send_date.toStdString() + "|" +
+                          "text" + "|" +
+                          EncodeBase64(StrToUtf8(content.toStdString()));
+
     TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.size());
     request = header.GetHeaderBuffer() + request;
 
@@ -40,6 +46,7 @@ void MainPageContext::trySendTextChat(const QString &room_id, const QString &con
     return;
 }
 
+// 현재 존재하는 채팅방에 대한 캐시 파일 읽는 로직 추가해야 됨 / 미완성
 void MainPageContext::initialChatRoomList(const QString &user_id)
 {
     auto &central_server = m_window->GetServerHandle();

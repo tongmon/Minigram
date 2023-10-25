@@ -52,12 +52,6 @@ void LoginPageContext::tryLogin(const QString &id, const QString &pw)
             auto connection_type = header.GetConnectionType();
             auto data_size = header.GetDataSize();
 
-            if (connection_type != LOGIN_CONNECTION_TYPE)
-            {
-                central_server.CloseRequest(session->GetID());
-                return;
-            }
-
             central_server.AsyncRead(session->GetID(), data_size, [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;

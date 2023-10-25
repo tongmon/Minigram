@@ -274,17 +274,12 @@ Rectangle {
                                 if(!text.length)
                                     return
 
-                                // 서버로 채팅 내용 전송
-                                mainPageContext.trySendTextChat(currentRoomID, text)
+                                var chatTime = Qt.formatDateTime(new Date(), "yyyy-MM-dd hh:mm:ss.zzz")
 
-                                // chatView.get(0).children[0].model.append({
-                                //     "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
-                                //     "isRightAlign": true,
-                                //     "userID": "tongstar",
-                                //     "userName": "KyungJoonLee",
-                                //     "chatData": text,
-                                //     "chatTime": "0000-00-00"
-                                // })
+                                // 서버로 채팅 내용 전송
+                                mainPageContext.trySendTextChat(currentRoomID, 
+                                                                chatTime, 
+                                                                text)
 
                                 addChatBubbleText(currentRoomID, 
                                                   true, 
@@ -292,7 +287,7 @@ Rectangle {
                                                   "KyungJoonLee",
                                                   "",
                                                   text,
-                                                  "0000-00-00")
+                                                  chatTime)
 
                                 text = ""  
                             }                

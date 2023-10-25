@@ -34,7 +34,8 @@ MessengerService::~MessengerService()
 {
 }
 
-// 클라이언트에서 여는 서버의 ip, 포트도 가져와야 됨
+// client send 형식
+// 로그인한 ip | 로그인한 port | 로그인한 user_id | 로그인한 유저 pw
 void MessengerService::LoginHandling()
 {
     std::vector<std::string> parsed;
@@ -54,9 +55,10 @@ void MessengerService::LoginHandling()
 
     // 로그인한 사람의 ip, port 정보 갱신
     if (m_request[0])
-        *m_sql << "update user_tb set login_ip = :ip, login_port = :port where user_id = :id",
+        *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
             soci::use(ip), soci::use(port), soci::use(id);
 
+    // 로그인 완료라고 클라이언트에 알림
     TCPHeader header(LOGIN_CONNECTION_TYPE, m_request.size());
     m_request = header.GetHeaderBuffer() + m_request;
 
