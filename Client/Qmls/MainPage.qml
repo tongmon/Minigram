@@ -29,16 +29,29 @@ Rectangle {
         chatViewObjects[chatRoomID] = chatListViewComponent.createObject(chatView)
     }
 
-    function addChatBubbleText(chatRoomID, isRightAlign, userID, userName, userImage, chatData, chatTime)
+    // function addChatBubbleText(chatRoomID, isRightAlign, userID, userName, userImage, chatData, chatTime)
+    // {
+    //     chatViewObjects[chatRoomID].children[0].model.append({
+    //         "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
+    //         "isRightAlign": isRightAlign,
+    //         "userID": userID,
+    //         "userName": userName,
+    //         "userImage": userImage,
+    //         "chatData": chatData,
+    //         "chatTime": chatTime
+    //     })
+    // }
+
+    function addChatBubbleText(obj)
     {
-        chatViewObjects[chatRoomID].children[0].model.append({
+        chatViewObjects[obj["sessionID"]].children[0].model.append({
             "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
-            "isRightAlign": isRightAlign,
-            "userID": userID,
-            "userName": userName,
-            "userImage": userImage,
-            "chatData": chatData,
-            "chatTime": chatTime
+            "isRightAlign": obj["chatAlignment"],
+            "userID": obj["userID"],
+            "userName": obj["userName"],
+            "userImage": obj["userImage"],
+            "chatData": obj["content"],
+            "chatTime": obj["chatDate"]
         })
     }
 
@@ -302,13 +315,13 @@ Rectangle {
                                 mainPageContext.trySendTextChat(currentRoomID, text)
 
                                 // c++ 단에서 수행해야 함, 밑에꺼 삭제 요망
-                                addChatBubbleText(currentRoomID, 
-                                                  true, 
-                                                  "tongstar",
-                                                  "KyungJoonLee",
-                                                  "",
-                                                  text,
-                                                  chatTime)
+                                // addChatBubbleText(currentRoomID, 
+                                //                   true, 
+                                //                   "tongstar",
+                                //                   "KyungJoonLee",
+                                //                   "",
+                                //                   text,
+                                //                   chatTime)
 
                                 text = ""  
                             }                

@@ -18,8 +18,8 @@ class MainPageContext : public QObject
 
     void RecieveTextChat(const std::string &content);
 
-    Q_INVOKABLE void trySendTextChat(const QString &room_id, const QString &content);
-    Q_INVOKABLE void initialChatRoomList(const QString &user_id);
+    Q_INVOKABLE void trySendTextChat(const QString &session_id, const QString &content);
+    Q_INVOKABLE void initialChatRoomList();
 };
 
 #endif /* HEADER__FILE__MAINPAGECONTEXT */

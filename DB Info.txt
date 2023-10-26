@@ -144,15 +144,27 @@ CREATE TABLE participant_tb
 	]
 }
 
-## Client Cache 파일 정보  
+## Client Cache 구성
 
-캐시 파일 경로는 밑과 같다.
+클라이언트에 남는 캐시 파일은 대화에서 생성되는 미디어 정보로 구성된다.
+일반적인 텍스트 형식은 서버에서 가져온다.
+
+캐시 파일 구성은 밑과 같다.
 Minigram.exe
 cache
 	L session_id
-		L 2023
-			L 
+		L session_cache_info.dat 
+		  session_img.bck
+		  sender_id + '_' + send_date
 			
-			
+
+### session_cache_info.dat 
+사용자가 마지막으로 채팅방 확인한 시각/세션 이미지 갱신 날짜
+
+### session_img.bck
+세션 이미지 백업
+
 ## 참고할 만한 글
 https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/
+http://tsfkb.wikidot.com/tips:android:cache
+https://insidetelegram.eu/en/2022/01/20/telegram-what-is-cache-how-to-cancel-it/

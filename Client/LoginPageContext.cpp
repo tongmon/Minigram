@@ -14,14 +14,24 @@ LoginPageContext::~LoginPageContext()
 {
 }
 
-std::string LoginPageContext::GetUserID()
+QString LoginPageContext::GetUserID()
 {
     return m_user_id;
 }
 
-std::string LoginPageContext::GetUserPW()
+QString LoginPageContext::GetUserPW()
 {
     return m_user_pw;
+}
+
+QString LoginPageContext::GetUserNM()
+{
+    return m_user_nm;
+}
+
+QString LoginPageContext::GetUserImage()
+{
+    return m_user_img;
 }
 
 void LoginPageContext::tryLogin(const QString &id, const QString &pw)
@@ -31,10 +41,10 @@ void LoginPageContext::tryLogin(const QString &id, const QString &pw)
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    m_user_id = id.toStdString(), m_user_pw = pw.toStdString();
+    m_user_id = id, m_user_pw = pw;
 
     std::string request = m_window->GetIPAddress() + "|" + std::to_string(m_window->GetPortNumber()) + "|" +
-                          m_user_id + "|" + m_user_pw;
+                          m_user_id.toStdString() + "|" + m_user_pw.toStdString();
 
     TCPHeader header(LOGIN_CONNECTION_TYPE, request.size());
     request = header.GetHeaderBuffer() + request;

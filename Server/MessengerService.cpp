@@ -155,9 +155,91 @@ void MessengerService::MessageHandling()
 }
 
 // client send 형식
+// user_id | session_id / YYYY-MM-DD hh:mm:ss.ms / YYYY-MM-DD hh:mm:ss.ms | session_id / YYYY-MM-DD hh:mm:ss.ms / YYYY-MM-DD hh:mm:ss.ms ...
+// session_id / YYYY-MM-DD hh:mm:ss.ms / YYYY-MM-DD hh:mm:ss.ms => 채팅방 id / 마지막으로 확인한 시각 / 채팅방 이미지 바뀐 시각
+void MessengerService::ChatRoomListInitHandling()
+{
+    using namespace bsoncxx;
+    using namespace bsoncxx::builder;
+
+    std::vector<std::string> parsed;
+    std::unordered_map<std::string, std::vector<std::string>> chatroom_data;
+
+    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    std::string user_id = parsed[0]; // string_view로 속도 개선 가능
+
+    for (int i = 1; i < parsed.size(); i++)
+    {
+        std::vector<std::string> descendant;
+        boost::split(descendant, parsed[i], boost::is_any_of("/"));
+        chatroom_data[descendant[0]] = {descendant[1], descendant[2]};
+    }
+
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
+                                  soci::use(user_id, "id"));
+
+    auto mongo_client = MongoDBPool::Get().acquire();
+    auto mongo_db = (*mongo_client)["Minigram"];
+
+    boost::json::array chat_room_array;
+
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        std::string session_id = it->get<std::string>(0), session_nm, session_info, img_path;
+
+        boost::json::object chat_obj;
+
+        // 클라에는 채팅방이 있는데 서버쪽에 없는 경우... 강퇴나 추방에 해당됨
+        if (chatroom_data.find(session_id) == chatroom_data.end())
+        {
+            chat_obj["session_id"] = session_id;
+            chat_obj["session_name"] = session_nm;
+            chat_obj["session_img"] = "";
+            chat_obj["session_info"] = "exile";
+            continue;
+        }
+
+        *m_sql << "select session_nm, session_info, img_path where session_id=:id",
+            soci::into(session_nm), soci::into(session_info), soci::into(img_path), soci::use(session_id);
+
+        chat_obj["session_id"] = session_id;
+        chat_obj["session_name"] = session_nm;
+        chat_obj["session_info"] = session_info;
+
+        boost::filesystem::path path = img_path;
+        if (!img_path.empty() && path.stem() > chatroom_data[session_id][1])
+        {
+            int width, height, channels;
+            unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
+            std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
+            chat_obj["session_img"] = EncodeBase64(img_buffer);
+            chat_obj["session_img_date"] = path.stem().string();
+        }
+        else
+            chat_obj["session_img"] = chat_obj["session_img_date"] = "";
+
+        std::istringstream time_in(chatroom_data[session_id][0]);
+        std::chrono::system_clock::time_point tp;
+        time_in >> std::chrono::parse("%F %T", tp);
+
+        auto mongo_coll = mongo_db[session_id + "_log"];
+        chat_obj["unread_count"] = mongo_coll.count_documents(basic::make_document(basic::kvp("send_date",
+                                                                                              basic::make_document(basic::kvp("$gt",
+                                                                                                                              types::b_date{tp})))));
+        auto opts = mongocxx::options::find{};
+        opts.sort(basic::make_document(basic::kvp("send_date", -1)).view()).limit(1);
+        auto mongo_cursor = mongo_coll.find({}, opts);
+        for (const auto &doc : mongo_cursor)
+        {
+        }
+    }
+}
+
+// client send 형식
 // user_id | session_id / YYYY-MM-DD hh:mm:ss.ms | session_id / YYYY-MM-DD hh:mm:ss.ms ...
 // client에서 특정 채팅방 캐시 파일이 없다면 0000-00-00 00:00:00.00으로 넘김
 // 날짜 포맷은 chrono의 time_point 형식임
+/*
 void MessengerService::ChatRoomListInitHandling()
 {
     using namespace bsoncxx;
@@ -272,6 +354,7 @@ void MessengerService::ChatRoomListInitHandling()
                                  delete this;
                              });
 }
+*/
 
 void MessengerService::StartHandling()
 {
