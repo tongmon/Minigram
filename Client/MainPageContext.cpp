@@ -138,6 +138,38 @@ void MainPageContext::initialChatRoomList()
                 if (!session.get() || !session->IsValid())
                     return;
 
+                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse())); // Utf8ToStr(session->GetResponse());
+
+                boost::json::error_code ec;
+                boost::json::value json_data = boost::json::parse(json_txt, ec);
+                auto session_arrray = json_data.as_object()["chatroom_init_data"].as_array();
+
+                for (int i = 0; i < session_arrray.size(); i++)
+                {
+                    auto session_data = session_arrray[i].as_object();
+
+                    QVariantMap qvm;
+                    qvm.insert("sessionID", session_data["session_id"].as_string().c_str());
+                    qvm.insert("sessionName", session_data["session_name"].as_string().c_str());
+
+                    // 이미지가 있는 경우만 넣고 없는 경우는 따로 처리
+                    if (!session_data["session_name"].as_string().empty())
+                        qvm.insert("sessionImage", session_data["session_name"].as_string().c_str());
+                    else
+                    {
+                    }
+
+                    // qvm.insert("userImage", context->GetUserImage());
+                    // qvm.insert("content", content);
+                    // qvm.insert("chatDate", session->GetResponse().c_str());
+                    // qvm.insert("chatAlignment", true);
+
+                    // 실제 채팅방 삽입하는 로직
+                    QMetaObject::invokeMethod(m_window->GetQuickWindow().findChild<QObject *>("mainPage"),
+                                              "addSession",
+                                              Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                }
+
                 // std::string json_txt = Utf8ToStr(session->GetResponse());
                 //
                 // boost::json::error_code ec;

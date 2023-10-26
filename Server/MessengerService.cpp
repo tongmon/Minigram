@@ -163,7 +163,7 @@ void MessengerService::ChatRoomListInitHandling()
     using namespace bsoncxx::builder;
 
     std::vector<std::string> parsed;
-    std::unordered_map<std::string, std::vector<std::string>> chatroom_data;
+    std::unordered_map<std::string, std::vector<std::string>> session_cache;
 
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
     std::string user_id = parsed[0]; // string_view로 속도 개선 가능
@@ -172,7 +172,7 @@ void MessengerService::ChatRoomListInitHandling()
     {
         std::vector<std::string> descendant;
         boost::split(descendant, parsed[i], boost::is_any_of("/"));
-        chatroom_data[descendant[0]] = {descendant[1], descendant[2]};
+        session_cache[descendant[0]] = {descendant[1], descendant[2]};
     }
 
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
@@ -181,58 +181,96 @@ void MessengerService::ChatRoomListInitHandling()
     auto mongo_client = MongoDBPool::Get().acquire();
     auto mongo_db = (*mongo_client)["Minigram"];
 
-    boost::json::array chat_room_array;
+    boost::json::array session_array;
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         std::string session_id = it->get<std::string>(0), session_nm, session_info, img_path;
 
-        boost::json::object chat_obj;
+        boost::json::object session_data;
 
         // 클라에는 채팅방이 있는데 서버쪽에 없는 경우... 강퇴나 추방에 해당됨
-        if (chatroom_data.find(session_id) == chatroom_data.end())
+        if (session_cache.find(session_id) == session_cache.end())
         {
-            chat_obj["session_id"] = session_id;
-            chat_obj["session_name"] = session_nm;
-            chat_obj["session_img"] = "";
-            chat_obj["session_info"] = "exile";
+            session_data["session_id"] = session_id;
+            session_data["session_name"] = session_nm;
+            session_data["session_img"] = session_data["session_img_date"] = session_data["session_info"] = "";
+            session_data["unread_count"] = -1;
+            session_data["chat_info"] = boost::json::object{};
+            session_array.push_back(session_data);
             continue;
         }
 
         *m_sql << "select session_nm, session_info, img_path where session_id=:id",
             soci::into(session_nm), soci::into(session_info), soci::into(img_path), soci::use(session_id);
 
-        chat_obj["session_id"] = session_id;
-        chat_obj["session_name"] = session_nm;
-        chat_obj["session_info"] = session_info;
+        session_data["session_id"] = session_id;
+        session_data["session_name"] = session_nm;
+        session_data["session_info"] = session_info;
 
         boost::filesystem::path path = img_path;
-        if (!img_path.empty() && path.stem() > chatroom_data[session_id][1])
+        if (!img_path.empty() && path.stem() > session_cache[session_id][1])
         {
             int width, height, channels;
             unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
             std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
-            chat_obj["session_img"] = EncodeBase64(img_buffer);
-            chat_obj["session_img_date"] = path.stem().string();
+            session_data["session_img"] = EncodeBase64(img_buffer);
+            session_data["session_img_date"] = path.stem().string();
         }
         else
-            chat_obj["session_img"] = chat_obj["session_img_date"] = "";
+            session_data["session_img"] = session_data["session_img_date"] = "";
 
-        std::istringstream time_in(chatroom_data[session_id][0]);
+        std::istringstream time_in(session_cache[session_id][0]);
         std::chrono::system_clock::time_point tp;
         time_in >> std::chrono::parse("%F %T", tp);
 
         auto mongo_coll = mongo_db[session_id + "_log"];
-        chat_obj["unread_count"] = mongo_coll.count_documents(basic::make_document(basic::kvp("send_date",
-                                                                                              basic::make_document(basic::kvp("$gt",
-                                                                                                                              types::b_date{tp})))));
+        session_data["unread_count"] = mongo_coll.count_documents(basic::make_document(basic::kvp("send_date",
+                                                                                                  basic::make_document(basic::kvp("$gt",
+                                                                                                                                  types::b_date{tp})))));
         auto opts = mongocxx::options::find{};
         opts.sort(basic::make_document(basic::kvp("send_date", -1)).view()).limit(1);
+        boost::json::object descendant;
+
         auto mongo_cursor = mongo_coll.find({}, opts);
-        for (const auto &doc : mongo_cursor)
+        if (mongo_cursor.begin() != mongo_cursor.end())
         {
+            auto doc = *mongo_cursor.begin();
+            descendant["sender_id"] = doc["sender_id"].get_string().value;
+
+            std::chrono::system_clock::time_point send_date(doc["send_date"].get_date().value);
+            descendant["send_date"] = std::format("{0:%F %T}", send_date);
+
+            descendant["content_type"] = doc["content_type"].get_string().value;
+
+            // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
+            // 추후 사진, 동영상, 이모티콘 등으로 나눠야 함
+            descendant["content"] = descendant["content_type"] == "text" ? doc["content"].get_string().value : "Media";
         }
+
+        session_data["chat_info"] = descendant;
+        session_array.push_back(session_data);
     }
+
+    boost::json::object chatroom_init_json;
+    chatroom_init_json["chatroom_init_data"] = session_array;
+
+    // chatroom_init_json에 담긴 json을 client에 전송함
+    m_request = EncodeBase64(StrToUtf8(boost::json::serialize(chatroom_init_json)));
+
+    TCPHeader header(CHATROOMLIST_INITIAL_TYPE, m_request.size());
+    m_request = header.GetHeaderBuffer() + m_request;
+
+    boost::asio::async_write(*m_sock,
+                             boost::asio::buffer(m_request),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
 }
 
 // client send 형식
@@ -264,7 +302,7 @@ void MessengerService::ChatRoomListInitHandling()
     auto mongo_client = MongoDBPool::Get().acquire();
     auto mongo_db = (*mongo_client)["Minigram"];
 
-    boost::json::array chat_room_array;
+    boost::json::array session_array;
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
@@ -283,10 +321,10 @@ void MessengerService::ChatRoomListInitHandling()
         unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
         std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
 
-        boost::json::object chat_obj;
-        chat_obj["session_id"] = session_id;
-        chat_obj["session_name"] = session_nm;
-        chat_obj["session_img"] = EncodeBase64(img_buffer);
+        boost::json::object session_data;
+        session_data["session_id"] = session_id;
+        session_data["session_name"] = session_nm;
+        session_data["session_img"] = EncodeBase64(img_buffer);
 
         auto mongo_coll = mongo_db[collection_name];
         auto opts = mongocxx::options::find{};
@@ -330,12 +368,12 @@ void MessengerService::ChatRoomListInitHandling()
             content_array.push_back(chat_content);
         }
 
-        chat_obj["content"] = content_array;
-        chat_room_array.push_back(chat_obj);
+        session_data["content"] = content_array;
+        session_array.push_back(session_data);
     }
 
     boost::json::object chatroom_init_json;
-    chatroom_init_json["chatroom_init_data"] = chat_room_array;
+    chatroom_init_json["chatroom_init_data"] = session_array;
 
     // chatroom_init_json에 담긴 json을 client에 전송함
     m_request = EncodeBase64(StrToUtf8(boost::json::serialize(chatroom_init_json)));

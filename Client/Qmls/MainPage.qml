@@ -16,18 +16,18 @@ Rectangle {
     // chat list view 템플릿
     property var chatListViewComponent: Qt.createComponent("qrc:/qml/ChatListView.qml")
 
-    function addChatRoom(chatRoomID, chatRoomName, chatRoomImage, recentUsedDate, recentChatContent)
-    {
-        chatRoomListModel.append({
-            "chatRoomObjectName": chatRoomID,
-            "chatRoomName": chatRoomName,
-            "chatRoomImage": "image://mybase64/data:image/png;base64," + chatRoomImage,
-            "recentUsedDate": recentUsedDate,
-            "recentChatContent": recentChatContent
-        })
-
-        chatViewObjects[chatRoomID] = chatListViewComponent.createObject(chatView)
-    }
+    // function addChatRoom(chatRoomID, chatRoomName, chatRoomImage, recentUsedDate, recentChatContent)
+    // {
+    //     chatRoomListModel.append({
+    //         "chatRoomObjectName": chatRoomID,
+    //         "chatRoomName": chatRoomName,
+    //         "chatRoomImage": "image://mybase64/data:image/png;base64," + chatRoomImage,
+    //         "recentUsedDate": recentUsedDate,
+    //         "recentChatContent": recentChatContent
+    //     })
+    // 
+    //     chatViewObjects[chatRoomID] = chatListViewComponent.createObject(chatView)
+    // }
 
     // function addChatBubbleText(chatRoomID, isRightAlign, userID, userName, userImage, chatData, chatTime)
     // {
@@ -41,6 +41,19 @@ Rectangle {
     //         "chatTime": chatTime
     //     })
     // }
+
+    function addSession(obj)
+    {
+        chatRoomListModel.append({
+            "chatRoomObjectName": obj["sessionID"],
+            "chatRoomName": obj["sessionName"],
+            "chatRoomImage": "image://mybase64/data:image/png;base64," + obj["sessionImage"],
+            "recentUsedDate": obj["recentChatDate"],
+            "recentChatContent": obj["recentChatContent"]
+        })
+
+        chatViewObjects[chatRoomID] = chatListViewComponent.createObject(chatView)
+    }
 
     function addChatBubbleText(obj)
     {
@@ -235,9 +248,8 @@ Rectangle {
                 }
 
                 Component.onCompleted: {           
-                    addChatRoom("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
-
-                    addChatRoom("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
+                    // addChatRoom("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
+                    // addChatRoom("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
                 }
             }
 

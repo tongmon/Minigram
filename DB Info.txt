@@ -92,30 +92,28 @@ CREATE TABLE participant_tb
 
 #### Chat Room Init
 채팅방 초기화시 밑과 같은 형식을 서버와 클라이언트가 주고 받음
+실제 채팅방의 컨텐츠를 모두 가져오진 않고 마지막 채팅 내용과 사용자가 읽지 않은 메시지 개수 정도를 가져옴
+
 {
 	"chatroom_init_data": [
 		{
 			"session_id": "세션 id",
 			"session_name": "세션 이름",
-			"session_img": "Base64 인코딩된 세션 이미지",
+			"session_img": "Base64 인코딩된 세션 이미지, 이미 클라이언트에서 최신 이미지를 가지고 있다면 empty string임",
+			"session_img_date": "YYYY-MM-DD hh:mm:ss.ms 로컬 세션 이미지 파일이 최신인지 알기 위함",
 			
-			// 날짜 오름차순으로 정렬된 상태임
-			// content는 utf-8 Base64 인코딩된 상태임
-			"content": [
-				{
-					"sender_id": 	"보낸 사람 USER_ID"
-					"send_date": 	ISODate("2023-10-19T13:21:40.125"),
-					"content_type": "text"
-					"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
-				},
-				{
-					"sender_id": 	"보낸 사람 USER_ID"
-					"send_date": 	ISODate("2023-10-21T17:01:07.144"),
-					"content_type": "text"
-					"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
-				},
-				...
-			]					
+			// 클라이언트 사용자가 채팅방 채팅을 읽지 않은 개수, 음수면 채팅방을 상대방이 지우거나 추방된거임
+			"unread_count": 10
+
+			// 마지막으로 생성된 채팅 정보
+			"content": {
+				"sender_id": 	"보낸 사람 USER_ID"
+				"send_date": 	"2023-10-19 13:21:40.125",
+				"content_type": "text"
+
+				// content_type이 text가 아니라면 content 내용은 간략화됨
+				"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
+			}				
 		},
 		{
 			"session_id": "세션 id",
@@ -159,7 +157,7 @@ cache
 			
 
 ### session_cache_info.dat 
-사용자가 마지막으로 채팅방 확인한 시각/세션 이미지 갱신 날짜
+사용자가 마지막으로 채팅방 확인한 시각 + '/' + 세션 이미지 갱신 날짜
 
 ### session_img.bck
 세션 이미지 백업
