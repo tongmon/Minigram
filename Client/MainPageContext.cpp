@@ -81,7 +81,7 @@ void MainPageContext::trySendTextChat(const QString &session_id, const QString &
     return;
 }
 
-// 현재 존재하는 채팅방에 대한 캐시 파일 읽는 로직 추가해야 됨 / 미완성
+// 채팅방 초기화 로직
 void MainPageContext::initialChatRoomList()
 {
     auto &central_server = m_window->GetServerHandle();
@@ -107,10 +107,7 @@ void MainPageContext::initialChatRoomList()
             {
                 std::ifstream of(file.path().c_str());
                 if (of.is_open())
-                {
                     std::getline(of, recent_checked_date);
-                    of.close();
-                }
                 break;
             }
         }
@@ -121,11 +118,11 @@ void MainPageContext::initialChatRoomList()
     TCPHeader header(CHATROOMLIST_INITIAL_TYPE, request.size());
     request = header.GetHeaderBuffer() + request;
 
-    central_server.AsyncWrite(request_id, request, [&central_server, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id, request, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
@@ -134,7 +131,7 @@ void MainPageContext::initialChatRoomList()
             auto connection_type = header.GetConnectionType();
             auto data_size = header.GetDataSize();
 
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
@@ -148,64 +145,69 @@ void MainPageContext::initialChatRoomList()
                 {
                     auto session_data = session_arrray[i].as_object();
 
+                    if (session_data["unread_count"].as_int64() < 0)
+                    {
+                        // 채팅방 추방 처리
+                        continue;
+                    }
+
                     QVariantMap qvm;
                     qvm.insert("sessionID", session_data["session_id"].as_string().c_str());
                     qvm.insert("sessionName", session_data["session_name"].as_string().c_str());
 
-                    // 이미지가 있는 경우만 넣고 없는 경우는 따로 처리
-                    if (!session_data["session_name"].as_string().empty())
-                        qvm.insert("sessionImage", session_data["session_name"].as_string().c_str());
-                    else
+                    std::string session_dir = file_path + "/" + session_data["session_id"].as_string().c_str();
+
+                    // 세션 캐시가 없으면 생성함
+                    if (!boost::filesystem::exists(session_dir))
                     {
+                        boost::filesystem::create_directories(session_dir);
                     }
 
-                    // qvm.insert("userImage", context->GetUserImage());
-                    // qvm.insert("content", content);
-                    // qvm.insert("chatDate", session->GetResponse().c_str());
-                    // qvm.insert("chatAlignment", true);
+                    /// 세션 이미지가 없는 경우
+                    if (session_data["session_img_date"].as_string() == "absence")
+                    {
+                        qvm.insert("sessionImage", "");
+                    }
+                    // 서버에서 새로운 세션 이미지를 떨궈주면 로컬 캐시 파일 생성
+                    else if (!session_data["session_img"].as_string().empty())
+                    {
+                        std::string_view base64_img = session_data["session_img"].as_string().c_str();
+                        qvm.insert("sessionImage", base64_img.data());
+
+                        std::string img_bck_path = file_path + "/" + session_data["session_id"].as_string().c_str() + "/session_img.bck";
+                        std::ofstream img_bck(img_bck_path);
+                        if (img_bck.is_open())
+                            img_bck.write(base64_img.data(), base64_img.size());
+                    }
+                    // 캐시 해둔 세션 이미지를 사용할 때
+                    else
+                    {
+                        std::string base64_img, img_bck_path = file_path + "/" + session_data["session_id"].as_string().c_str() + "/session_img.bck";
+                        std::ifstream img_bck(img_bck_path);
+                        if (img_bck.is_open())
+                            std::getline(img_bck, base64_img);
+
+                        qvm.insert("sessionImage", base64_img.data());
+                    }
+
+                    // 채팅방에 대화가 아무것도 없는 경우
+                    if (session_data["chat_info"].as_object().empty())
+                    {
+                        qvm.insert("recentChatDate", "");
+                        qvm.insert("recentChatContent", "");
+                    }
+                    else
+                    {
+                        auto chat_info = session_data["chat_info"].as_object();
+                        qvm.insert("recentChatDate", chat_info["send_date"].as_string().c_str());
+                        qvm.insert("recentChatContent", chat_info["content"].as_string().c_str());
+                    }
 
                     // 실제 채팅방 삽입하는 로직
                     QMetaObject::invokeMethod(m_window->GetQuickWindow().findChild<QObject *>("mainPage"),
                                               "addSession",
                                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
                 }
-
-                // std::string json_txt = Utf8ToStr(session->GetResponse());
-                //
-                // boost::json::error_code ec;
-                // boost::json::value json_data = boost::json::parse(json_txt, ec);
-                // auto chatroom_arrray = json_data.as_object()["chatroom_init_data"].as_array();
-                //
-                // for (int i = 0; i < chatroom_arrray.size(); i++)
-                // {
-                //     auto room_data = chatroom_arrray[i].as_object();
-                //     std::string creator_id = room_data["creator_id"].as_string().c_str(),
-                //                 session_id = room_data["session_id"].as_string().c_str(),
-                //                 session_name = room_data["session_name"].as_string().c_str(),
-                //                 session_img = room_data["session_img"].as_string().c_str();
-                //     session_img = DecodeBase64(session_img);
-                //
-                //     auto content_array = room_data["content"].as_array();
-                //     for (int j = 0; j < content_array.size(); j++)
-                //     {
-                //         auto content_data = content_array[i].as_object();
-                //         std::string chat_date = content_data["chat_date"].as_string().c_str(),
-                //                     chat_json_txt = content_data["content"].as_string().c_str();
-                //
-                //         auto chat_array = boost::json::parse(chat_json_txt, ec).as_object()["chat"].as_array();
-                //         for (int k = 0; k < chat_array.size(); k++)
-                //         {
-                //             auto chat_obj = chat_array[i].as_object();
-                //             std::string sender_id = chat_obj["user_id"].as_string().c_str(),
-                //                         chat_time = chat_obj["chat_time"].as_string().c_str(),
-                //                         chat_type = chat_obj["chat_type"].as_string().c_str(),
-                //                         chat_content = chat_obj["content"].as_string().c_str();
-                //
-                //             // 밑에서 qml ListView에 채팅 추가하는 로직 넣으면 됨
-                //         }
-                //     }
-                // }
-
                 central_server.CloseRequest(session->GetID());
             });
         });

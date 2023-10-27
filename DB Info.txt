@@ -62,25 +62,34 @@ ex) tongstar-20231023-000001 / tongstar 사용자가 2023/10/23에 첫번째로 
 
 CREATE TABLE participant_tb
 (
-    session_id		VARCHAR(65) NOT NULL,
-	participant_id	VARCHAR(32) NOT NULL,
+    session_id			VARCHAR(65) NOT NULL,
+	participant_id		VARCHAR(32) NOT NULL,
+	message_id			VARCHAR(57) NOT NULL,
 	CONSTRAINT fk_session_id FOREIGN KEY(session_id) REFERENCES chatroom_tb(session_id) ON DELETE CASCADE ON UPDATE CASCADE,
 	CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (session_id, participant_id)
 )
 
+message_id 형식: sender_id + "_" + send_date / 마지막으로 읽은 메시지의 id가 담김
 
 ## MongoDB 컬렉션 생성
 
 ### [SESSION_ID]_log 구조 / SESSION_ID에 따라 동적으로 생성됨
-설명: 채팅방 하나당 `[SESSION_ID]_log`라는 컬렉션이 하나씩 생김
+설명: 채팅방 하나당 `[SESSION_ID]_log`라는 컬렉션이 하나씩 생김, 해당 컬렉션에 sort 속도 개선을 위한 ensureIndex 필요할 수도...
 
 밑은 말풍선 하나당 컬렉션에 저장되는 정보
+sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있음
 {
-	"sender_id": 	"보낸 사람 USER_ID"
+	"sender_id": 	"보낸 사람 USER_ID",
 	"send_date": 	ISODate("2023-10-19T13:21:40.125"),
-	"content_type": "text"
-	"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
+	"content_type": "text",
+	"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4",
+	"read by": [
+		{
+			"reader_id": "읽은 사람 USER_ID"
+		},
+		...
+	],
 }
 
 
@@ -106,7 +115,7 @@ CREATE TABLE participant_tb
 			"unread_count": 10
 
 			// 마지막으로 생성된 채팅 정보
-			"content": {
+			"chat_info": {
 				"sender_id": 	"보낸 사람 USER_ID"
 				"send_date": 	"2023-10-19 13:21:40.125",
 				"content_type": "text"
@@ -114,29 +123,6 @@ CREATE TABLE participant_tb
 				// content_type이 text가 아니라면 content 내용은 간략화됨
 				"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
 			}				
-		},
-		{
-			"session_id": "세션 id",
-			"session_name": "세션 이름",
-			"session_img": "Base64 인코딩된 세션 이미지",
-			
-			// 날짜 오름차순으로 정렬된 상태임
-			// content는 utf-8 Base64 인코딩된 상태임
-			"content": [
-				{
-					"sender_id": 	"보낸 사람 USER_ID"
-					"send_date": 	ISODate("2023-10-19T13:21:40.125"),
-					"content_type": "text"
-					"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
-				},
-				{
-					"sender_id": 	"보낸 사람 USER_ID"
-					"send_date": 	ISODate("2023-10-21T17:01:07.144"),
-					"content_type": "text"
-					"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
-				},
-				...
-			]					
 		},
 		...
 	]

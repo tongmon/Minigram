@@ -218,7 +218,10 @@ void MessengerService::ChatRoomListInitHandling()
             session_data["session_img_date"] = path.stem().string();
         }
         else
-            session_data["session_img"] = session_data["session_img_date"] = "";
+        {
+            session_data["session_img"] = "";
+            session_data["session_img_date"] = img_path.empty() ? "absence" : "";
+        }
 
         std::istringstream time_in(session_cache[session_id][0]);
         std::chrono::system_clock::time_point tp;
