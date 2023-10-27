@@ -155,15 +155,15 @@ void MessengerService::MessageHandling()
 }
 
 // client send 형식
-// user_id | session_id / YYYY-MM-DD hh:mm:ss.ms / YYYY-MM-DD hh:mm:ss.ms | session_id / YYYY-MM-DD hh:mm:ss.ms / YYYY-MM-DD hh:mm:ss.ms ...
-// session_id / YYYY-MM-DD hh:mm:ss.ms / YYYY-MM-DD hh:mm:ss.ms => 채팅방 id / 마지막으로 확인한 시각 / 채팅방 이미지 바뀐 시각
+// user_id | session_id / YYYY-MM-DD hh:mm:ss.ms | session_id / YYYY-MM-DD hh:mm:ss.ms ...
+// session_id / YYYY-MM-DD hh:mm:ss.ms => 채팅방 id / 채팅방 이미지 바뀐 시각
 void MessengerService::ChatRoomListInitHandling()
 {
     using namespace bsoncxx;
     using namespace bsoncxx::builder;
 
     std::vector<std::string> parsed;
-    std::unordered_map<std::string, std::vector<std::string>> session_cache;
+    std::unordered_map<std::string, std::string> session_cache;
 
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
     std::string user_id = parsed[0]; // string_view로 속도 개선 가능
@@ -172,7 +172,7 @@ void MessengerService::ChatRoomListInitHandling()
     {
         std::vector<std::string> descendant;
         boost::split(descendant, parsed[i], boost::is_any_of("/"));
-        session_cache[descendant[0]] = {descendant[1], descendant[2]};
+        session_cache[descendant[0]] = descendant[1];
     }
 
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
@@ -209,7 +209,7 @@ void MessengerService::ChatRoomListInitHandling()
         session_data["session_info"] = session_info;
 
         boost::filesystem::path path = img_path;
-        if (!img_path.empty() && path.stem() > session_cache[session_id][1])
+        if (!img_path.empty() && path.stem() > session_cache[session_id])
         {
             int width, height, channels;
             unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
@@ -223,7 +223,14 @@ void MessengerService::ChatRoomListInitHandling()
             session_data["session_img_date"] = img_path.empty() ? "absence" : "";
         }
 
-        std::istringstream time_in(session_cache[session_id][0]);
+        std::string msg_id;
+        *m_sql << "select message_id where participant_id=:pid and session_id=:sid",
+            soci::into(msg_id), soci::use(user_id, "pid"), soci::use(session_id, "sid");
+
+        std::vector<std::string> msg_info; // msg_info[0] -> sender id, msg_info[1] -> send date
+        boost::split(msg_info, msg_id, boost::is_any_of("_"));
+
+        std::istringstream time_in(msg_info[1]);
         std::chrono::system_clock::time_point tp;
         time_in >> std::chrono::parse("%F %T", tp);
 
@@ -233,9 +240,9 @@ void MessengerService::ChatRoomListInitHandling()
                                                                                                                                   types::b_date{tp})))));
         auto opts = mongocxx::options::find{};
         opts.sort(basic::make_document(basic::kvp("send_date", -1)).view()).limit(1);
-        boost::json::object descendant;
-
         auto mongo_cursor = mongo_coll.find({}, opts);
+
+        boost::json::object descendant;
         if (mongo_cursor.begin() != mongo_cursor.end())
         {
             auto doc = *mongo_cursor.begin();

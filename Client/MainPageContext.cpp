@@ -89,31 +89,54 @@ void MainPageContext::initialChatRoomList()
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = m_window->GetContextProperty<LoginPageContext *>()->GetUserID().toStdString();
-
-    std::string file_path = boost::dll::program_location().parent_path().string() + "/cache";
+    std::string request = m_window->GetContextProperty<LoginPageContext *>()->GetUserID().toStdString(),
+                file_path = boost::dll::program_location().parent_path().string() + "/cache";
 
     boost::filesystem::directory_iterator root{file_path};
     while (root != boost::filesystem::directory_iterator{})
     {
         auto dir = *root;
-        std::string recent_checked_date;
+        std::string img_update_date;
 
         boost::filesystem::directory_iterator child{dir.path()};
         while (child != boost::filesystem::directory_iterator{})
         {
             auto file = *child;
-            if (file.path().stem() == "session_cache_info")
+            if (file.path().filename() == "session_img_info.bck")
             {
                 std::ifstream of(file.path().c_str());
                 if (of.is_open())
-                    std::getline(of, recent_checked_date);
+                    std::getline(of, img_update_date, '|');
                 break;
             }
         }
 
-        request += "|" + dir.path().filename().string() + "/" + recent_checked_date;
+        request += "|" + dir.path().filename().string() + "/" + img_update_date;
     }
+
+    // std::string file_path = boost::dll::program_location().parent_path().string() + "/cache";
+    //
+    // boost::filesystem::directory_iterator root{file_path};
+    // while (root != boost::filesystem::directory_iterator{})
+    // {
+    //     auto dir = *root;
+    //     std::string recent_checked_date;
+    //
+    //     boost::filesystem::directory_iterator child{dir.path()};
+    //     while (child != boost::filesystem::directory_iterator{})
+    //     {
+    //         auto file = *child;
+    //         if (file.path().stem() == "session_cache_info")
+    //         {
+    //             std::ifstream of(file.path().c_str());
+    //             if (of.is_open())
+    //                 std::getline(of, recent_checked_date);
+    //             break;
+    //         }
+    //     }
+    //
+    //     request += "|" + dir.path().filename().string() + "/" + recent_checked_date;
+    // }
 
     TCPHeader header(CHATROOMLIST_INITIAL_TYPE, request.size());
     request = header.GetHeaderBuffer() + request;
@@ -174,18 +197,27 @@ void MainPageContext::initialChatRoomList()
                         std::string_view base64_img = session_data["session_img"].as_string().c_str();
                         qvm.insert("sessionImage", base64_img.data());
 
-                        std::string img_bck_path = file_path + "/" + session_data["session_id"].as_string().c_str() + "/session_img.bck";
+                        std::string img_bck_path = file_path + "/" + session_data["session_id"].as_string().c_str() + "/session_img_info.bck";
                         std::ofstream img_bck(img_bck_path);
                         if (img_bck.is_open())
-                            img_bck.write(base64_img.data(), base64_img.size());
+                        {
+                            std::string img_cache = session_data["session_img_date"].as_string().c_str();
+                            img_cache += "|";
+                            img_cache += base64_img.data();
+                            img_bck.write(img_cache.c_str(), img_cache.size());
+                        }
                     }
                     // 캐시 해둔 세션 이미지를 사용할 때
                     else
                     {
-                        std::string base64_img, img_bck_path = file_path + "/" + session_data["session_id"].as_string().c_str() + "/session_img.bck";
+                        std::string base64_img, img_bck_path = file_path + "/" + session_data["session_id"].as_string().c_str() + "/session_img_info.bck";
                         std::ifstream img_bck(img_bck_path);
                         if (img_bck.is_open())
+                        {
+                            std::getline(img_bck, base64_img, '|');
+                            base64_img.clear();
                             std::getline(img_bck, base64_img);
+                        }
 
                         qvm.insert("sessionImage", base64_img.data());
                     }
