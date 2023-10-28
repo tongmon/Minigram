@@ -114,30 +114,6 @@ void MainPageContext::initialChatRoomList()
         request += "|" + dir.path().filename().string() + "/" + img_update_date;
     }
 
-    // std::string file_path = boost::dll::program_location().parent_path().string() + "/cache";
-    //
-    // boost::filesystem::directory_iterator root{file_path};
-    // while (root != boost::filesystem::directory_iterator{})
-    // {
-    //     auto dir = *root;
-    //     std::string recent_checked_date;
-    //
-    //     boost::filesystem::directory_iterator child{dir.path()};
-    //     while (child != boost::filesystem::directory_iterator{})
-    //     {
-    //         auto file = *child;
-    //         if (file.path().stem() == "session_cache_info")
-    //         {
-    //             std::ifstream of(file.path().c_str());
-    //             if (of.is_open())
-    //                 std::getline(of, recent_checked_date);
-    //             break;
-    //         }
-    //     }
-    //
-    //     request += "|" + dir.path().filename().string() + "/" + recent_checked_date;
-    // }
-
     TCPHeader header(CHATROOMLIST_INITIAL_TYPE, request.size());
     request = header.GetHeaderBuffer() + request;
 

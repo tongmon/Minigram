@@ -64,13 +64,13 @@ CREATE TABLE participant_tb
 (
     session_id			VARCHAR(65) NOT NULL,
 	participant_id		VARCHAR(32) NOT NULL,
-	message_id			VARCHAR(57) NOT NULL,
+	message_id			BIGINT,
 	CONSTRAINT fk_session_id FOREIGN KEY(session_id) REFERENCES chatroom_tb(session_id) ON DELETE CASCADE ON UPDATE CASCADE,
 	CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (session_id, participant_id)
 )
 
-message_id 형식: sender_id + "_" + send_date / 마지막으로 읽은 메시지의 id가 담김
+message_id: participant가 가장 최근 읽은 메시지의 id
 
 ## MongoDB 컬렉션 생성
 
@@ -80,6 +80,7 @@ message_id 형식: sender_id + "_" + send_date / 마지막으로 읽은 메시�
 밑은 말풍선 하나당 컬렉션에 저장되는 정보
 sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있음
 {
+	"message_id" : 	(메시지 id, 보낸 순서 big int)
 	"sender_id": 	"보낸 사람 USER_ID",
 	"send_date": 	ISODate("2023-10-19T13:21:40.125"),
 	"content_type": "text",
@@ -138,15 +139,12 @@ Minigram.exe
 cache
 	L session_id
 		L session_cache_info.dat 
-		  session_img.bck
+		  session_img_info.bck
 		  sender_id + '_' + send_date
 			
 
-### session_cache_info.dat 
-사용자가 마지막으로 채팅방 확인한 시각 + '/' + 세션 이미지 갱신 날짜
-
-### session_img.bck
-세션 이미지 백업
+### session_img_info.bck 
+이미지 갱신 날짜 + "|" + 이미지 base64 인코딩 정보
 
 ## 참고할 만한 글
 https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/

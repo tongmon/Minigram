@@ -223,23 +223,16 @@ void MessengerService::ChatRoomListInitHandling()
             session_data["session_img_date"] = img_path.empty() ? "absence" : "";
         }
 
-        std::string msg_id;
+        int64_t msg_id;
         *m_sql << "select message_id where participant_id=:pid and session_id=:sid",
             soci::into(msg_id), soci::use(user_id, "pid"), soci::use(session_id, "sid");
-
-        std::vector<std::string> msg_info; // msg_info[0] -> sender id, msg_info[1] -> send date
-        boost::split(msg_info, msg_id, boost::is_any_of("_"));
-
-        std::istringstream time_in(msg_info[1]);
-        std::chrono::system_clock::time_point tp;
-        time_in >> std::chrono::parse("%F %T", tp);
 
         auto mongo_coll = mongo_db[session_id + "_log"];
         session_data["unread_count"] = mongo_coll.count_documents(basic::make_document(basic::kvp("send_date",
                                                                                                   basic::make_document(basic::kvp("$gt",
-                                                                                                                                  types::b_date{tp})))));
+                                                                                                                                  msg_id)))));
         auto opts = mongocxx::options::find{};
-        opts.sort(basic::make_document(basic::kvp("send_date", -1)).view()).limit(1);
+        opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
         auto mongo_cursor = mongo_coll.find({}, opts);
 
         boost::json::object descendant;
