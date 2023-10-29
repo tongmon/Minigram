@@ -64,9 +64,9 @@ void MainPageContext::trySendTextChat(const QString &session_id, const QString &
                 qvm.insert("userID", context->GetUserID());
                 qvm.insert("userName", context->GetUserNM());
                 qvm.insert("userImage", context->GetUserImage());
-                qvm.insert("content", content);
+                qvm.insert("chatContent", content);
                 qvm.insert("chatDate", session->GetResponse().c_str());
-                qvm.insert("chatAlignment", true);
+                qvm.insert("isOpponent", false);
 
                 // 챗 버블 실제로 추가하는 로직
                 QMetaObject::invokeMethod(m_window->GetQuickWindow().findChild<QObject *>("mainPage"),

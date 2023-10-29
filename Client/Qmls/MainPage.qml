@@ -45,10 +45,10 @@ Rectangle {
     function addSession(obj)
     {
         chatRoomListModel.append({
-            "chatRoomObjectName": obj["sessionID"],
-            "chatRoomName": obj["sessionName"],
-            "chatRoomImage": "image://mybase64/data:image/png;base64," + obj["sessionImage"],
-            "recentUsedDate": obj["recentChatDate"],
+            "sessionID": obj["sessionID"],
+            "sessionName": obj["sessionName"],
+            "sessionImage": "image://mybase64/data:image/png;base64," + obj["sessionImage"],
+            "recentChatDate": obj["recentChatDate"],
             "recentChatContent": obj["recentChatContent"]
         })
 
@@ -59,12 +59,12 @@ Rectangle {
     {
         chatViewObjects[obj["sessionID"]].children[0].model.append({
             "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
-            "isRightAlign": obj["chatAlignment"],
-            "userID": obj["userID"],
-            "userName": obj["userName"],
-            "userImage": obj["userImage"],
-            "chatData": obj["content"],
-            "chatTime": obj["chatDate"]
+            "isOpponent": obj["isOpponent"],
+            "senderID": obj["senderID"],
+            "senderName": obj["senderName"],
+            "senderImage": obj["senderImage"],
+            "chatContent": obj["chatContent"],
+            "chatDate": obj["chatDate"]
         })
     }
 
@@ -146,7 +146,7 @@ Rectangle {
                     property int chatRoomIndex: index
 
                     id: chatRoomID
-                    objectName: chatRoomObjectName
+                    objectName: sessionID
                     width: parent.width
                     height: 98
                     color: "#B240F5"
@@ -156,9 +156,9 @@ Rectangle {
                         spacing: 0
                             
                         Rectangle {
-                            id: chatRoomImageRect
+                            id: sessionImageRect
                             Layout.fillHeight: true
-                            Layout.preferredWidth: chatRoomImageRect.height
+                            Layout.preferredWidth: sessionImageRect.height
                             color: "transparent"
 
                             Rectangle {
@@ -170,7 +170,7 @@ Rectangle {
 
                                 Image {
                                     anchors.fill: parent
-                                    source: chatRoomImage // "qrc:/icon/UserID.png" 
+                                    source: sessionImage // "qrc:/icon/UserID.png" 
                                     fillMode: Image.PreserveAspectFit
                                 }    
                             }
@@ -189,18 +189,18 @@ Rectangle {
                                 Text {
                                     anchors.verticalCenter: parent.verticalCenter 
                                     anchors.left: parent.left
-                                    anchors.right: recentUsedDateText.left
+                                    anchors.right: recentChatDateText.left
                                     anchors.rightMargin: 10
                                     clip: true
-                                    text: chatRoomName
+                                    text: sessionName
                                 }
 
                                 Text {
-                                    id: recentUsedDateText
+                                    id: recentChatDateText
                                     anchors.verticalCenter: parent.verticalCenter
                                     anchors.right: parent.right
                                     anchors.rightMargin: 5
-                                    text: recentUsedDate
+                                    text: recentChatDate
                                 }                                
                             }
 

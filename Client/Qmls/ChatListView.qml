@@ -23,7 +23,7 @@ Rectangle {
         delegate: Item {
             width: parent.width
             height: chatBubbleLoader.height
-            objectName: userID // 어떤 사람이 연속으로 메시지를 보내고 있는지 알기 위함
+            objectName: senderID // 어떤 사람이 연속으로 메시지를 보내고 있는지 알기 위함
 
             // 말풍선 꼭다리 부분 크기
             property var chatBubbleStemSize: Qt.size(11, 8)

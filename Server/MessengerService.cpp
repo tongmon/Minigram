@@ -98,10 +98,23 @@ void MessengerService::MessageHandling()
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
     std::string send_date = std::format("{0:%F %T}", tp);
 
-    mongo_coll.insert_one(basic::make_document(basic::kvp("sender_id", sender_id),
+    auto opts = mongocxx::options::find{};
+    opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
+    int64_t message_id = 0;
+
+    auto mongo_cursor = mongo_coll.find({}, opts);
+    if (mongo_cursor.begin() != mongo_cursor.end())
+    {
+        auto doc = *mongo_cursor.begin();
+        message_id = doc["message_id"].get_int64() + 1;
+    }
+
+    mongo_coll.insert_one(basic::make_document(basic::kvp("message_id", message_id),
+                                               basic::kvp("sender_id", sender_id),
                                                basic::kvp("send_date", types::b_date{tp}),
                                                basic::kvp("content_type", content_type),
-                                               basic::kvp("content", content)));
+                                               basic::kvp("content", content),
+                                               basic::kvp("read_by", basic::make_array(basic::kvp("reader_id", sender_id)))));
 
     // 채팅 내용 다른 사람에게 전송
     soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",

@@ -7,55 +7,55 @@ Item {
     property int chatBubbleMargin: 3
 
     width: parent.width
-    height: chatBubbleContentLayout.spacing + (isRightAlign ? 0 : chatBubbleNameText.paintedHeight) + chatBubbleBackground.height
+    height: chatBubbleLayout.spacing + (isOpponent ? chatBubbleSenderText.paintedHeight : 0) + chatBubbleBackground.height
 
     RowLayout {       
         anchors.fill: parent
         spacing: 0
 
         Item {
-            Layout.fillWidth: isRightAlign
+            Layout.fillWidth: !isOpponent
         }
 
         Image {
-            source: "data:image/png;base64," + userImage
-            visible: !isRightAlign
+            source: "data:image/png;base64," + senderImage
+            visible: isOpponent
             Layout.alignment: Qt.AlignTop
             Layout.preferredWidth: 50
             Layout.preferredHeight: 50
         }
 
         ColumnLayout {
-            id: chatBubbleContentLayout
+            id: chatBubbleLayout
             spacing: 3
 
             Text {
-                id: chatBubbleNameText
-                text: userName
+                id: chatBubbleSenderText
+                text: senderName
                 font.pixelSize: 15
-                visible: !isRightAlign
+                visible: isOpponent
                 Layout.leftMargin: chatBubbleStemSize.width
             }
 
             Canvas {
                 id: chatBubbleBackground
-                Layout.preferredWidth: Math.max(chatBubbleTextItem.width, dateText.paintedWidth) + chatBubbleStemSize.width + chatBubbleMargin * 2
-                Layout.preferredHeight: chatBubbleTextItem.height + dateText.paintedHeight + chatBubbleMargin * 2
+                Layout.preferredWidth: Math.max(chatBubbleContent.width, dateText.paintedWidth) + chatBubbleStemSize.width + chatBubbleMargin * 2
+                Layout.preferredHeight: chatBubbleContent.height + dateText.paintedHeight + chatBubbleMargin * 2
 
                 Item {
-                    id: chatBubbleTextItem
-                    x: isRightAlign ? chatBubbleMargin : (chatBubbleStemSize.width + chatBubbleMargin)
+                    id: chatBubbleContent
+                    x: isOpponent ? (chatBubbleStemSize.width + chatBubbleMargin) : chatBubbleMargin
                     y: chatBubbleMargin
                     width: Math.min(chatBubbleMaximumWidth, Math.max(chatBubbleMinimumSize.width, dummyText.paintedWidth))
                     height: Math.max(chatBubbleText.paintedHeight, chatBubbleMinimumSize.height)
 
                     TextEdit {
-                        id: chatBubbleText
+                        id: chatContentTextEdit
                         anchors.verticalCenter: parent.verticalCenter 
                         anchors.left: parent.left
                         width: parent.width
                         height: parent.height
-                        text: chatData
+                        text: chatContent
                         font.pixelSize: 15
                         selectByMouse: true
                         wrapMode: TextEdit.Wrap
@@ -64,26 +64,26 @@ Item {
 
                     Text {
                         id: dummyText
-                        text: chatBubbleText.text
-                        wrapMode: chatBubbleText.wrapMode
-                        font: chatBubbleText.font
+                        text: chatContentTextEdit.text
+                        wrapMode: chatContentTextEdit.wrapMode
+                        font: chatContentTextEdit.font
                         visible: false
                     }
                 }
 
                 Text {
-                    id: dateText
-                    anchors.top: chatBubbleTextItem.bottom
-                    anchors.left: isRightAlign ? chatBubbleTextItem.left : undefined
-                    anchors.right: isRightAlign ? undefined : chatBubbleTextItem.right
-                    text: chatTime
+                    id: chatDateText
+                    anchors.top: chatBubbleContent.bottom
+                    anchors.left: isOpponent ? undefined : chatBubbleContent.left
+                    anchors.right: isOpponent ? chatBubbleContent.right : undefined
+                    text: chatDate
                 }
 
                 onPaint: {
                     var context = getContext("2d")
                     context.beginPath()
 
-                    if(isRightAlign) {
+                    if(!isOpponent) {
                         context.moveTo(width - chatBubbleStemSize.width, 0)
                         context.lineTo(width - chatBubbleStemSize.width, 5)
                         context.lineTo(width, 5)
@@ -111,7 +111,7 @@ Item {
         }
                             
         Item {
-            Layout.fillWidth: !isRightAlign
+            Layout.fillWidth: isOpponent
         }
     }
 
