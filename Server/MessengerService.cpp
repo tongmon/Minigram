@@ -80,7 +80,7 @@ void MessengerService::MessageHandling()
 {
     std::vector<std::string> parsed;
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    std::string sender_id = parsed[0], session_id = parsed[1], content_type = parsed[2], content = parsed[3];
+    std::string sender_id = parsed[0], session_id = parsed[1], content = parsed[3];
 
     // session_id에서 정보 뜯어오는 건데 안쓸거 같음
     // parsed.clear();
@@ -112,7 +112,7 @@ void MessengerService::MessageHandling()
     mongo_coll.insert_one(basic::make_document(basic::kvp("message_id", message_id),
                                                basic::kvp("sender_id", sender_id),
                                                basic::kvp("send_date", types::b_date{tp}),
-                                               basic::kvp("content_type", content_type),
+                                               basic::kvp("content_type", "text"),
                                                basic::kvp("content", content),
                                                basic::kvp("read_by", basic::make_array(basic::kvp("reader_id", sender_id)))));
 
@@ -139,7 +139,7 @@ void MessengerService::MessageHandling()
         auto request_id = m_peer->MakeRequestID();
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
-        std::string request = sender_id + "|" + session_id + "|" + send_date + "|" + content_type + "|" + content;
+        std::string request = sender_id + "|" + session_id + "|" + send_date + "|" + content;
         TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.size());
         request = header.GetHeaderBuffer() + request;
 

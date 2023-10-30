@@ -1,4 +1,4 @@
-import QtQuick 2.15
+﻿import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
@@ -16,32 +16,6 @@ Rectangle {
     // chat list view 템플릿
     property var chatListViewComponent: Qt.createComponent("qrc:/qml/ChatListView.qml")
 
-    // function addChatRoom(chatRoomID, chatRoomName, chatRoomImage, recentUsedDate, recentChatContent)
-    // {
-    //     chatRoomListModel.append({
-    //         "chatRoomObjectName": chatRoomID,
-    //         "chatRoomName": chatRoomName,
-    //         "chatRoomImage": "image://mybase64/data:image/png;base64," + chatRoomImage,
-    //         "recentUsedDate": recentUsedDate,
-    //         "recentChatContent": recentChatContent
-    //     })
-    // 
-    //     chatViewObjects[chatRoomID] = chatListViewComponent.createObject(chatView)
-    // }
-
-    // function addChatBubbleText(chatRoomID, isRightAlign, userID, userName, userImage, chatData, chatTime)
-    // {
-    //     chatViewObjects[chatRoomID].children[0].model.append({
-    //         "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
-    //         "isRightAlign": isRightAlign,
-    //         "userID": userID,
-    //         "userName": userName,
-    //         "userImage": userImage,
-    //         "chatData": chatData,
-    //         "chatTime": chatTime
-    //     })
-    // }
-
     function addSession(obj)
     {
         chatRoomListModel.append({
@@ -52,7 +26,21 @@ Rectangle {
             "recentChatContent": obj["recentChatContent"]
         })
 
-        chatViewObjects[chatRoomID] = chatListViewComponent.createObject(chatView)
+        chatViewObjects[obj["sessionID"]] = chatListViewComponent.createObject(chatView)
+    }
+
+    // 테스트 전용 함수
+    function addSessionTest(sessionID, sessionName, sessionImage, recentChatDate, recentChatContent)
+    {
+        chatRoomListModel.append({
+            "sessionID": sessionID,
+            "sessionName": sessionName,
+            "sessionImage": "image://mybase64/data:image/png;base64," + sessionImage,
+            "recentChatDate": recentChatDate,
+            "recentChatContent": recentChatContent
+        })
+    
+        chatViewObjects[sessionID] = chatListViewComponent.createObject(chatView)
     }
 
     function addChatBubbleText(obj)
@@ -68,6 +56,19 @@ Rectangle {
         })
     }
 
+    function addChatBubbleTextTest(sessionID, isOpponent, senderID, senderName, senderImage, chatContent, chatDate)
+    {
+        chatViewObjects[sessionID].children[0].model.append({
+            "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
+            "isOpponent": isOpponent,
+            "senderID": senderID,
+            "senderName": senderName,
+            "senderImage": senderImage,
+            "chatContent": chatContent,
+            "chatDate": chatDate
+        })
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -78,48 +79,138 @@ Rectangle {
             Layout.alignment: Qt.AlignTop
 
             Component.onCompleted: {
-                addItem(String.raw`
-                        Button {
-                            height: parent.height
-                            text: "Setting"
-                        }
-                        `)
+                addItemByCode(String.raw`
+                            Image {
+                                height: parent.height
+                                width: height
+                                source: "qrc:/icon/UserID.png"
 
-                addItem(String.raw`
-                        Button {
-                            height: parent.height
-                            text: "Contact"
-                        }
-                        `)
+                                Dialog {
+                                    id: settingDialog
+                                    x: (applicationWindow.width - width) / 2
+                                    y: (applicationWindow.height - height) / 2
+                                    implicitWidth: 500
+                                    implicitHeight: 300
+                                    title: "Setting"
+                                    modal: true
 
-                addItem(String.raw`
-                        Button {
-                            height: parent.height
-                            text: "Chat"
-                        }
-                        `)
-                
-                addItem(String.raw`
-                        Rectangle {
-                            height: parent.height
-                            width: 200
-                            radius: 10
+                                    Button {
+                                        id: settingSaveButton
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        text: "Save"
 
-                            TextField {
-                                anchors.fill: parent
-                                selectByMouse: true
-                                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText                    
+                                        background: Rectangle {
+                                            color: "transparent"
+                                        }
+                                    }
 
-                                Keys.onReturnPressed: {
+                                    Button {
+                                        id: settingCancleButton
+                                        anchors.right: settingSaveButton.left
+                                        anchors.bottom: parent.bottom
+                                        text: "Cancle"
 
+                                        background: Rectangle {
+                                            color: "transparent"
+                                        }
+
+                                        onClicked: {
+                                            settingDialog.close()
+                                        }
+                                    }
                                 }
 
-                                background: Rectangle {
-                                    color: "transparent"
+                                MouseArea {
+                                    anchors.fill: parent
+
+                                    onClicked: {
+                                        settingDialog.open()
+                                    }
                                 }
                             }
-                        }
-                        `)
+                            `)
+
+                addItemByCode(String.raw`
+                            Image {
+                                height: parent.height
+                                width: height
+                                source: "qrc:/icon/UserID.png"
+                            
+                                Dialog {
+                                    id: contactDialog
+                                    x: (applicationWindow.width - width) / 2
+                                    y: (applicationWindow.height - height) / 2
+                                    implicitWidth: 500
+                                    implicitHeight: 300
+                                    title: "Contact"
+                                    modal: true
+
+                                    Button {
+                                        id: contactAddButton
+                                        anchors.left: parent.left
+                                        anchors.bottom: parent.bottom
+                                        text: "Add Contact"
+
+                                        background: Rectangle {
+                                            color: "transparent"
+                                        }
+                                    }
+
+                                    Button {
+                                        id: contactCloseButton
+                                        anchors.right: parent.right
+                                        anchors.bottom: parent.bottom
+                                        text: "Close"
+
+                                        background: Rectangle {
+                                            color: "transparent"
+                                        }
+
+                                        onClicked: {
+                                            contactDialog.close()
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+
+                                    onClicked: {
+                                        contactDialog.open()
+                                    }
+                                }
+                            }
+                            `)
+
+                addItemByCode(String.raw`
+                              Button {
+                                  height: parent.height
+                                  text: "Chat"
+                              }
+                              `)
+                
+                addItemByCode(String.raw`
+                             Rectangle {
+                                 height: parent.height
+                                 width: 200
+                                 radius: 10
+     
+                                 TextField {
+                                     anchors.fill: parent
+                                     selectByMouse: true
+                                     inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText                    
+     
+                                     Keys.onReturnPressed: {
+                                     
+                                     }
+     
+                                     background: Rectangle {
+                                         color: "transparent"
+                                     }
+                                 }
+                             }
+                             `)
             }
         }
 
@@ -248,8 +339,8 @@ Rectangle {
                 }
 
                 Component.onCompleted: {           
-                    // addChatRoom("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
-                    // addChatRoom("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
+                    addSessionTest("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
+                    addSessionTest("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
                 }
             }
 
@@ -321,19 +412,18 @@ Rectangle {
                                 if(!text.length)
                                     return
 
-                                // var chatTime = Qt.formatDateTime(new Date(), "yyyy-MM-dd hh:mm:ss.zzz")
+                                // 서버로 채팅 내용 전송, 테스트 끝나면 밑 함수 주석 풀기
+                                // mainPageContext.trySendTextChat(currentRoomID, text)
 
-                                // 서버로 채팅 내용 전송
-                                mainPageContext.trySendTextChat(currentRoomID, text)
-
-                                // c++ 단에서 수행해야 함, 밑에꺼 삭제 요망
-                                // addChatBubbleText(currentRoomID, 
-                                //                   true, 
-                                //                   "tongstar",
-                                //                   "KyungJoonLee",
-                                //                   "",
-                                //                   text,
-                                //                   chatTime)
+                                // c++ 단에서 수행해야 함, 테스트 끝나면 밑 두줄 삭제 요망
+                                var chatTime = Qt.formatDateTime(new Date(), "yyyy-MM-dd hh:mm:ss.zzz")
+                                addChatBubbleTextTest(currentRoomID, 
+                                                  false, 
+                                                  "tongstar",
+                                                  "KyungJoonLee",
+                                                  "qrc:/icon/UserID.png",
+                                                  text,
+                                                  chatTime)
 
                                 text = ""  
                             }                

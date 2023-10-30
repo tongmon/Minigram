@@ -1,4 +1,4 @@
-import QtQuick 2.15
+﻿import QtQuick 2.15
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
@@ -8,7 +8,7 @@ Rectangle {
     id: titleBar
     color: "#1f0830"
     
-    function addItem(objSpec) {
+    function addItemByCode(objSpec) {
         var specString = String.raw`import QtQuick 2.15
                                     import QtQuick.Window 2.15
                                     import QtQuick.Controls 2.15
@@ -16,6 +16,10 @@ Rectangle {
                                     `
         specString += objSpec
         return Qt.createQmlObject(specString, titleBarRow)
+    }
+
+    function addItemByPath(path) {
+        
     }
 
     RowLayout {

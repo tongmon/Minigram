@@ -34,7 +34,6 @@ void MainPageContext::trySendTextChat(const QString &session_id, const QString &
 
     std::string request = m_window->GetContextProperty<LoginPageContext *>()->GetUserID().toStdString() + "|" +
                           session_id.toStdString() + "|" +
-                          "text" + "|" +
                           EncodeBase64(StrToUtf8(content.toStdString()));
 
     TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.size());

@@ -39,15 +39,15 @@ Item {
 
             Canvas {
                 id: chatBubbleBackground
-                Layout.preferredWidth: Math.max(chatBubbleContent.width, dateText.paintedWidth) + chatBubbleStemSize.width + chatBubbleMargin * 2
-                Layout.preferredHeight: chatBubbleContent.height + dateText.paintedHeight + chatBubbleMargin * 2
+                Layout.preferredWidth: Math.max(chatBubbleContent.width, chatDateText.paintedWidth) + chatBubbleStemSize.width + chatBubbleMargin * 2
+                Layout.preferredHeight: chatBubbleContent.height + chatDateText.paintedHeight + chatBubbleMargin * 2
 
                 Item {
                     id: chatBubbleContent
                     x: isOpponent ? (chatBubbleStemSize.width + chatBubbleMargin) : chatBubbleMargin
                     y: chatBubbleMargin
-                    width: Math.min(chatBubbleMaximumWidth, Math.max(chatBubbleMinimumSize.width, dummyText.paintedWidth))
-                    height: Math.max(chatBubbleText.paintedHeight, chatBubbleMinimumSize.height)
+                    width: Math.min(chatBubbleMaximumWidth, Math.max(chatBubbleMinimumSize.width, Math.max(dummyText.paintedWidth, chatDateText.paintedWidth)))
+                    height: Math.max(chatContentTextEdit.paintedHeight, chatBubbleMinimumSize.height)
 
                     TextEdit {
                         id: chatContentTextEdit

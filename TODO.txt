@@ -24,3 +24,4 @@
 4. 채팅방 화면
 5. 연락처 화면(친구 추가 알림도 있어야 함)
 6. 채팅방 나가기
+7. 채팅방 taskbar에 알림 띄우기 (QApplication::alert(), QApplication::notify() 이용할 듯?)
