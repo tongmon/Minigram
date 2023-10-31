@@ -7,7 +7,9 @@ import QtQuick.Layouts 1.12
 Rectangle {
     id: titleBar
     color: "#1f0830"
-    
+
+    property var titleBarComponents: ({})
+
     function addItemByCode(objSpec) {
         var specString = String.raw`import QtQuick 2.15
                                     import QtQuick.Window 2.15
@@ -19,7 +21,10 @@ Rectangle {
     }
 
     function addItemByPath(path) {
-        
+        if(!titleBarComponents.hasOwnProperty(path))
+            titleBarComponents[path] = Qt.createComponent(path)
+
+        return titleBarComponents[path].createObject(titleBarRow)
     }
 
     RowLayout {

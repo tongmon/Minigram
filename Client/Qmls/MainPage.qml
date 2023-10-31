@@ -56,6 +56,7 @@ Rectangle {
         })
     }
 
+    // 테스트 전용 함수
     function addChatBubbleTextTest(sessionID, isOpponent, senderID, senderName, senderImage, chatContent, chatDate)
     {
         chatViewObjects[sessionID].children[0].model.append({
@@ -79,138 +80,31 @@ Rectangle {
             Layout.alignment: Qt.AlignTop
 
             Component.onCompleted: {
-                addItemByCode(String.raw`
-                            Image {
-                                height: parent.height
-                                width: height
-                                source: "qrc:/icon/UserID.png"
-
-                                Dialog {
-                                    id: settingDialog
-                                    x: (applicationWindow.width - width) / 2
-                                    y: (applicationWindow.height - height) / 2
-                                    implicitWidth: 500
-                                    implicitHeight: 300
-                                    title: "Setting"
-                                    modal: true
-
-                                    Button {
-                                        id: settingSaveButton
-                                        anchors.right: parent.right
-                                        anchors.bottom: parent.bottom
-                                        text: "Save"
-
-                                        background: Rectangle {
-                                            color: "transparent"
-                                        }
-                                    }
-
-                                    Button {
-                                        id: settingCancleButton
-                                        anchors.right: settingSaveButton.left
-                                        anchors.bottom: parent.bottom
-                                        text: "Cancle"
-
-                                        background: Rectangle {
-                                            color: "transparent"
-                                        }
-
-                                        onClicked: {
-                                            settingDialog.close()
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-
-                                    onClicked: {
-                                        settingDialog.open()
-                                    }
-                                }
-                            }
-                            `)
-
-                addItemByCode(String.raw`
-                            Image {
-                                height: parent.height
-                                width: height
-                                source: "qrc:/icon/UserID.png"
-                            
-                                Dialog {
-                                    id: contactDialog
-                                    x: (applicationWindow.width - width) / 2
-                                    y: (applicationWindow.height - height) / 2
-                                    implicitWidth: 500
-                                    implicitHeight: 300
-                                    title: "Contact"
-                                    modal: true
-
-                                    Button {
-                                        id: contactAddButton
-                                        anchors.left: parent.left
-                                        anchors.bottom: parent.bottom
-                                        text: "Add Contact"
-
-                                        background: Rectangle {
-                                            color: "transparent"
-                                        }
-                                    }
-
-                                    Button {
-                                        id: contactCloseButton
-                                        anchors.right: parent.right
-                                        anchors.bottom: parent.bottom
-                                        text: "Close"
-
-                                        background: Rectangle {
-                                            color: "transparent"
-                                        }
-
-                                        onClicked: {
-                                            contactDialog.close()
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-
-                                    onClicked: {
-                                        contactDialog.open()
-                                    }
-                                }
-                            }
-                            `)
-
-                addItemByCode(String.raw`
-                              Button {
-                                  height: parent.height
-                                  text: "Chat"
-                              }
-                              `)
+                addItemByPath("qrc:/qml/SettingButton.qml")
+                addItemByPath("qrc:/qml/ContactButton.qml")
+                addItemByPath("qrc:/qml/SessionAddButton.qml")
                 
-                addItemByCode(String.raw`
-                             Rectangle {
-                                 height: parent.height
-                                 width: 200
-                                 radius: 10
-     
-                                 TextField {
-                                     anchors.fill: parent
-                                     selectByMouse: true
-                                     inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText                    
-     
-                                     Keys.onReturnPressed: {
-                                     
-                                     }
-     
-                                     background: Rectangle {
-                                         color: "transparent"
-                                     }
-                                 }
-                             }
-                             `)
+                //addItemByCode(String.raw`
+                //             Rectangle {
+                //                 height: parent.height
+                //                 width: 200
+                //                 radius: 10
+                //
+                //                 TextField {
+                //                     anchors.fill: parent
+                //                     selectByMouse: true
+                //                     inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText                    
+                //
+                //                     Keys.onReturnPressed: {
+                //                     
+                //                     }
+                //
+                //                     background: Rectangle {
+                //                         color: "transparent"
+                //                     }
+                //                 }
+                //             }
+                //             `)
             }
         }
 
@@ -218,6 +112,10 @@ Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 0
+
+            // ColumnLayout {
+            // 
+            // }
 
             ListView {
                 id: chatRoomListView
