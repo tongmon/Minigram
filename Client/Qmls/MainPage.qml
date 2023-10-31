@@ -113,133 +113,157 @@ Rectangle {
             Layout.fillHeight: true
             spacing: 0
 
-            // ColumnLayout {
-            // 
-            // }
-
-            ListView {
-                id: chatRoomListView
-                Layout.preferredWidth: 250
+            ColumnLayout {
                 Layout.fillHeight: true
-                clip: true
+                spacing: 0                
 
-                ScrollBar.vertical: ScrollBar {
-                    policy: ScrollBar.AsNeeded
-                }
-                
-                model: ListModel {
-                    id: chatRoomListModel
-                }
-                
-                delegate: Rectangle {
-                    property int chatRoomIndex: index
+                Rectangle {
+                    Layout.preferredWidth: chatRoomListView.width - 10
+                    Layout.preferredHeight: 30
+                    Layout.topMargin: 5
+                    Layout.bottomMargin: 5
+                    Layout.leftMargin: 5
+                    Layout.rightMargin: 5                    
+                    radius: 5
 
-                    id: chatRoomID
-                    objectName: sessionID
-                    width: parent.width
-                    height: 98
-                    color: "#B240F5"
-
-                    RowLayout {
+                    TextField {
                         anchors.fill: parent
-                        spacing: 0
-                            
-                        Rectangle {
-                            id: sessionImageRect
-                            Layout.fillHeight: true
-                            Layout.preferredWidth: sessionImageRect.height
-                            color: "transparent"
+                        selectByMouse: true
+                        inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
 
-                            Rectangle {
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                height: parent.height * 0.8
-                                width: parent.width * 0.8
-                                radius: width * 2
-
-                                Image {
-                                    anchors.fill: parent
-                                    source: sessionImage // "qrc:/icon/UserID.png" 
-                                    fillMode: Image.PreserveAspectFit
-                                }    
-                            }
+                        Keys.onReturnPressed: {
+                        
                         }
+                        background: Rectangle {
+                            color: "transparent"
+                        }
+                    }
+                }
 
-                        ColumnLayout {
-                            Layout.fillHeight: true
-                            Layout.fillWidth: true
+                ListView {
+                    id: chatRoomListView
+                    Layout.preferredWidth: 250
+                    Layout.fillHeight: true
+                    clip: true
+
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                    }
+
+                    model: ListModel {
+                        id: chatRoomListModel
+                    }
+
+                    delegate: Rectangle {
+                        property int chatRoomIndex: index
+
+                        id: chatRoomID
+                        objectName: sessionID
+                        width: parent.width
+                        height: 98
+                        color: "#B240F5"
+
+                        RowLayout {
+                            anchors.fill: parent
                             spacing: 0
 
                             Rectangle {
-                                Layout.fillWidth: true
+                                id: sessionImageRect
                                 Layout.fillHeight: true
+                                Layout.preferredWidth: sessionImageRect.height
                                 color: "transparent"
 
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter 
-                                    anchors.left: parent.left
-                                    anchors.right: recentChatDateText.left
-                                    anchors.rightMargin: 10
-                                    clip: true
-                                    text: sessionName
+                                Rectangle {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    height: parent.height * 0.8
+                                    width: parent.width * 0.8
+                                    radius: width * 2
+
+                                    Image {
+                                        anchors.fill: parent
+                                        source: sessionImage // "qrc:/icon/UserID.png" 
+                                        fillMode: Image.PreserveAspectFit
+                                    }    
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillHeight: true
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    color: "transparent"
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter 
+                                        anchors.left: parent.left
+                                        anchors.right: recentChatDateText.left
+                                        anchors.rightMargin: 10
+                                        clip: true
+                                        text: sessionName
+                                    }
+
+                                    Text {
+                                        id: recentChatDateText
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        anchors.right: parent.right
+                                        anchors.rightMargin: 5
+                                        text: recentChatDate
+                                    }                                
                                 }
 
-                                Text {
-                                    id: recentChatDateText
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.right: parent.right
-                                    anchors.rightMargin: 5
-                                    text: recentChatDate
-                                }                                
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    color: "transparent"
+
+                                    Text {                               
+                                        anchors.verticalCenter: parent.verticalCenter 
+                                        anchors.left: parent.left                            
+                                        text: recentChatContent
+                                    }                            
+                                }
                             }
 
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                color: "transparent"
+                            Component.onCompleted: { 
 
-                                Text {                               
-                                    anchors.verticalCenter: parent.verticalCenter 
-                                    anchors.left: parent.left                            
-                                    text: recentChatContent
-                                }                            
+                            }
+
+                            Component.onDestruction: {
+
                             }
                         }
 
-                        Component.onCompleted: { 
-                            
-                        }
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
 
-                        Component.onDestruction: {
+                            onEntered: {
+                                chatRoomID.color = "#BD5CF5"
+                            }
+                            onExited: {
+                                chatRoomID.color = "#B240F5"
+                            }
+                            onClicked: {
+                                currentRoomID = chatRoomID.objectName
 
+                                if(chatView.empty)
+                                    chatView.push(chatViewObjects[currentRoomID], StackView.Immediate)
+                                else
+                                    chatView.replace(null, chatViewObjects[currentRoomID], StackView.Immediate)
+                            }
                         }
                     }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-
-                        onEntered: {
-                            chatRoomID.color = "#BD5CF5"
-                        }
-                        onExited: {
-                            chatRoomID.color = "#B240F5"
-                        }
-                        onClicked: {
-                            currentRoomID = chatRoomID.objectName
-
-                            if(chatView.empty)
-                                chatView.push(chatViewObjects[currentRoomID], StackView.Immediate)
-                            else
-                                chatView.replace(null, chatViewObjects[currentRoomID], StackView.Immediate)
-                        }
+                    Component.onCompleted: {           
+                        addSessionTest("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
+                        addSessionTest("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
                     }
-                }
-
-                Component.onCompleted: {           
-                    addSessionTest("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
-                    addSessionTest("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
-                }
+                }            
             }
 
             ColumnLayout {

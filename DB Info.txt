@@ -31,7 +31,6 @@ CREATE TABLE user_tb
 	user_info		TEXT,
 	password		VARCHAR(32) NOT NULL,
 	img_path		VARCHAR(255),
-	friend_list 	TEXT,
 	login_ip		VARCHAR(40),
 	login_port		INTEGER,
 	CONSTRAINT chk_user_id CHECK (user_id ~* '/^\w{6,31}$/'),	
@@ -39,6 +38,21 @@ CREATE TABLE user_tb
     PRIMARY KEY (user_id)
 )
 
+
+### contact_tb
+설명: 연락처 정보가 담기는 table
+
+CREATE TABLE contact_tb
+(
+    user_id			VARCHAR(32) NOT NULL,
+    acquaintance_id	VARCHAR(32) NOT NULL,
+	status			INTEGER NOT NULL,
+	CONSTRAINT fk_user_id FOREIGN KEY(user_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+	CONSTRAINT fk_acquaintance_id FOREIGN KEY(acquaintance_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    PRIMARY KEY (user_id, acquaintance_id)
+)
+
+status: 친구 요청 상태, 친구 연결 상태 등을 다룸
 
 ### chatroom_tb
 설명: 채팅방 관련 테이블

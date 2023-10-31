@@ -16,8 +16,82 @@ Image {
         implicitHeight: 300
         title: "Make group name"
         modal: true
-                                
-        
+
+        component GroupNameDecisionView: Rectangle {
+            anchors.fill: parent
+
+            Button {
+                anchors.bottom: parent.bottom
+                anchors.right: nextButton.left
+                text: "Cancle"
+
+                onClicked: {
+                    sessionAddDialog.close()
+                }
+            }
+
+            Button {
+                id: nextButton
+                anchors.bottom: parent.bottom
+                anchors.right: parent.right
+                text: "Next"
+
+                onClicked: {
+                    sessionAddView.push(personSelectView, StackView.Immediate)
+                }
+            }   
+        }
+
+        component PersonSelectView: Rectangle {
+            anchors.fill: parent
+
+            Button {
+                anchors.bottom : parent.bottom
+                anchors.right: confirmButton.left
+                text: "Back"
+
+                onClicked: {
+                    sessionAddView.pop(StackView.Immediate)
+                }
+            }
+
+            Button {
+                id: confirmButton
+                anchors.bottom : parent.bottom
+                anchors.right: parent.right
+                text: "Confirm"
+
+                onClicked: {
+                    sessionAddDialog.close()
+                }
+            }   
+        }        
+
+        GroupNameDecisionView {
+            id: groupNameDecisionView
+            visible: false
+        }
+
+        PersonSelectView {
+            id: personSelectView
+            visible: false            
+        }
+
+        StackView {
+            id: sessionAddView
+            anchors.fill: parent
+            initialItem: groupNameDecisionView
+
+            Component.onCompleted: { 
+                // sessionAddView.push(groupNameMakingView.createObject(sessionAddView), StackView.Immediate)
+                // sessionAddView.push(test_1, StackView.Immediate)
+            }
+        }
+
+        onRejected: {
+            if(sessionAddView.depth > 1)
+                sessionAddView.pop(StackView.Immediate)
+        }
     }
 
     MouseArea {
