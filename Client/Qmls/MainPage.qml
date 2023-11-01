@@ -2,6 +2,7 @@
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
+import QtGraphicalEffects 1.0
 
 Rectangle {
     id: mainPage
@@ -359,16 +360,83 @@ Rectangle {
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 60
+                    Layout.preferredHeight: 50
                     visible: currentRoomID.length === 0 ? false : true
+                    // color: "transparent"
 
                     RowLayout {
                         anchors.fill: parent
                         spacing: 0
                         
                         Button {
-                            Layout.fillHeight: true
-                            text: "Imoji"
+                            id: imojiButton
+                            Layout.leftMargin: 5
+                            Layout.preferredHeight: 40
+                            Layout.preferredWidth: 40
+                            Layout.alignment: Qt.AlignVCenter
+
+                            background: Rectangle {
+                                color: parent.down ? Qt.rgba(1.0, 1.0, 1.0, 0.4) : Qt.rgba(1.0, 1.0, 1.0, 0.0)
+                            }
+
+                            Image {
+                                id: imojiButtonImage
+                                source: "qrc:/icon/UserID.png"
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectFit
+                            }
+
+                            ColorOverlay {
+                                anchors.fill: imojiButtonImage
+                                source: imojiButtonImage
+                                color: imojiButton.hovered ? "#cccccc" : "transparent"
+                            }
+
+                            onClicked: {
+                                
+                            }
+                        }
+
+                        Button {
+                            id: attachmentButton
+                            Layout.preferredHeight: 40
+                            Layout.preferredWidth: 40
+                            Layout.alignment: Qt.AlignVCenter
+
+                            background: Rectangle {
+                                color: parent.down ? Qt.rgba(1.0, 1.0, 1.0, 0.4) : Qt.rgba(1.0, 1.0, 1.0, 0.0)
+                            }
+
+                            Image {
+                                id: attachmentButtonImage
+                                source: "qrc:/icon/UserID.png"
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectFit
+                            }
+
+                            ColorOverlay {
+                                anchors.fill: attachmentButtonImage
+                                source: attachmentButtonImage
+                                color: attachmentButton.hovered ? "#cccccc" : "transparent"
+                            }
+
+                            onClicked: {
+                                
+                            }
+                        }
+
+                        Item {   
+                            Layout.fillWidth: true
+                        }
+
+                        Button {
+                            Layout.rightMargin: 5
+                            Layout.preferredHeight: 40
+                            text: "Send"
+                            background: Rectangle {
+                                color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                                radius: 5
+                            }
                         }
                     }
                 }
