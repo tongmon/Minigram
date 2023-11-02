@@ -10,6 +10,7 @@ Rectangle {
     objectName: "mainPage"
 
     property string currentRoomID: ""
+    property string currentSessionName: ""
 
     // chat list view 템플릿이 찍어낸 객체
     property var chatViewObjects: ({})
@@ -251,6 +252,7 @@ Rectangle {
                             }
                             onClicked: {
                                 currentRoomID = chatRoomID.objectName
+                                currentSessionName = sessionName
 
                                 if(chatView.empty)
                                     chatView.push(chatViewObjects[currentRoomID], StackView.Immediate)
@@ -273,6 +275,7 @@ Rectangle {
                 spacing: 0
 
                 Rectangle {
+                    id: sessionHeaderRectangle
                     Layout.fillWidth: true
                     Layout.preferredHeight: 60
                     visible: currentRoomID.length === 0 ? false : true
@@ -282,16 +285,207 @@ Rectangle {
                         spacing: 0
                             
                         Text {
-                            text: "Some Name"
+                            text: currentSessionName
                         }
                         Item {
                             Layout.fillWidth: true
                         }
                         Button {
-                            text: "Search"
+                            id: searchBarToggleButton
+                            Layout.preferredHeight: sessionHeaderRectangle.height - 5
+                            Layout.preferredWidth: height
+
+                            background: Rectangle {
+                                color: parent.down ? Qt.rgba(1.0, 1.0, 1.0, 0.4) : Qt.rgba(1.0, 1.0, 1.0, 0.0)
+                            }
+
+                            Image {
+                                id: searchBarToggleButtonImage
+                                source: "qrc:/icon/UserID.png"
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectFit
+                            }
+
+                            ColorOverlay {
+                                anchors.fill: searchBarToggleButtonImage
+                                source: searchBarToggleButtonImage
+                                color: searchBarToggleButton.hovered ? "#cccccc" : "transparent"
+                            }
+
+                            onClicked: {
+                                chatSearchBar.visible ^= true
+                            }
                         }
                         Button {
-                            text: "Chat Room Menu"
+                            id: sessionMenuButton
+                            Layout.preferredHeight: sessionHeaderRectangle.height - 5
+                            Layout.preferredWidth: height
+
+                            background: Rectangle {
+                                color: parent.down ? Qt.rgba(1.0, 1.0, 1.0, 0.4) : Qt.rgba(1.0, 1.0, 1.0, 0.0)
+                            }
+
+                            Image {
+                                id: sessionMenuButtonImage
+                                source: "qrc:/icon/UserID.png"
+                                anchors.fill: parent
+                                fillMode: Image.PreserveAspectFit
+                            }
+
+                            ColorOverlay {
+                                anchors.fill: sessionMenuButtonImage
+                                source: sessionMenuButtonImage
+                                color: sessionMenuButton.hovered ? "#cccccc" : "transparent"
+                            }
+
+                            Menu {
+                                id: sessionMenu
+                                y: sessionMenuButton.height + 2
+
+                                MenuItem {
+                                    id: inviteMenuItem
+                                    text: "Invite new one"
+                                }
+                                MenuItem {
+                                    id: leaveMenuItem
+                                    text: "Leave session"
+                                    // visible: false
+                                }
+                                MenuItem {
+                                    id: etcMenuItem
+                                    implicitHeight: 30
+                                    contentItem: Rectangle {
+                                        anchors.fill: parent
+                                        color: "transparent"
+
+                                        CustomImageButton {
+                                            id: notifyToggleButton
+                                            height: etcMenuItem.implicitHeight - 5
+                                            width: height
+                                            anchors {
+                                                left: parent.left
+                                                leftMargin: 5
+                                                verticalCenter: parent.verticalCenter
+                                            }
+                                            checkable : true
+                                            imageSource: "qrc:/icon/UserID.png"
+                                            bgColor: "transparent"
+                                            imageColor: notifyToggleButton.down ? "#666666" : (notifyToggleButton.checked ? "#000000" : "#cccccc")
+
+                                            onClicked: {
+                                                
+                                            }
+                                        }
+                                        CustomImageButton {
+                                            id: sessionFavoriteButton
+                                            height: etcMenuItem.implicitHeight - 5
+                                            width: height
+                                            anchors {
+                                                left: notifyToggleButton.right
+                                                verticalCenter: parent.verticalCenter
+                                            }
+                                            checkable : true
+                                            imageSource: "qrc:/icon/UserID.png"
+                                            bgColor: "transparent"
+                                            imageColor: sessionFavoriteButton.down ? "#666666" : (sessionFavoriteButton.checked ? "#000000" : "#cccccc")
+
+                                            onClicked: {
+                                                
+                                            }
+                                        }
+                                        CustomImageButton {
+                                            id: sessionLeaveButton
+                                            height: etcMenuItem.implicitHeight - 5
+                                            width: height
+                                            anchors {
+                                                right: parent.right
+                                                rightMargin: 5
+                                                verticalCenter: parent.verticalCenter
+                                            }
+                                            imageSource: "qrc:/icon/UserID.png"
+                                            bgColor: "transparent"
+                                            imageColor: sessionLeaveButton.hovered ? "#666666" : "transparent"
+
+                                            onClicked: {
+                                                
+                                            }
+                                        }
+                                    }
+                                    background: Rectangle {
+                                        anchors.fill: parent
+                                        // opacity: etcMenuItem.highlighted ? 0.7 : 1.0
+                                        color: "blue"
+                                    }
+                                }
+                            }
+
+                            onClicked: {
+                                sessionMenu.open()
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: chatSearchBar
+                    visible: false
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    color: "#cccccc"
+
+                    Rectangle {
+                        anchors {
+                            left: parent.left
+                            top: parent.top
+                            right: searchBarCloseButton.left
+                            bottom: parent.bottom
+                            margins: 5
+                        }
+                        radius: 5
+
+                        TextField {
+                            anchors.fill: parent
+                            selectByMouse: true
+                            inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
+
+                            Keys.onReturnPressed: {
+                            
+                            }
+                            background: Rectangle {
+                                color: "transparent"
+                            }
+                        }
+                    }
+                    
+                    Button {
+                        id: searchBarCloseButton
+                        height: chatSearchBar.height - 5
+                        width: height
+                        anchors {
+                            right: parent.right
+                            rightMargin: 5
+                            verticalCenter: parent.verticalCenter
+                        }
+
+                        background: Rectangle {
+                            color: parent.down ? Qt.rgba(1.0, 1.0, 1.0, 0.4) : Qt.rgba(1.0, 1.0, 1.0, 0.0)
+                        }
+
+                        Image {
+                            id: searchBarCloseButtonImage
+                            source: "qrc:/icon/UserID.png"
+                            anchors.fill: parent
+                            fillMode: Image.PreserveAspectFit
+                        }
+
+                        ColorOverlay {
+                            anchors.fill: searchBarCloseButtonImage
+                            source: searchBarCloseButtonImage
+                            color: searchBarCloseButton.hovered ? "#cccccc" : "transparent"
+                        }
+
+                        onClicked: {
+                            chatSearchBar.visible ^= true
                         }
                     }
                 }
