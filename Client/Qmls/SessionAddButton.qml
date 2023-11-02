@@ -17,6 +17,14 @@ Image {
         title: "Make group name"
         modal: true
 
+        property string groupName: ""
+
+        function resetSessionAddDialog() {
+            // sessionAddDialog.groupName = ""
+            if(sessionAddView.depth > 1)
+                sessionAddView.pop(StackView.Immediate)
+        }
+
         component GroupNameDecisionView: Rectangle {
             anchors.fill: parent
 
@@ -55,14 +63,20 @@ Image {
                             color: "#cccccc"
 
                             TextField {
+                                id: groupNameTextField
                                 anchors.fill: parent
                                 selectByMouse: true
                                 inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
+
+                                background: Rectangle {
+                                    color: "transparent"
+                                }
+
                                 Keys.onReturnPressed: {
                                 
                                 }
-                                background: Rectangle {
-                                    color: "transparent"
+                                Component.onCompleted: {
+                                    sessionAddDialog.groupName = Qt.binding(function(){ return groupNameTextField.text })
                                 }
                             }
                         }
@@ -88,6 +102,7 @@ Image {
                         text: "Next"
 
                         onClicked: {
+                            sessionAddDialog.groupName = groupNameTextField.text
                             sessionAddView.push(personSelectView, StackView.Immediate)
                         }
                     }                      
@@ -98,26 +113,70 @@ Image {
         component PersonSelectView: Rectangle {
             anchors.fill: parent
 
-            Button {
-                anchors.bottom : parent.bottom
-                anchors.right: confirmButton.left
-                text: "Back"
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
 
-                onClicked: {
-                    sessionAddView.pop(StackView.Immediate)
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "blue"
                 }
-            }
 
-            Button {
-                id: confirmButton
-                anchors.bottom : parent.bottom
-                anchors.right: parent.right
-                text: "Confirm"
+                //ListView {
+                //    id: contactListView
+                //    Layout.fillWidth: true
+                //    Layout.fillHeight: true
+                //    clip: true
+                //    // Layout.preferredHeight: sessionAddDialog.implicitHeight * 0.7
+                //    
+                //    ScrollBar.vertical: ScrollBar {
+                //        policy: ScrollBar.AsNeeded
+                //    }
+//
+                //    model: ListModel {
+                //        id: contactListModel
+                //    }
+//
+                //    delegate: Rectangle {
+                //        property int contactIndex: index
+//
+                //        objectName: userID
+                //        width: parent.width
+                //        height: 70
+                //        color: "yellow"
+                //    }
+//
+                //    Component.onCompleted: {    
+                //    }
+                //}
 
-                onClicked: {
-                    sessionAddDialog.close()
-                }
-            }   
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: sessionAddDialog.implicitHeight * 0.15
+                    spacing: 0
+
+                    Button {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "Back"
+
+                        onClicked: {
+                            sessionAddView.pop(StackView.Immediate)
+                        }
+                    }
+                    Item {
+                        Layout.fillWidth: true    
+                    }
+                    Button {
+                        Layout.alignment: Qt.AlignVCenter
+                        text: "Confirm"
+
+                        onClicked: {
+                            sessionAddDialog.close()
+                        }
+                    }
+                }  
+            } 
         }        
 
         GroupNameDecisionView {
@@ -136,14 +195,11 @@ Image {
             initialItem: groupNameDecisionView
 
             Component.onCompleted: { 
-                // sessionAddView.push(groupNameMakingView.createObject(sessionAddView), StackView.Immediate)
-                // sessionAddView.push(test_1, StackView.Immediate)
             }
         }
 
         onRejected: {
-            if(sessionAddView.depth > 1)
-                sessionAddView.pop(StackView.Immediate)
+            resetSessionAddDialog()
         }
     }
 
