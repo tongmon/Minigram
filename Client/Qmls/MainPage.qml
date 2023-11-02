@@ -348,8 +348,7 @@ Rectangle {
                                 }
                                 MenuItem {
                                     id: leaveMenuItem
-                                    text: "Leave session"
-                                    // visible: false
+                                    text: "Expel someone"
                                 }
                                 MenuItem {
                                     id: etcMenuItem

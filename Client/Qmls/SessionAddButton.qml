@@ -20,26 +20,79 @@ Image {
         component GroupNameDecisionView: Rectangle {
             anchors.fill: parent
 
-            Button {
-                anchors.bottom: parent.bottom
-                anchors.right: nextButton.left
-                text: "Cancle"
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
 
-                onClicked: {
-                    sessionAddDialog.close()
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: sessionAddDialog.implicitHeight * 0.7
+                    spacing: 0
+
+                    CustomImageButton {
+                        Layout.topMargin: 5
+                        Layout.bottomMargin: 5
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: width
+                        imageSource: "qrc:/icon/UserID.png"
+                        bgColor: "transparent"
+                        imageColor: "transparent"
+                    }
+
+                    ColumnLayout {
+                        // Layout.preferredWidth: sessionAddDialog.implicitWidth * 0.65
+
+                        Text {
+                            // Layout.fillWidth: true
+                            // Layout.fillHeight: true                            
+                            text: "Group Name"
+                        }
+
+                        Rectangle {
+                            Layout.preferredWidth: sessionAddDialog.implicitWidth * 0.65
+                            Layout.preferredHeight: sessionAddDialog.implicitHeight * 0.1                        
+                            radius: 5
+                            color: "#cccccc"
+
+                            TextField {
+                                anchors.fill: parent
+                                selectByMouse: true
+                                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
+                                Keys.onReturnPressed: {
+                                
+                                }
+                                background: Rectangle {
+                                    color: "transparent"
+                                }
+                            }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    // Layout.fillWidth: true            
+                    // Layout.fillHeight: true
+                    spacing: 0
+
+                    Item {
+                        Layout.fillWidth: true    
+                    }
+                    Button {
+                        text: "Cancle"
+
+                        onClicked: {
+                            sessionAddDialog.close()
+                        }
+                    }
+                    Button {
+                        text: "Next"
+
+                        onClicked: {
+                            sessionAddView.push(personSelectView, StackView.Immediate)
+                        }
+                    }                      
                 }
             }
-
-            Button {
-                id: nextButton
-                anchors.bottom: parent.bottom
-                anchors.right: parent.right
-                text: "Next"
-
-                onClicked: {
-                    sessionAddView.push(personSelectView, StackView.Immediate)
-                }
-            }   
         }
 
         component PersonSelectView: Rectangle {
