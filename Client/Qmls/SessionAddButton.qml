@@ -4,202 +4,266 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 
 Image {
+    id: sessionAddButton
     height: parent.height
     width: height
     source: "qrc:/icon/UserID.png"
 
-    Dialog {
-        id: sessionAddDialog
-        x: (applicationWindow.width - width) / 2
-        y: (applicationWindow.height - height) / 2
-        implicitWidth: 500
-        implicitHeight: 300
-        title: "Make group name"
-        modal: true
+    property string groupName: ""
+    
+    Popup {
+        id: groupNameDecisionPopup
+        x: (applicationWindow.width - width) / 2 - sessionAddButton.x
+        y: (applicationWindow.height - height) / 2 - sessionAddButton.y
+        width: 500
+        height: 300
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
 
-        property string groupName: ""
-
-        function resetSessionAddDialog() {
-            // sessionAddDialog.groupName = ""
-            if(sessionAddView.depth > 1)
-                sessionAddView.pop(StackView.Immediate)
-        }
-
-        component GroupNameDecisionView: Rectangle {
+        contentItem: Rectangle {
             anchors.fill: parent
-
+            
             ColumnLayout {
                 anchors.fill: parent
-                spacing: 0
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: sessionAddDialog.implicitHeight * 0.7
-                    spacing: 0
+                Rectangle {
+                    Layout.preferredHeight: groupNameDecisionPopup.height * 0.7
+                    Layout.fillWidth: true   
+                    color: "transparent"
+                    
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 0
 
-                    CustomImageButton {
-                        Layout.topMargin: 5
-                        Layout.bottomMargin: 5
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: width
-                        imageSource: "qrc:/icon/UserID.png"
-                        bgColor: "transparent"
-                        imageColor: "transparent"
-                    }
-
-                    ColumnLayout {
-                        // Layout.preferredWidth: sessionAddDialog.implicitWidth * 0.65
-
-                        Text {
-                            // Layout.fillWidth: true
-                            // Layout.fillHeight: true                            
-                            text: "Group Name"
+                        CustomImageButton {
+                            id: sessionImageSelectButton
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.preferredWidth: groupNameDecisionPopup.width * 0.25
+                            Layout.preferredHeight: width
+                            imageSource: "qrc:/icon/UserID.png"
+                            bgColor: "transparent"
+                            imageColor: "transparent"
                         }
 
                         Rectangle {
-                            Layout.preferredWidth: sessionAddDialog.implicitWidth * 0.65
-                            Layout.preferredHeight: sessionAddDialog.implicitHeight * 0.1                        
-                            radius: 5
-                            color: "#cccccc"
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true 
+                            color: "transparent"
 
-                            TextField {
-                                id: groupNameTextField
+                            ColumnLayout {
                                 anchors.fill: parent
-                                selectByMouse: true
-                                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
-
-                                background: Rectangle {
-                                    color: "transparent"
-                                }
-
-                                Keys.onReturnPressed: {
+                                spacing: 0
                                 
+                                Item {             
+                                    Layout.fillHeight: true
                                 }
-                                Component.onCompleted: {
-                                    sessionAddDialog.groupName = Qt.binding(function(){ return groupNameTextField.text })
+                                Text {                         
+                                    text: "Group Name"
+                                }
+                                Rectangle {               
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: sessionImageSelectButton.height * 0.2        
+                                    Layout.rightMargin: 5   
+                                    Layout.topMargin: 8             
+                                    radius: 5
+                                    color: "#cccccc"
+
+                                    TextField {
+                                        id: groupNameTextField
+                                        anchors.fill: parent
+                                        selectByMouse: true
+                                        inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
+
+                                        background: Rectangle {
+                                            color: "transparent"
+                                        }
+
+                                        Keys.onReturnPressed: {
+                                        
+                                        }
+                                        Component.onCompleted: {
+                                        }
+                                    }
+                                }
+                                Item {             
+                                    Layout.fillHeight: true
                                 }
                             }
                         }
                     }
                 }
 
-                RowLayout {
-                    // Layout.fillWidth: true            
-                    // Layout.fillHeight: true
-                    spacing: 0
+                Rectangle {
+                    Layout.fillHeight: true             
+                    Layout.fillWidth: true
 
-                    Item {
-                        Layout.fillWidth: true    
-                    }
-                    Button {
-                        text: "Cancle"
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 0
 
-                        onClicked: {
-                            sessionAddDialog.close()
+                        Item {
+                            Layout.fillWidth: true    
                         }
-                    }
-                    Button {
-                        text: "Next"
+                        Button {
+                            Layout.alignment: Qt.AlignVCenter
+                            text: "Cancle"
 
-                        onClicked: {
-                            sessionAddDialog.groupName = groupNameTextField.text
-                            sessionAddView.push(personSelectView, StackView.Immediate)
+                            onClicked: {
+                                groupNameDecisionPopup.close()
+                            }
                         }
-                    }                      
+                        Button {
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.rightMargin: 5
+                            text: "Next"
+
+                            onClicked: {
+                                sessionAddButton.groupName = groupNameTextField.text
+                                contactChoicePopup.open()
+                            }
+                        }                      
+                    }
                 }
             }
         }
 
-        component PersonSelectView: Rectangle {
+        onClosed: {
+            groupNameTextField.text = ""
+        }
+    }
+
+    Popup {
+        id: contactChoicePopup
+        x: (applicationWindow.width - width) / 2 - sessionAddButton.x
+        y: (applicationWindow.height - height) / 2 - sessionAddButton.y
+        width: 500
+        height: 700
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+
+        contentItem: Rectangle {
             anchors.fill: parent
 
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0
+                
+                ListView {
+                    id: selectedPersonView
+                    Layout.fillWidth: true     
+                    Layout.preferredHeight: contactChoicePopup.height * 0.15
+                    orientation: ListView.Horizontal 
+                    clip: true
+                    
+                    ScrollBar.horizontal: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                    }
+
+                    model: ListModel {
+                        id: selectedPersonModel
+                    }
+
+                    delegate: Rectangle {
+                        height: parent.height
+                        width: 100
+                        objectName: userID
+                        color: "#B240F5"
+
+                        property int selectedPersonIndex: index
+                    }
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true 
+                    Layout.preferredHeight: contactChoicePopup.height * 0.1
+                    color: "transparent"
+
+                    Rectangle {               
+                        anchors {
+                            fill: parent
+                            margins: 5
+                        }          
+                        radius: 5
+                        color: "#cccccc"
+
+                        TextField {
+                            id: userNameSearchField
+                            anchors.fill: parent
+                            selectByMouse: true
+                            inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
+
+                            background: Rectangle {
+                                color: "transparent"
+                            }
+
+                            Keys.onReturnPressed: {
+                            
+                            }
+                            Component.onCompleted: {
+                            }
+                        }
+                    }
+                }
+
+                ListView {
+                    id: contactView
+                    Layout.fillWidth: true 
+                    Layout.fillHeight: true
+                    clip: true
+
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                    }
+
+                    model: ListModel {
+                        id: contactModel
+                    }
+
+                    delegate: Rectangle {
+                        height: 100
+                        width: parent.width
+                        objectName: userID
+                        color: "#B240F5"
+
+                        property int personIndex: index
+                    }
+                }
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    color: "blue"
+                    Layout.preferredHeight: contactChoicePopup.height * 0.1
+                    color: "transparent"
+
+                    RowLayout {
+                        anchors.fill: parent
+                        spacing: 0
+
+                        Item {
+                            Layout.fillWidth: true    
+                        }
+                        Button {
+                            Layout.alignment: Qt.AlignVCenter
+                            text: "Cancle"
+
+                            onClicked: {
+                                contactChoicePopup.close()
+                            }
+                        }
+                        Button {
+                            Layout.alignment: Qt.AlignVCenter
+                            Layout.rightMargin: 5
+                            text: "Confirm"
+
+                            onClicked: {
+                                groupNameDecisionPopup.close()
+                                contactChoicePopup.close()
+                            }
+                        }   
+                    }
                 }
-
-                //ListView {
-                //    id: contactListView
-                //    Layout.fillWidth: true
-                //    Layout.fillHeight: true
-                //    clip: true
-                //    // Layout.preferredHeight: sessionAddDialog.implicitHeight * 0.7
-                //    
-                //    ScrollBar.vertical: ScrollBar {
-                //        policy: ScrollBar.AsNeeded
-                //    }
-//
-                //    model: ListModel {
-                //        id: contactListModel
-                //    }
-//
-                //    delegate: Rectangle {
-                //        property int contactIndex: index
-//
-                //        objectName: userID
-                //        width: parent.width
-                //        height: 70
-                //        color: "yellow"
-                //    }
-//
-                //    Component.onCompleted: {    
-                //    }
-                //}
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: sessionAddDialog.implicitHeight * 0.15
-                    spacing: 0
-
-                    Button {
-                        Layout.alignment: Qt.AlignVCenter
-                        text: "Back"
-
-                        onClicked: {
-                            sessionAddView.pop(StackView.Immediate)
-                        }
-                    }
-                    Item {
-                        Layout.fillWidth: true    
-                    }
-                    Button {
-                        Layout.alignment: Qt.AlignVCenter
-                        text: "Confirm"
-
-                        onClicked: {
-                            sessionAddDialog.close()
-                        }
-                    }
-                }  
-            } 
-        }        
-
-        GroupNameDecisionView {
-            id: groupNameDecisionView
-            visible: false
-        }
-
-        PersonSelectView {
-            id: personSelectView
-            visible: false            
-        }
-
-        StackView {
-            id: sessionAddView
-            anchors.fill: parent
-            initialItem: groupNameDecisionView
-
-            Component.onCompleted: { 
             }
         }
 
-        onRejected: {
-            resetSessionAddDialog()
+        onClosed: {
+            userNameSearchField.text = ""
         }
     }
 
@@ -207,7 +271,7 @@ Image {
         anchors.fill: parent
 
         onClicked: {
-            sessionAddDialog.open()
+            groupNameDecisionPopup.open()
         }
     }
 }
