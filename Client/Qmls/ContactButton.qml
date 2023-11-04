@@ -4,18 +4,18 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 
 Image {
+    id: contactButton
     height: parent.height
     width: height
     source: "qrc:/icon/UserID.png"
-                            
-    Dialog {
-        id: contactDialog
-        x: (applicationWindow.width - width) / 2
-        y: (applicationWindow.height - height) / 2
-        implicitWidth: 500
-        implicitHeight: 300
-        title: "Contact"
-        modal: true
+
+    Popup {
+        id: contactPopup
+        x: (applicationWindow.width - width) / 2 - contactButton.x
+        y: (applicationWindow.height - height) / 2 - contactButton.y
+        width: 500
+        height: 300
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
 
         Button {
             id: contactAddButton
@@ -39,16 +39,16 @@ Image {
             }
 
             onClicked: {
-                contactDialog.close()
+                contactPopup.close()
             }
-        }
-    }
+        }                
+    }         
 
     MouseArea {
         anchors.fill: parent
 
         onClicked: {
-            contactDialog.open()
+            contactPopup.open()
         }
     }
 }
