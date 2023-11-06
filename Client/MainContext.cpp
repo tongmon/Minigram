@@ -1,9 +1,10 @@
-﻿#include "MainPageContext.hpp"
-#include "LoginPageContext.hpp"
+﻿#include "MainContext.hpp"
 #include "NetworkDefinition.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
 #include "WinQuickWindow.hpp"
+
+#include <QMetaObject>
 
 #include <fstream>
 #include <sstream>
@@ -12,27 +13,73 @@
 #include <boost/filesystem.hpp>
 #include <boost/json.hpp>
 
-MainPageContext::MainPageContext(WinQuickWindow *window)
+MainContext::MainContext(WinQuickWindow &window)
     : m_window{window}
 {
 }
 
-MainPageContext::~MainPageContext()
+MainContext::~MainContext()
 {
 }
 
-void MainPageContext::RecieveTextChat(const std::string &content)
+void MainContext::RecieveTextChat(const std::string &content)
 {
 }
 
-void MainPageContext::trySendTextChat(const QString &session_id, const QString &content)
+void MainContext::tryLogin(const QString &id, const QString &pw)
 {
-    auto &central_server = m_window->GetServerHandle();
+    auto &central_server = m_window.GetServerHandle();
 
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = m_window->GetContextProperty<LoginPageContext *>()->GetUserID().toStdString() + "|" +
+    m_user_id = id, m_user_pw = pw;
+
+    std::string request = m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
+                          m_user_id.toStdString() + "|" + m_user_pw.toStdString();
+
+    TCPHeader header(LOGIN_CONNECTION_TYPE, request.size());
+    request = header.GetHeaderBuffer() + request;
+
+    central_server.AsyncWrite(request_id, request, [&central_server, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+            return;
+
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            TCPHeader header(session->GetResponse());
+
+            auto connection_type = header.GetConnectionType();
+            auto data_size = header.GetDataSize();
+
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                // 로그인 성공
+                if (session->GetResponse()[0])
+                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"), "successLogin");
+                else
+                {
+                    // 로그인 실패시 로직
+                }
+
+                central_server.CloseRequest(session->GetID());
+            });
+        });
+    });
+}
+
+void MainContext::trySendTextChat(const QString &session_id, const QString &content)
+{
+    auto &central_server = m_window.GetServerHandle();
+
+    int request_id = central_server.MakeRequestID();
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+
+    std::string request = m_user_id.toStdString() + "|" +
                           session_id.toStdString() + "|" +
                           EncodeBase64(StrToUtf8(content.toStdString()));
 
@@ -56,19 +103,17 @@ void MainPageContext::trySendTextChat(const QString &session_id, const QString &
                 if (!session.get() || !session->IsValid())
                     return;
 
-                auto context = m_window->GetContextProperty<LoginPageContext *>();
-
                 QVariantMap qvm;
                 qvm.insert("sessionID", session_id);
-                qvm.insert("userID", context->GetUserID());
-                qvm.insert("userName", context->GetUserNM());
-                qvm.insert("userImage", context->GetUserImage());
+                qvm.insert("userID", m_user_id);
+                qvm.insert("userName", m_user_name);
+                qvm.insert("userImage", m_user_img);
                 qvm.insert("chatContent", content);
                 qvm.insert("chatDate", session->GetResponse().c_str());
                 qvm.insert("isOpponent", false);
 
                 // 챗 버블 실제로 추가하는 로직
-                QMetaObject::invokeMethod(m_window->GetQuickWindow().findChild<QObject *>("mainPage"),
+                QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
                                           "addChatBubbleText",
                                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
 
@@ -81,14 +126,14 @@ void MainPageContext::trySendTextChat(const QString &session_id, const QString &
 }
 
 // 채팅방 초기화 로직
-void MainPageContext::initialChatRoomList()
+void MainContext::initialChatRoomList()
 {
-    auto &central_server = m_window->GetServerHandle();
+    auto &central_server = m_window.GetServerHandle();
 
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = m_window->GetContextProperty<LoginPageContext *>()->GetUserID().toStdString(),
+    std::string request = m_user_id.toStdString(),
                 file_path = boost::dll::program_location().parent_path().string() + "/cache";
 
     boost::filesystem::directory_iterator root{file_path};
@@ -133,7 +178,7 @@ void MainPageContext::initialChatRoomList()
                 if (!session.get() || !session->IsValid())
                     return;
 
-                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse())); // Utf8ToStr(session->GetResponse());
+                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse()));
 
                 boost::json::error_code ec;
                 boost::json::value json_data = boost::json::parse(json_txt, ec);
@@ -211,7 +256,7 @@ void MainPageContext::initialChatRoomList()
                     }
 
                     // 실제 채팅방 삽입하는 로직
-                    QMetaObject::invokeMethod(m_window->GetQuickWindow().findChild<QObject *>("mainPage"),
+                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
                                               "addSession",
                                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
                 }

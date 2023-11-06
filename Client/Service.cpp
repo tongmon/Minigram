@@ -1,6 +1,5 @@
 ﻿#include "Service.hpp"
-#include "LoginPageContext.hpp"
-#include "MainPageContext.hpp"
+#include "MainContext.hpp"
 #include "NetworkDefinition.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
@@ -61,7 +60,7 @@ void Service::StartHandling()
                                                             case LOGIN_CONNECTION_TYPE:
                                                                 break;
                                                             case TEXTCHAT_CONNECTION_TYPE:
-                                                                m_window.GetContextProperty<MainPageContext *>()->RecieveTextChat(m_server_request);
+                                                                m_window.GetMainContext().RecieveTextChat(m_server_request);
                                                                 break;
                                                             case CHATROOMLIST_INITIAL_TYPE:
                                                                 break;

@@ -87,7 +87,7 @@ Rectangle {
 
                 Keys.onReturnPressed: {
                     if (checkLoginValidation())
-                        loginPageContext.tryLogin(userIDTextField.text, passwordTextField.text)
+                        mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
                 }
 
                 background: Rectangle {
@@ -135,7 +135,7 @@ Rectangle {
 
                 Keys.onReturnPressed: {
                     if (checkLoginValidation())
-                        loginPageContext.tryLogin(userIDTextField.text, passwordTextField.text)
+                        mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
                 }
 
                 background: Rectangle {
@@ -170,7 +170,7 @@ Rectangle {
 
             onClicked: {
                 if (checkLoginValidation())
-                    loginPageContext.tryLogin(userIDTextField.text, passwordTextField.text)
+                    mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
             }
         }
 

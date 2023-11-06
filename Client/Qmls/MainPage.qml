@@ -529,7 +529,7 @@ Rectangle {
                                     return
 
                                 // 서버로 채팅 내용 전송, 테스트 끝나면 밑 함수 주석 풀기
-                                // mainPageContext.trySendTextChat(currentRoomID, text)
+                                // mainContext.trySendTextChat(currentRoomID, text)
 
                                 // c++ 단에서 수행해야 함, 테스트 끝나면 밑 두줄 삭제 요망
                                 var chatTime = Qt.formatDateTime(new Date(), "yyyy-MM-dd hh:mm:ss.zzz")
