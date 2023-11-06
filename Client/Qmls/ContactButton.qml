@@ -76,11 +76,10 @@ Image {
 
                                 ColumnLayout {
                                     anchors.fill: parent
+                                    spacing: 0
 
                                     Text {
-                                        Layout.fillHeight: true
-                                        Layout.fillWidth: true
-                                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                                        Layout.alignment: Qt.AlignVCenter
                                         clip: true
                                         text: userName
                                     }
@@ -92,6 +91,20 @@ Image {
                             anchors.fill: parent
                             hoverEnabled: true
                         }
+                    }
+
+                    Component.onCompleted: {
+                        //contactModel.append({
+                        //    "userID": "tongstar",
+                        //    "userImageSource": "",
+                        //    "userName": "@tongstar"
+                        //})
+
+                        //contactModel.append({
+                        //    "userID": "yellowjam",
+                        //    "userImageSource": "",
+                        //    "userName": "@yellowjam"
+                        //})
                     }
                 }
 

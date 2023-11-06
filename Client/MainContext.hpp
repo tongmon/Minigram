@@ -26,6 +26,7 @@ class MainContext : public QObject
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
     Q_INVOKABLE void trySendTextChat(const QString &session_id, const QString &content);
     Q_INVOKABLE void initialChatRoomList();
+    Q_INVOKABLE void tryGetContactList();
 };
 
 #endif /* HEADER__FILE__MAINCONTEXT */

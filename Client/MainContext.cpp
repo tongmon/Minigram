@@ -103,6 +103,7 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
                 if (!session.get() || !session->IsValid())
                     return;
 
+                // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
                 QVariantMap qvm;
                 qvm.insert("sessionID", session_id);
                 qvm.insert("userID", m_user_id);
@@ -266,4 +267,14 @@ void MainContext::initialChatRoomList()
     });
 
     return;
+}
+
+Q_INVOKABLE void MainContext::tryGetContactList()
+{
+    auto &central_server = m_window.GetServerHandle();
+
+    int request_id = central_server.MakeRequestID();
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+
+    // 연락처 초기화 request 형식
 }
