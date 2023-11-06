@@ -204,7 +204,7 @@ Image {
                 }
 
                 ListView {
-                    id: contactView
+                    id: contactListView
                     Layout.fillWidth: true 
                     Layout.fillHeight: true
                     clip: true
