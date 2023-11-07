@@ -65,5 +65,6 @@ constexpr std::uint64_t LOGIN_CONNECTION_TYPE = 0;
 constexpr std::uint64_t TEXTCHAT_CONNECTION_TYPE = 1;
 constexpr std::uint64_t IMAGECHAT_CONNECTION_TYPE = 2;
 constexpr std::uint64_t CHATROOMLIST_INITIAL_TYPE = 3;
+constexpr std::uint64_t CONTACTLIST_INITIAL_TYPE = 4;
 
 #endif /* HEADER__FILE__NETWORKDEFINITION */

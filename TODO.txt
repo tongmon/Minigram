@@ -29,3 +29,6 @@
 7. 채팅방 taskbar에 알림 띄우기 (QApplication::alert(), QApplication::notify() 이용할 듯?)
 8. 채팅방 전환시 내용 긁어오기
 9. 채팅 기록 검색
+
+
+특정 c++ 구조체 qml로 넘길때  Q_DECLARE_METATYPE 사용

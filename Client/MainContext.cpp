@@ -135,7 +135,7 @@ void MainContext::initialChatRoomList()
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
     std::string request = m_user_id.toStdString(),
-                file_path = boost::dll::program_location().parent_path().string() + "/cache";
+                file_path = boost::dll::program_location().parent_path().string() + "/cache/sessions";
 
     boost::filesystem::directory_iterator root{file_path};
     while (root != boost::filesystem::directory_iterator{})
@@ -218,8 +218,7 @@ void MainContext::initialChatRoomList()
                         std::string_view base64_img = session_data["session_img"].as_string().c_str();
                         qvm.insert("sessionImage", base64_img.data());
 
-                        std::string img_bck_path = file_path + "/" + session_data["session_id"].as_string().c_str() + "/session_img_info.bck";
-                        std::ofstream img_bck(img_bck_path);
+                        std::ofstream img_bck(session_dir + "/session_img_info.bck");
                         if (img_bck.is_open())
                         {
                             std::string img_cache = session_data["session_img_date"].as_string().c_str();
@@ -231,8 +230,8 @@ void MainContext::initialChatRoomList()
                     // 캐시 해둔 세션 이미지를 사용할 때
                     else
                     {
-                        std::string base64_img, img_bck_path = file_path + "/" + session_data["session_id"].as_string().c_str() + "/session_img_info.bck";
-                        std::ifstream img_bck(img_bck_path);
+                        std::string base64_img;
+                        std::ifstream img_bck(session_dir + "/session_img_info.bck");
                         if (img_bck.is_open())
                         {
                             std::getline(img_bck, base64_img, '|');
@@ -276,5 +275,113 @@ Q_INVOKABLE void MainContext::tryGetContactList()
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    // 연락처 초기화 request 형식
+    std::string request = m_user_id.toStdString(),
+                file_path = boost::dll::program_location().parent_path().string() + "/cache/contact";
+
+    boost::filesystem::directory_iterator root{file_path};
+    while (root != boost::filesystem::directory_iterator{})
+    {
+        auto dir = *root;
+        std::string img_update_date;
+
+        boost::filesystem::directory_iterator child{dir.path()};
+        while (child != boost::filesystem::directory_iterator{})
+        {
+            auto file = *child;
+            if (file.path().filename() == "user_img_info.bck")
+            {
+                std::ifstream of(file.path().c_str());
+                if (of.is_open())
+                    std::getline(of, img_update_date, '|');
+                break;
+            }
+        }
+
+        request += "|" + dir.path().filename().string() + "/" + img_update_date;
+    }
+
+    TCPHeader header(CONTACTLIST_INITIAL_TYPE, request.size());
+    request = header.GetHeaderBuffer() + request;
+
+    central_server.AsyncWrite(request_id, request, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+            return;
+
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            TCPHeader header(session->GetResponse());
+
+            auto connection_type = header.GetConnectionType();
+            auto data_size = header.GetDataSize();
+
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse()));
+
+                boost::json::error_code ec;
+                boost::json::value json_data = boost::json::parse(json_txt, ec);
+                auto contact_arrray = json_data.as_object()["contact_init_data"].as_array();
+
+                for (int i = 0; i < contact_arrray.size(); i++)
+                {
+                    auto acquaintance_data = contact_arrray[i].as_object();
+
+                    QStringList qsl;
+                    qsl.push_back(acquaintance_data["user_id"].as_string().c_str());
+                    qsl.push_back(acquaintance_data["user_name"].as_string().c_str());
+
+                    std::string acquaintance_dir = file_path + "/" + acquaintance_data["user_id"].as_string().c_str();
+
+                    // 친구 user에 대한 캐시가 없으면 생성함
+                    if (!boost::filesystem::exists(acquaintance_dir))
+                    {
+                        boost::filesystem::create_directories(acquaintance_dir);
+                    }
+
+                    if (acquaintance_data["user_img_date"].as_string() == "absence")
+                    {
+                        qsl.push_back("");
+                    }
+                    else if (!acquaintance_data["user_img"].as_string().empty())
+                    {
+                        std::string_view base64_img = acquaintance_data["user_img"].as_string().c_str();
+                        qsl.push_back(base64_img.data());
+
+                        std::ofstream img_bck(acquaintance_dir + "/user_img_info.bck");
+                        if (img_bck.is_open())
+                        {
+                            std::string img_cache = acquaintance_data["user_img_date"].as_string().c_str();
+                            img_cache += "|";
+                            img_cache += base64_img.data();
+                            img_bck.write(img_cache.c_str(), img_cache.size());
+                        }
+                    }
+                    else
+                    {
+                        std::string base64_img;
+                        std::ifstream img_bck(acquaintance_dir + "/user_img_info.bck");
+                        if (img_bck.is_open())
+                        {
+                            std::getline(img_bck, base64_img, '|');
+                            base64_img.clear();
+                            std::getline(img_bck, base64_img);
+                        }
+                        qsl.push_back(base64_img.data());
+                    }
+
+                    qsl.push_back(acquaintance_data["user_info"].as_string().data());
+
+                    // 실제 채팅방 삽입하는 로직
+                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("contactButton"),
+                                              "addContact",
+                                              Q_ARG(QStringList, qsl));
+                }
+                central_server.CloseRequest(session->GetID());
+            });
+        });
+    });
 }

@@ -52,12 +52,12 @@ CREATE TABLE contact_tb
     PRIMARY KEY (user_id, acquaintance_id)
 )
 
-status: 친구 요청 상태, 친구 연결 상태 등을 다룸
+status: 친구 요청 상태, 친구 연결 상태 등을 다룸 / 0: 요청 보냄, 1: 친구, 2: 숨김, 3: 차단
 
-### chatroom_tb
+### session_tb
 설명: 채팅방 관련 테이블
 
-CREATE TABLE chatroom_tb
+CREATE TABLE session_tb
 (
     session_id		VARCHAR(65) NOT NULL,
 	session_nm		VARCHAR(255) NOT NULL,
@@ -78,13 +78,13 @@ CREATE TABLE participant_tb
 (
     session_id			VARCHAR(65) NOT NULL,
 	participant_id		VARCHAR(32) NOT NULL,
-	message_id			BIGINT,
+	message_id			BIGINT
 	CONSTRAINT fk_session_id FOREIGN KEY(session_id) REFERENCES chatroom_tb(session_id) ON DELETE CASCADE ON UPDATE CASCADE,
 	CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (session_id, participant_id)
 )
 
-message_id: participant가 가장 최근 읽은 메시지의 id
+message_id: participant가 가장 최근 읽은 메시지의 id, 채팅방 처음 들어오면 가장 최신 message_id로 설정
 
 ## MongoDB 컬렉션 생성
 
@@ -143,6 +143,23 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 	]
 }
 
+
+#### Contact Init
+연락처 목록 초기화시 서버에서 클라로 던져주는 json 데이터
+
+{
+	"contact_init_data": [
+		{
+			"user_id": "tongstar",
+			"user_name": "KyungJoonLee"
+			"user_img": "Base64 인코딩된 user 이미지",
+			"user_img_date": "YYYY-MM-DD hh:mm:ss.ms 로컬 user 이미지 파일이 최신인지 알기 위함"
+			"user_info": "어쩌구 저쩌구 블라블라"
+		},
+		...
+	]
+}
+
 ## Client Cache 구성
 
 클라이언트에 남는 캐시 파일은 대화에서 생성되는 미디어 정보로 구성된다.
@@ -151,13 +168,17 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 캐시 파일 구성은 밑과 같다.
 Minigram.exe
 cache
-	L session_id
-		L session_cache_info.dat 
-		  session_img_info.bck
-		  sender_id + '_' + send_date
+	L sessions
+		L session_id
+			L session_cache_info.dat 
+			L session_img_info.bck
+			L sender_id + '_' + send_date
+	L contact
+		L user_id
+			L user_img_info.bck
 			
 
-### session_img_info.bck 
+### session_img_info.bck, user_img_info.bck 
 이미지 갱신 날짜 + "|" + 이미지 base64 인코딩 정보
 
 ## 참고할 만한 글

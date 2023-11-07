@@ -114,7 +114,7 @@ void MessengerService::MessageHandling()
                                                basic::kvp("send_date", types::b_date{tp}),
                                                basic::kvp("content_type", "text"),
                                                basic::kvp("content", content),
-                                               basic::kvp("read_by", basic::make_array(basic::kvp("reader_id", sender_id)))));
+                                               basic::kvp("read_by", basic::make_array(basic::make_document(basic::kvp("reader_id", sender_id))))));
 
     // 채팅 내용 다른 사람에게 전송
     soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
@@ -179,7 +179,7 @@ void MessengerService::ChatRoomListInitHandling()
     std::unordered_map<std::string, std::string> session_cache;
 
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    std::string user_id = parsed[0]; // string_view로 속도 개선 가능
+    std::string user_id = parsed[0]; // string_view로 속도 개선 가능, soci에서 string_view로 하면 컴파일 오류 뜸
 
     for (int i = 1; i < parsed.size(); i++)
     {
@@ -214,7 +214,7 @@ void MessengerService::ChatRoomListInitHandling()
             continue;
         }
 
-        *m_sql << "select session_nm, session_info, img_path where session_id=:id",
+        *m_sql << "select session_nm, session_info, img_path from session_tb where session_id=:id",
             soci::into(session_nm), soci::into(session_info), soci::into(img_path), soci::use(session_id);
 
         session_data["session_id"] = session_id;
@@ -237,13 +237,14 @@ void MessengerService::ChatRoomListInitHandling()
         }
 
         int64_t msg_id;
-        *m_sql << "select message_id where participant_id=:pid and session_id=:sid",
+        *m_sql << "select message_id from participant_tb where participant_id=:pid and session_id=:sid",
             soci::into(msg_id), soci::use(user_id, "pid"), soci::use(session_id, "sid");
 
         auto mongo_coll = mongo_db[session_id + "_log"];
         session_data["unread_count"] = mongo_coll.count_documents(basic::make_document(basic::kvp("send_date",
                                                                                                   basic::make_document(basic::kvp("$gt",
                                                                                                                                   msg_id)))));
+
         auto opts = mongocxx::options::find{};
         opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
         auto mongo_cursor = mongo_coll.find({}, opts);
@@ -287,6 +288,139 @@ void MessengerService::ChatRoomListInitHandling()
 
                                  delete this;
                              });
+}
+
+// client send 형식
+// user_id | acq_id / YYYY-MM-DD hh:mm:ss.ms | acq_id / YYYY-MM-DD hh:mm:ss.ms ...
+// acq_id / YYYY-MM-DD hh:mm:ss.ms => 지인 user id / user 프로필 이미지 바뀐 시각
+void MessengerService::ContactListInitHandling()
+{
+    using namespace bsoncxx;
+    using namespace bsoncxx::builder;
+
+    std::vector<std::string> parsed;
+    std::unordered_map<std::string, std::string> contact_cache;
+
+    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    std::string user_id = parsed[0];
+
+    for (int i = 1; i < parsed.size(); i++)
+    {
+        std::vector<std::string> descendant;
+        boost::split(descendant, parsed[i], boost::is_any_of("/"));
+        contact_cache[descendant[0]] = descendant[1];
+    }
+
+    boost::json::array contact_array;
+
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id from contact_tb where user_id=:uid and status=1", soci::use(user_id));
+
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        boost::json::object acquaintance_data;
+
+        std::string acquaintance_id = it->get<std::string>(0),
+                    acquaintance_nm, acquaintance_info, img_path;
+
+        *m_sql << "select user_nm, user_info, img_path from user_tb where user_id=:uid",
+            soci::into(acquaintance_nm), soci::into(acquaintance_info), soci::into(img_path), soci::use(acquaintance_id);
+
+        acquaintance_data["user_id"] = acquaintance_id;
+        acquaintance_data["user_name"] = acquaintance_nm;
+        acquaintance_data["user_info"] = acquaintance_info;
+
+        boost::filesystem::path path = img_path;
+        if (!img_path.empty() && path.stem() > contact_cache[acquaintance_id])
+        {
+            int width, height, channels;
+            unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
+            std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
+            acquaintance_data["user_img"] = EncodeBase64(img_buffer);
+            acquaintance_data["user_img_date"] = path.stem().string();
+        }
+        else
+        {
+            acquaintance_data["user_img"] = "";
+            acquaintance_data["user_img_date"] = img_path.empty() ? "absence" : "";
+        }
+
+        contact_array.push_back(acquaintance_data);
+    }
+
+    boost::json::object contact_init_json;
+    contact_init_json["contact_init_data"] = contact_array;
+
+    // chatroom_init_json에 담긴 json을 client에 전송함
+    m_request = EncodeBase64(StrToUtf8(boost::json::serialize(contact_init_json)));
+
+    TCPHeader header(CONTACTLIST_INITIAL_TYPE, m_request.size());
+    m_request = header.GetHeaderBuffer() + m_request;
+
+    boost::asio::async_write(*m_sock,
+                             boost::asio::buffer(m_request),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
+}
+
+void MessengerService::StartHandling()
+{
+    boost::asio::async_read(*m_sock,
+                            m_client_request_buf.prepare(TCP_HEADER_SIZE),
+                            [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                if (ec != boost::system::errc::success)
+                                {
+                                    // 서버 처리가 비정상인 경우
+                                    delete this;
+                                    return;
+                                }
+
+                                m_client_request_buf.commit(bytes_transferred);
+                                std::istream strm(&m_client_request_buf);
+                                std::getline(strm, m_client_request);
+
+                                TCPHeader header(m_client_request);
+                                auto connection_type = header.GetConnectionType();
+                                auto data_size = header.GetDataSize();
+
+                                boost::asio::async_read(*m_sock,
+                                                        m_client_request_buf.prepare(data_size),
+                                                        [this, &connection_type](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                            if (ec != boost::system::errc::success)
+                                                            {
+                                                                // 서버 처리가 비정상인 경우
+                                                                delete this;
+                                                                return;
+                                                            }
+
+                                                            m_client_request_buf.commit(bytes_transferred);
+                                                            std::istream strm(&m_client_request_buf);
+                                                            std::getline(strm, m_client_request);
+
+                                                            switch (connection_type)
+                                                            {
+                                                            case LOGIN_CONNECTION_TYPE:
+                                                                LoginHandling();
+                                                                break;
+                                                            case TEXTCHAT_CONNECTION_TYPE:
+                                                                MessageHandling();
+                                                                break;
+                                                            case CHATROOMLIST_INITIAL_TYPE:
+                                                                ChatRoomListInitHandling();
+                                                                break;
+                                                            case CONTACTLIST_INITIAL_TYPE:
+                                                                ContactListInitHandling();
+                                                                break;
+                                                            default:
+                                                                break;
+                                                            }
+                                                        });
+                            });
 }
 
 // client send 형식
@@ -409,55 +543,3 @@ void MessengerService::ChatRoomListInitHandling()
                              });
 }
 */
-
-void MessengerService::StartHandling()
-{
-    boost::asio::async_read(*m_sock,
-                            m_client_request_buf.prepare(TCP_HEADER_SIZE),
-                            [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
-                                if (ec != boost::system::errc::success)
-                                {
-                                    // 서버 처리가 비정상인 경우
-                                    delete this;
-                                    return;
-                                }
-
-                                m_client_request_buf.commit(bytes_transferred);
-                                std::istream strm(&m_client_request_buf);
-                                std::getline(strm, m_client_request);
-
-                                TCPHeader header(m_client_request);
-                                auto connection_type = header.GetConnectionType();
-                                auto data_size = header.GetDataSize();
-
-                                boost::asio::async_read(*m_sock,
-                                                        m_client_request_buf.prepare(data_size),
-                                                        [this, &connection_type](const boost::system::error_code &ec, std::size_t bytes_transferred) {
-                                                            if (ec != boost::system::errc::success)
-                                                            {
-                                                                // 서버 처리가 비정상인 경우
-                                                                delete this;
-                                                                return;
-                                                            }
-
-                                                            m_client_request_buf.commit(bytes_transferred);
-                                                            std::istream strm(&m_client_request_buf);
-                                                            std::getline(strm, m_client_request);
-
-                                                            switch (connection_type)
-                                                            {
-                                                            case LOGIN_CONNECTION_TYPE:
-                                                                LoginHandling();
-                                                                break;
-                                                            case TEXTCHAT_CONNECTION_TYPE:
-                                                                MessageHandling();
-                                                                break;
-                                                            case CHATROOMLIST_INITIAL_TYPE:
-                                                                ChatRoomListInitHandling();
-                                                                break;
-                                                            default:
-                                                                break;
-                                                            }
-                                                        });
-                            });
-}

@@ -5,9 +5,20 @@ import QtQuick.Layouts 1.12
 
 Image {
     id: contactButton
+    objectName: "contactButton"
     height: parent.height
     width: height
     source: "qrc:/icon/UserID.png"
+
+    function addContact(ary)
+    {
+        contactModel.append({
+            "userID": ary[0],
+            "userName": ary[1],
+            "userImageSource": ary[2],
+            "userInfo": ary[3]
+        })
+    }
 
     Popup {
         id: contactPopup
