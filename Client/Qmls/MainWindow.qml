@@ -6,8 +6,6 @@ import QtQuick.Layouts 1.12
 ApplicationWindow {
     id: applicationWindow
     visible: true
-    x: 100
-    y: 100
     width: 1024
     height: 768
     minimumWidth: 400
@@ -26,6 +24,11 @@ ApplicationWindow {
         id: mainWindowLoader 
         anchors.fill: parent
         objectName: "mainWindowLoader"
-        source: "qrc:/qml/MainPage.qml"
+        source: "qrc:/qml/LoginPage.qml"
+    }
+
+    Component.onCompleted: {
+        x = Screen.width / 2 - width / 2
+        y = Screen.height / 2 - height / 2
     }
 }

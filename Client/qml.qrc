@@ -26,5 +26,6 @@
         <file alias="ContactButton.qml">Qmls/ContactButton.qml</file>
         <file alias="SessionAddButton.qml">Qmls/SessionAddButton.qml</file>
         <file alias="CustomImageButton.qml">Qmls/CustomImageButton.qml</file>
+        <file alias="CustomTextField.qml">Qmls/CustomTextField.qml</file>
     </qresource>
 </RCC>

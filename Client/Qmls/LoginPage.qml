@@ -7,6 +7,71 @@ Rectangle {
     color: "#280a3d"
     objectName: "loginPage"
 
+    Popup {
+        id: registerPopup
+        x: (applicationWindow.width - width) / 2
+        y: (applicationWindow.height - height) / 2
+        width: 400
+        height: 500
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        contentItem: Rectangle {
+            anchors.fill: parent
+            
+            ColumnLayout {
+                anchors.fill: parent
+
+                Text {
+                    text: "Create Account"
+                }
+
+                CustomTextField {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: registerPopup.height  * 0.1
+                    Layout.margins: 5
+
+                    radius: 5
+                    color: "#cccccc"
+                    placeholderText: "Put your id..."
+
+                    onReturnPressed: {
+                        
+                    }
+                }
+
+                CustomTextField {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: registerPopup.height  * 0.1
+                    Layout.margins: 5
+
+                    radius: 5
+                    color: "#cccccc"
+                    placeholderText: "Put your name..."
+
+                    onReturnPressed: {
+                        
+                    }
+                }
+
+                CustomTextField {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: registerPopup.height  * 0.1
+                    Layout.margins: 5
+
+                    radius: 5
+                    color: "#cccccc"
+                    placeholderText: "Put your password..."
+                    echoMode: TextField.Password // echoMode: showText ? TextField.Normal : TextField.Password
+                    passwordCharacter: "●"
+                    
+                    onReturnPressed: {
+                        
+                    }
+                }
+            }
+        }
+    }
+
     // 비밀번호, 아이디 유효성 검사
     function checkLoginValidation()
     {
@@ -155,7 +220,18 @@ Rectangle {
             Layout.preferredWidth: 275
 
             CheckBox {
-                text: qsTr("Remember")
+                anchors.left: parent.left 
+                text: "<font color=\"white\">Remember</font>"
+            }
+
+            Button {
+                id: registerButton
+                anchors.right: parent.right
+                text: "Register"
+
+                onClicked: {
+                    registerPopup.open()
+                }
             }
         }
 
