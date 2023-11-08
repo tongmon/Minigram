@@ -368,6 +368,42 @@ void MessengerService::ContactListInitHandling()
                              });
 }
 
+void MessengerService::RegisterUserHandling()
+{
+    std::vector<std::string> parsed;
+    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+
+    int cnt = 0;
+    std::string user_id = parsed[0], user_pw = parsed[1], user_name = parsed[2];
+
+    *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
+        soci::into(cnt), soci::use(user_id);
+
+    // 아이디 중복
+    if (cnt)
+        m_request = {1};
+    else
+    {
+        m_request = {0};
+        *m_sql << "insert into user_tb values(:uid, :unm, :uinfo, :upw, :uimgpath)",
+            soci::use(user_id), soci::use(user_name), soci::use(""), soci::use(user_pw), soci::use("");
+    }
+
+    TCPHeader header(USER_REGISTER_TYPE, m_request.size());
+    m_request = header.GetHeaderBuffer() + m_request;
+
+    boost::asio::async_write(*m_sock,
+                             boost::asio::buffer(m_request),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
+}
+
 void MessengerService::StartHandling()
 {
     boost::asio::async_read(*m_sock,
@@ -415,6 +451,9 @@ void MessengerService::StartHandling()
                                                                 break;
                                                             case CONTACTLIST_INITIAL_TYPE:
                                                                 ContactListInitHandling();
+                                                                break;
+                                                            case USER_REGISTER_TYPE:
+                                                                RegisterUserHandling();
                                                                 break;
                                                             default:
                                                                 break;

@@ -2,6 +2,7 @@
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
+import QtGraphicalEffects 1.0
 
 Rectangle {
     color: "#280a3d"
@@ -25,11 +26,40 @@ Rectangle {
                     text: "Create Account"
                 }
 
+                Image {
+                    Layout.preferredHeight: 50
+                    Layout.preferredWidth: height
+                    Layout.alignment: Qt.AlignHCenter
+                    id: registerImage
+                    source: "file:/C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png"
+                    fillMode: Image.PreserveAspectFit
+
+                    // img 동그랗게 만드는거 안됨
+                    //layer.enabled: true
+                    //layer.effect: OpacityMask {
+                    //    makeSource: Item {
+                    //        width: registerImage.width
+                    //        height: registerImage.height
+//
+                    //        Rectangle {
+                    //            anchors.centerIn: parent
+                    //            width: registerImage.width
+                    //            height: registerImage.height
+                    //            radius: Math.min(width, height)
+                    //        }
+                    //    }
+                    //}
+
+                    MouseArea {
+                        anchors.fill: parent
+                    }
+                }
+
                 CustomTextField {
                     Layout.fillWidth: true
                     Layout.preferredHeight: registerPopup.height  * 0.1
                     Layout.margins: 5
-
+                    id: registerIDField
                     radius: 5
                     color: "#cccccc"
                     placeholderText: "Put your id..."
@@ -43,7 +73,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: registerPopup.height  * 0.1
                     Layout.margins: 5
-
+                    id: registerNameField
                     radius: 5
                     color: "#cccccc"
                     placeholderText: "Put your name..."
@@ -57,18 +87,79 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.preferredHeight: registerPopup.height  * 0.1
                     Layout.margins: 5
-
+                    id: registerPasswordField
                     radius: 5
                     color: "#cccccc"
                     placeholderText: "Put your password..."
-                    echoMode: TextField.Password // echoMode: showText ? TextField.Normal : TextField.Password
+                    echoMode: TextField.Password
                     passwordCharacter: "●"
                     
                     onReturnPressed: {
                         
                     }
                 }
+
+                Button {
+                    text: "Sign Up"
+
+                    onClicked: {
+                        var qvm = ({})
+                        qvm["user_id"] = registerIDField.text
+                        qvm["user_pw"] = registerPasswordField.text
+                        qvm["user_name"] = registerNameField.text
+                        qvm["img_path"] = registerImage.source
+
+                        mainContext.trySignUp(qvm)
+                    }
+                }
             }
+        }
+    }
+
+    Popup {
+        id: registerSuccessPopup
+        x: (applicationWindow.width - width) / 2
+        y: (applicationWindow.height - height) / 2
+        width: 300
+        height: 300
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+        contentItem: Rectangle {
+            anchors.fill: parent
+            
+            ColumnLayout {
+                anchors.fill: parent    
+
+                Text {
+                    text: "Register Success!"
+                }    
+
+                Button {
+                    text: "Confirm"
+
+                    onClicked: {
+                        registerSuccessPopup.close()
+                    }
+                }
+            }
+        }
+    }
+
+    function manageRegisterResult(result)
+    {
+        switch(result) 
+        {
+        // 로그인 성공
+        case 0:
+            registerPopup.close()
+            registerSuccessPopup.open()
+            break;
+        case 1:
+            break;
+        case 2:
+            break;
+        default:
+            break;
         }
     }
 

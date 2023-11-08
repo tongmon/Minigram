@@ -11,6 +11,7 @@ Rectangle {
     property alias placeholderText: customTextField.placeholderText
     property alias echoMode: customTextField.echoMode
     property alias passwordCharacter: customTextField.passwordCharacter
+    property alias text: customTextField.text
 
     signal returnPressed
 

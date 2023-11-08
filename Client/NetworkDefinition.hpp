@@ -61,10 +61,21 @@ constexpr std::uint64_t SERVER_PORT = 4000;
 
 constexpr size_t TCP_HEADER_SIZE = sizeof(TCPHeader);
 
-constexpr std::uint64_t LOGIN_CONNECTION_TYPE = 0;
-constexpr std::uint64_t TEXTCHAT_CONNECTION_TYPE = 1;
-constexpr std::uint64_t IMAGECHAT_CONNECTION_TYPE = 2;
-constexpr std::uint64_t CHATROOMLIST_INITIAL_TYPE = 3;
-constexpr std::uint64_t CONTACTLIST_INITIAL_TYPE = 4;
+enum ConnectionType
+{
+    LOGIN_CONNECTION_TYPE = 0,
+    TEXTCHAT_CONNECTION_TYPE,
+    IMAGECHAT_CONNECTION_TYPE,
+    CHATROOMLIST_INITIAL_TYPE,
+    CONTACTLIST_INITIAL_TYPE,
+    USER_REGISTER_TYPE,
+    CONNECTION_TYPE_CNT
+};
+
+// constexpr std::uint64_t LOGIN_CONNECTION_TYPE = 0;
+// constexpr std::uint64_t TEXTCHAT_CONNECTION_TYPE = 1;
+// constexpr std::uint64_t IMAGECHAT_CONNECTION_TYPE = 2;
+// constexpr std::uint64_t CHATROOMLIST_INITIAL_TYPE = 3;
+// constexpr std::uint64_t CONTACTLIST_INITIAL_TYPE = 4;
 
 #endif /* HEADER__FILE__NETWORKDEFINITION */

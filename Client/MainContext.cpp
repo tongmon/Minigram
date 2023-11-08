@@ -4,6 +4,8 @@
 #include "Utility.hpp"
 #include "WinQuickWindow.hpp"
 
+#include <QBuffer>
+#include <QImage>
 #include <QMetaObject>
 
 #include <fstream>
@@ -381,6 +383,54 @@ Q_INVOKABLE void MainContext::tryGetContactList()
                                               Q_ARG(QStringList, qsl));
                 }
                 central_server.CloseRequest(session->GetID());
+            });
+        });
+    });
+}
+
+// 0: 로그인 성공, 1: ID 중복, 2: 서버 오류
+void MainContext::trySignUp(const QVariantMap &qvm)
+{
+    auto &central_server = m_window.GetServerHandle();
+
+    int request_id = central_server.MakeRequestID();
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+
+    std::string request = (qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString();
+    QString user_img_path = qvm["img_path"].toString();
+
+    TCPHeader header(USER_REGISTER_TYPE, request.size());
+    request = header.GetHeaderBuffer() + request;
+
+    central_server.AsyncWrite(request_id, request, [&central_server, &user_img_path, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+            return;
+
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &user_img_path, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            TCPHeader header(session->GetResponse());
+
+            auto connection_type = header.GetConnectionType();
+            auto data_size = header.GetDataSize();
+
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &user_img_path, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                std::string_view result = session->GetResponse();
+
+                // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
+                if (!session->GetResponse()[0])
+                {
+                    QBuffer buf;
+                    buf.open(QIODevice::WriteOnly);
+                    QImage img(user_img_path);
+                    img.save(&buf, "PNG");
+
+                    std::string img_base64 = buf.data().toBase64().toStdString();
+                }
             });
         });
     });

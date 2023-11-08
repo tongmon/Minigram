@@ -227,5 +227,7 @@ void TCPClient::Close()
 unsigned int TCPClient::MakeRequestID()
 {
     static unsigned int request_id = 0;
-    return request_id++ % USHRT_MAX;
+
+    request_id = request_id++ % USHRT_MAX;
+    return request_id;
 }

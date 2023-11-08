@@ -176,9 +176,11 @@ cache
 	L contact
 		L user_id
 			L user_img_info.bck
+	L user
+		L user_img_info.bck
 			
 
-### session_img_info.bck, user_img_info.bck 
+### session_img_info.bck, user_img_info.bck, user_img_info.bck
 이미지 갱신 날짜 + "|" + 이미지 base64 인코딩 정보
 
 ## 참고할 만한 글
