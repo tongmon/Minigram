@@ -32,3 +32,8 @@
 
 
 특정 c++ 구조체 qml로 넘길때  Q_DECLARE_METATYPE 사용
+
+Qt6에서는 QtGraphicalEffects를 qml에서 import할 수 없기에 Qt5Compat.GraphicalEffects로 대체해야됨
+import가 바뀌었기에 cmake 포함 모듈도 밑과 같이 바꿔야됨
+find_package(Qt6 COMPONENTS Core5Compat REQUIRED)
+target_link_libraries(mytarget PUBLIC Qt6::Core5Compat)

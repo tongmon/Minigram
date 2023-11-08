@@ -34,21 +34,22 @@ Rectangle {
                     source: "file:/C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png"
                     fillMode: Image.PreserveAspectFit
 
-                    // img 동그랗게 만드는거 안됨
-                    //layer.enabled: true
-                    //layer.effect: OpacityMask {
-                    //    makeSource: Item {
-                    //        width: registerImage.width
-                    //        height: registerImage.height
-//
-                    //        Rectangle {
-                    //            anchors.centerIn: parent
-                    //            width: registerImage.width
-                    //            height: registerImage.height
-                    //            radius: Math.min(width, height)
-                    //        }
-                    //    }
-                    //}
+                    property bool rounded: true
+                    property bool adapt: true
+
+                    layer.enabled: rounded
+                    layer.effect: OpacityMask {
+                        maskSource: Item {
+                            width: registerImage.width
+                            height: registerImage.height
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: registerImage.adapt ? registerImage.width : Math.min(registerImage.width, registerImage.height)
+                                height: registerImage.adapt ? registerImage.height : width
+                                radius: Math.min(width, height)
+                            }
+                        }
+                    }
 
                     MouseArea {
                         anchors.fill: parent
@@ -103,13 +104,12 @@ Rectangle {
                     text: "Sign Up"
 
                     onClicked: {
-                        var qvm = ({})
-                        qvm["user_id"] = registerIDField.text
-                        qvm["user_pw"] = registerPasswordField.text
-                        qvm["user_name"] = registerNameField.text
-                        qvm["img_path"] = registerImage.source
-
-                        mainContext.trySignUp(qvm)
+                        mainContext.trySignUp({
+                            "id": registerIDField.text,
+                            "pw": registerPasswordField.text,
+                            "name": registerNameField.text,
+                            "img_path": registerImage.source
+                        })
                     }
                 }
             }
@@ -305,10 +305,11 @@ Rectangle {
             Layout.fillWidth: true
         }
 
-        Row {
+        Rectangle {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredHeight: 35
             Layout.preferredWidth: 275
+            color: "transparent"
 
             CheckBox {
                 anchors.left: parent.left 

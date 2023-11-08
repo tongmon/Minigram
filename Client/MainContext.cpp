@@ -397,7 +397,10 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
     std::string request = (qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString();
-    QString user_img_path = qvm["img_path"].toString();
+
+    QString img_path = qvm["img_path"].toString(),
+            source_prefix = "file:///",
+            user_img_path = img_path.mid(img_path.indexOf(source_prefix) + source_prefix.length());
 
     TCPHeader header(USER_REGISTER_TYPE, request.size());
     request = header.GetHeaderBuffer() + request;
