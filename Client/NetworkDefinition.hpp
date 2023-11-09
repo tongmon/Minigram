@@ -72,9 +72,9 @@ enum ConnectionType
     CONNECTION_TYPE_CNT
 };
 
-enum RegisterResult
+enum AccountRegisterResult
 {
-    REGISTER_SUCCESS = 0,
+    REGISTER_SUCCESS = 1,
     ID_DUPLICATION,
     SERVER_CONNECTION_FAIL
 };

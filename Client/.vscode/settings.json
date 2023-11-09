@@ -108,6 +108,7 @@
         "qqmlapplicationengine": "cpp",
         "qobject": "cpp",
         "qmetaobject": "cpp",
-        "qqmlcomponent": "cpp"
+        "qqmlcomponent": "cpp",
+        "qquickwindow": "cpp"
     }
 }

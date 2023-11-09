@@ -29,7 +29,7 @@
 7. 채팅방 taskbar에 알림 띄우기 (QApplication::alert(), QApplication::notify() 이용할 듯?)
 8. 채팅방 전환시 내용 긁어오기
 9. 채팅 기록 검색
-
+10. layout들 중 필요한건 splitterview로 변경할 것
 
 특정 c++ 구조체 qml로 넘길때  Q_DECLARE_METATYPE 사용
 
@@ -37,3 +37,7 @@ Qt6에서는 QtGraphicalEffects를 qml에서 import할 수 없기에 Qt5Compat.G
 import가 바뀌었기에 cmake 포함 모듈도 밑과 같이 바꿔야됨
 find_package(Qt6 COMPONENTS Core5Compat REQUIRED)
 target_link_libraries(mytarget PUBLIC Qt6::Core5Compat)
+
+
+c++로 특정 모델 만들고 qml과 연동하기
+https://stackoverflow.com/questions/48534529/how-to-populate-listview-with-qstringlist

@@ -25,9 +25,11 @@ class MainContext : public QObject
 
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
     Q_INVOKABLE void trySendTextChat(const QString &session_id, const QString &content);
-    Q_INVOKABLE void initialChatRoomList();
+    Q_INVOKABLE void initializeChatRoomList();
     Q_INVOKABLE void tryGetContactList();
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);
+    // Q_INVOKABLE void tryAddSession();
+    Q_INVOKABLE QStringList executeFileDialog(const QString &init_dir, const QString &filter, int max_file_cnt) const;
 };
 
 #endif /* HEADER__FILE__MAINCONTEXT */

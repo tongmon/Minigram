@@ -2,9 +2,11 @@
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
+import QtGraphicalEffects 1.12
 
 Image {
     id: sessionAddButton
+    objectName: "sessionAddButton"
     height: parent.height
     width: height
     source: "qrc:/icon/UserID.png"
@@ -42,6 +44,12 @@ Image {
                             imageSource: "qrc:/icon/UserID.png"
                             bgColor: "transparent"
                             imageColor: "transparent"
+                            rounded: true
+
+                            onClicked: {
+                                var selected_files = mainContext.executeFileDialog(".", "Image File(*.png)\0*.png\0", 1);
+                                imageSource = "file:///" + selected_files[0]
+                            }
                         }
 
                         Rectangle {
@@ -117,8 +125,10 @@ Image {
                             text: "Next"
 
                             onClicked: {
-                                sessionAddButton.groupName = groupNameTextField.text
-                                contactChoicePopup.open()
+                                if (groupNameTextField.text.length > 0) {
+                                    sessionAddButton.groupName = groupNameTextField.text
+                                    contactChoicePopup.open()
+                                }
                             }
                         }                      
                     }

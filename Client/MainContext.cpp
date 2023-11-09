@@ -5,6 +5,7 @@
 #include "WinQuickWindow.hpp"
 
 #include <QBuffer>
+#include <QFileDialog>
 #include <QImage>
 #include <QMetaObject>
 
@@ -15,6 +16,8 @@
 #include <boost/dll.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/json.hpp>
+
+#include <commdlg.h>
 
 MainContext::MainContext(WinQuickWindow &window)
     : m_window{window}
@@ -130,7 +133,7 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
 }
 
 // 채팅방 초기화 로직
-void MainContext::initialChatRoomList()
+void MainContext::initializeChatRoomList()
 {
     auto &central_server = m_window.GetServerHandle();
 
@@ -474,4 +477,48 @@ void MainContext::trySignUp(const QVariantMap &qvm)
             });
         });
     });
+}
+
+// Only for Windows
+Q_INVOKABLE QStringList MainContext::executeFileDialog(const QString &init_dir, const QString &filter, int max_file_cnt) const
+{
+    QStringList ret;
+    int size = max_file_cnt * 256;
+
+    auto file_name = std::make_unique<wchar_t[]>(size);
+    file_name[0] = 0;
+
+    std::wstring wfilter = filter.toStdWString(),
+                 winit_dir = init_dir.toStdWString();
+
+    OPENFILENAMEW ofn;
+    std::memset(&ofn, 0, sizeof(OPENFILENAMEW));
+    ofn.lStructSize = sizeof(OPENFILENAMEW);
+    ofn.hwndOwner = m_window.GetHandle();
+    ofn.lpstrFilter = wfilter.c_str();
+    ofn.lpstrFile = file_name.get();
+    ofn.nMaxFile = size;
+    ofn.lpstrInitialDir = winit_dir.c_str();
+    ofn.Flags = OFN_EXPLORER | (max_file_cnt == 1 ? 0 : OFN_ALLOWMULTISELECT);
+
+    if (GetOpenFileNameW(&ofn))
+    {
+        if (max_file_cnt == 1)
+            ret.push_back(QString::fromWCharArray(ofn.lpstrFile));
+        else
+        {
+            wchar_t *file_pt = ofn.lpstrFile;
+            std::wstring target_dir = file_pt;
+            file_pt += (target_dir.length() + 1);
+
+            while (*file_pt)
+            {
+                std::wstring target_file = file_pt;
+                file_pt += (target_file.length() + 1);
+                ret.push_back(QString::fromStdWString(target_dir + L"\\" + target_file));
+            }
+        }
+    }
+
+    return ret;
 }
