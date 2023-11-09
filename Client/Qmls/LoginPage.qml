@@ -149,14 +149,14 @@ Rectangle {
     {
         switch(result) 
         {
-        // 로그인 성공
-        case 0:
+        // 가입 성공
+        case 1:
             registerPopup.close()
             registerSuccessPopup.open()
             break;
-        case 1:
-            break;
         case 2:
+            break;
+        case 3:
             break;
         default:
             break;

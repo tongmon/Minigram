@@ -65,15 +65,6 @@ bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
     m_main_context = std::make_unique<MainContext>(*this);
     engine.rootContext()->setContextProperty("mainContext", m_main_context.get());
 
-    //// qml에 loginPageContext 객체를 등록하기 위해 사전에 m_context_properties 등록
-    // m_context_properties["loginPageContext"] = std::make_unique<LoginPageContext>(this);
-    //
-    //// qml에 mainPageContext 객체를 등록하기 위해 사전에 m_context_properties 등록
-    // m_context_properties["mainPageContext"] = std::make_unique<MainPageContext>(this);
-    //
-    // for (const auto &prop : m_context_properties)
-    //    engine.rootContext()->setContextProperty(prop.first.c_str(), prop.second.get());
-
     m_central_server = std::make_shared<TCPClient>(2);
     m_local_server = std::make_unique<TCPServer>(*this, 0, 2);
 

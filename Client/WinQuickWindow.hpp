@@ -22,7 +22,6 @@ class WinQuickWindow : public QObject, public QAbstractNativeEventFilter
     QQuickWindow *m_quick_window;
     HWND m_hwnd;
     int m_resize_border_width;
-    // std::map<std::string, std::unique_ptr<QObject>> m_context_properties;
 
     std::unique_ptr<MainContext> m_main_context;
 
@@ -51,17 +50,6 @@ class WinQuickWindow : public QObject, public QAbstractNativeEventFilter
     Q_INVOKABLE void onMinimizeButtonClicked();
     Q_INVOKABLE void onMaximizeButtonClicked();
     Q_INVOKABLE void onCloseButtonClicked();
-
-    // template <typename T>
-    // T GetContextProperty()
-    //{
-    //     if (std::is_same_v<T, MainPageContext *>)
-    //         return reinterpret_cast<T>(m_context_properties["mainPageContext"].get());
-    //     else if (std::is_same_v<T, LoginPageContext *>)
-    //         return reinterpret_cast<T>(m_context_properties["loginPageContext"].get());
-    //
-    //     return reinterpret_cast<T>(nullptr);
-    // }
 };
 
 #endif /* HEADER__FILE__WINQUICKWINDOW */

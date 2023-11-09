@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 
+#include <boost/algorithm/string.hpp>
 #include <boost/dll.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/json.hpp>
@@ -388,7 +389,7 @@ Q_INVOKABLE void MainContext::tryGetContactList()
     });
 }
 
-// 0: 로그인 성공, 1: ID 중복, 2: 서버 오류
+// 1: 로그인 성공, 2: ID 중복, 3: 서버 오류
 void MainContext::trySignUp(const QVariantMap &qvm)
 {
     auto &central_server = m_window.GetServerHandle();
@@ -396,44 +397,80 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = (qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString();
+    std::string request = (qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString(),
+                img_base64;
 
-    QString img_path = qvm["img_path"].toString(),
-            source_prefix = "file:///",
-            user_img_path = img_path.mid(img_path.indexOf(source_prefix) + source_prefix.length());
+    if (!qvm["img_path"].toString().isEmpty())
+    {
+        QString img_path = qvm["img_path"].toString(),
+                source_prefix = "file:///",
+                user_img_path = img_path.mid(img_path.indexOf(source_prefix) + source_prefix.length());
+
+        QBuffer buf;
+        buf.open(QIODevice::WriteOnly);
+        QImage img(user_img_path);
+        img.save(&buf, "PNG");
+        img_base64 = buf.data().toBase64().toStdString();
+    }
+
+    request += ("|" + img_base64);
 
     TCPHeader header(USER_REGISTER_TYPE, request.size());
     request = header.GetHeaderBuffer() + request;
 
-    central_server.AsyncWrite(request_id, request, [&central_server, &user_img_path, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id, request, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
+        {
+            QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
+                                      "manageRegisterResult",
+                                      Q_ARG(int, SERVER_CONNECTION_FAIL));
             return;
+        }
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &user_img_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
+            {
+                QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
+                                          "manageRegisterResult",
+                                          Q_ARG(int, SERVER_CONNECTION_FAIL));
                 return;
+            }
 
             TCPHeader header(session->GetResponse());
 
             auto connection_type = header.GetConnectionType();
             auto data_size = header.GetDataSize();
 
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &user_img_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
+                {
+                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
+                                              "manageRegisterResult",
+                                              Q_ARG(int, SERVER_CONNECTION_FAIL));
                     return;
+                }
 
-                std::string_view result = session->GetResponse();
+                std::vector<std::string> parsed;
+                boost::split(parsed, session->GetResponse(), boost::is_any_of("|"));
+                std::string_view register_date = parsed.size() > 1 ? parsed[0] : "";
+                int result = parsed[0][0];
 
                 // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
-                if (!session->GetResponse()[0])
+                if (result == REGISTER_SUCCESS)
                 {
-                    QBuffer buf;
-                    buf.open(QIODevice::WriteOnly);
-                    QImage img(user_img_path);
-                    img.save(&buf, "PNG");
+                    std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/user";
+                    boost::filesystem::create_directories(user_cache_path);
 
-                    std::string img_base64 = buf.data().toBase64().toStdString();
+                    std::ofstream img_file(user_cache_path + "/user_img_info.bck");
+                    if (img_file.is_open())
+                        img_file.write(img_base64.c_str(), img_base64.size());
                 }
+
+                QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
+                                          "manageRegisterResult",
+                                          Q_ARG(int, result));
+
+                central_server.CloseRequest(session->GetID());
             });
         });
     });

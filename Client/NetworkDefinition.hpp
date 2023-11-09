@@ -72,6 +72,13 @@ enum ConnectionType
     CONNECTION_TYPE_CNT
 };
 
+enum RegisterResult
+{
+    REGISTER_SUCCESS = 0,
+    ID_DUPLICATION,
+    SERVER_CONNECTION_FAIL
+};
+
 // constexpr std::uint64_t LOGIN_CONNECTION_TYPE = 0;
 // constexpr std::uint64_t TEXTCHAT_CONNECTION_TYPE = 1;
 // constexpr std::uint64_t IMAGECHAT_CONNECTION_TYPE = 2;

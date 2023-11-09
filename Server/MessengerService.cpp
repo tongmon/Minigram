@@ -374,19 +374,35 @@ void MessengerService::RegisterUserHandling()
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
 
     int cnt = 0;
-    std::string user_id = parsed[0], user_pw = parsed[1], user_name = parsed[2];
+    std::string user_id = parsed[0], user_pw = parsed[1], user_name = parsed[2], user_img = parsed.size() > 3 ? parsed[3] : "";
 
     *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
         soci::into(cnt), soci::use(user_id);
 
     // 아이디 중복
     if (cnt)
-        m_request = {1};
+        m_request = {2};
     else
     {
-        m_request = {0};
+        std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
+        std::string img_path, cur_date = std::format("{0:%F %T}", tp);
+
+        m_request = {1};
+        m_request = "|" + cur_date;
+
+        if (!user_img.empty())
+        {
+            img_path = boost::dll::program_location().parent_path().string() + "/users/" + user_id + "/profile_img";
+            boost::filesystem::create_directories(img_path);
+
+            img_path += ("/" + cur_date + ".txt");
+            std::ofstream img_file(img_path);
+            if (img_file.is_open())
+                img_file.write(user_img.c_str(), user_img.size());
+        }
+
         *m_sql << "insert into user_tb values(:uid, :unm, :uinfo, :upw, :uimgpath)",
-            soci::use(user_id), soci::use(user_name), soci::use(""), soci::use(user_pw), soci::use("");
+            soci::use(user_id), soci::use(user_name), soci::use("register_date:" + cur_date + "|"), soci::use(user_pw), soci::use(img_path);
     }
 
     TCPHeader header(USER_REGISTER_TYPE, m_request.size());

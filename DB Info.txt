@@ -183,6 +183,18 @@ cache
 ### session_img_info.bck, user_img_info.bck, user_img_info.bck
 이미지 갱신 날짜 + "|" + 이미지 base64 인코딩 정보
 
+
+## Server Cache 구성
+MinigramServer.exe
+	L users
+		L user_id
+			L profile_img
+				L 날짜.png
+	L sessions
+		L session_id
+			L session_img
+				L 날짜.png
+
 ## 참고할 만한 글
 https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/
 http://tsfkb.wikidot.com/tips:android:cache

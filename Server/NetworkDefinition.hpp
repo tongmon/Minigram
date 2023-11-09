@@ -72,4 +72,11 @@ enum ConnectionType
     CONNECTION_TYPE_CNT
 };
 
+enum AccountRegisterResult
+{
+    REGISTER_SUCCESS = 1,
+    ID_DUPLICATION,
+    SERVER_CONNECTION_FAIL
+};
+
 #endif /* HEADER__FILE__NETWORKDEFINITION */
