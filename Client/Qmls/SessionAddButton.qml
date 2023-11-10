@@ -2,7 +2,7 @@
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
-import QtGraphicalEffects 1.12
+import QtGraphicalEffects 1.15
 
 Image {
     id: sessionAddButton
@@ -19,7 +19,7 @@ Image {
         y: (applicationWindow.height - height) / 2 - sessionAddButton.y
         width: 500
         height: 300
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
         contentItem: Rectangle {
             anchors.fill: parent
@@ -41,14 +41,14 @@ Image {
                             Layout.alignment: Qt.AlignVCenter
                             Layout.preferredWidth: groupNameDecisionPopup.width * 0.25
                             Layout.preferredHeight: width
-                            imageSource: "qrc:/icon/UserID.png"
-                            bgColor: "transparent"
-                            imageColor: "transparent"
+                            source: "file:/C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png" // "qrc:/icon/UserID.png"
+                            overlayColor: Qt.rgba(100, 100, 100, hovered ? 0.7 : 0)
                             rounded: true
 
                             onClicked: {
                                 var selected_files = mainContext.executeFileDialog(".", "Image File(*.png)\0*.png\0", 1);
-                                imageSource = "file:///" + selected_files[0]
+                                if(selected_files.length)
+                                    source = "file:///" + selected_files[0]
                             }
                         }
 

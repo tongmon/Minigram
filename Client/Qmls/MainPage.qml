@@ -367,14 +367,15 @@ Rectangle {
                                                 verticalCenter: parent.verticalCenter
                                             }
                                             checkable : true
-                                            imageSource: "qrc:/icon/UserID.png"
-                                            bgColor: "transparent"
-                                            imageColor: notifyToggleButton.down ? "#666666" : (notifyToggleButton.checked ? "#000000" : "#cccccc")
-
+                                            source: "qrc:/icon/UserID.png"
+                                            overlayColor: notifyToggleButton.down ? "#666666" : 
+                                                                                    (notifyToggleButton.checked ? "#000000" : "#cccccc")
+                                            
                                             onClicked: {
                                                 
                                             }
                                         }
+
                                         CustomImageButton {
                                             id: sessionFavoriteButton
                                             height: etcMenuItem.implicitHeight - 5
@@ -384,14 +385,15 @@ Rectangle {
                                                 verticalCenter: parent.verticalCenter
                                             }
                                             checkable : true
-                                            imageSource: "qrc:/icon/UserID.png"
-                                            bgColor: "transparent"
-                                            imageColor: sessionFavoriteButton.down ? "#666666" : (sessionFavoriteButton.checked ? "#000000" : "#cccccc")
-
+                                            source: "qrc:/icon/UserID.png"
+                                            overlayColor: sessionFavoriteButton.down ? "#666666" : 
+                                                                                       (sessionFavoriteButton.checked ? "#000000" : "#cccccc")
+                                            
                                             onClicked: {
                                                 
                                             }
                                         }
+
                                         CustomImageButton {
                                             id: sessionLeaveButton
                                             height: etcMenuItem.implicitHeight - 5
@@ -401,14 +403,68 @@ Rectangle {
                                                 rightMargin: 5
                                                 verticalCenter: parent.verticalCenter
                                             }
-                                            imageSource: "qrc:/icon/UserID.png"
-                                            bgColor: "transparent"
-                                            imageColor: sessionLeaveButton.hovered ? "#666666" : "transparent"
-
+                                            source: "qrc:/icon/UserID.png"
+                                            overlayColor: sessionLeaveButton.hovered ? "#666666" : "transparent"
+                                            
                                             onClicked: {
                                                 
                                             }
                                         }
+
+                                        //CustomImageButton {
+                                        //    id: notifyToggleButton
+                                        //    height: etcMenuItem.implicitHeight - 5
+                                        //    width: height
+                                        //    anchors {
+                                        //        left: parent.left
+                                        //        leftMargin: 5
+                                        //        verticalCenter: parent.verticalCenter
+                                        //    }
+                                        //    checkable : true
+                                        //    imageSource: "qrc:/icon/UserID.png"
+                                        //    bgColor: "transparent"
+                                        //    imageColor: notifyToggleButton.down ? "#666666" : (notifyToggleButton.checked ? "#000000" : "#cccccc")
+//
+                                        //    onClicked: {
+                                        //        
+                                        //    }
+                                        //}
+
+                                        //CustomImageButton {
+                                        //    id: sessionFavoriteButton
+                                        //    height: etcMenuItem.implicitHeight - 5
+                                        //    width: height
+                                        //    anchors {
+                                        //        left: notifyToggleButton.right
+                                        //        verticalCenter: parent.verticalCenter
+                                        //    }
+                                        //    checkable : true
+                                        //    imageSource: "qrc:/icon/UserID.png"
+                                        //    bgColor: "transparent"
+                                        //    imageColor: sessionFavoriteButton.down ? "#666666" : (sessionFavoriteButton.checked ? "#000000" : "#cccccc")
+//
+                                        //    onClicked: {
+                                        //        
+                                        //    }
+                                        //}
+
+                                        //CustomImageButton {
+                                        //    id: sessionLeaveButton
+                                        //    height: etcMenuItem.implicitHeight - 5
+                                        //    width: height
+                                        //    anchors {
+                                        //        right: parent.right
+                                        //        rightMargin: 5
+                                        //        verticalCenter: parent.verticalCenter
+                                        //    }
+                                        //    imageSource: "qrc:/icon/UserID.png"
+                                        //    bgColor: "transparent"
+                                        //    imageColor: sessionLeaveButton.hovered ? "#666666" : "transparent"
+//
+                                        //    onClicked: {
+                                        //        
+                                        //    }
+                                        //}
                                     }
                                     background: Rectangle {
                                         anchors.fill: parent
