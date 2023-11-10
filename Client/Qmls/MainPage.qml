@@ -2,7 +2,7 @@
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
-import QtGraphicalEffects 1.12
+import QtGraphicalEffects 1.15
 
 Rectangle {
     id: mainPage
@@ -410,61 +410,6 @@ Rectangle {
                                                 
                                             }
                                         }
-
-                                        //CustomImageButton {
-                                        //    id: notifyToggleButton
-                                        //    height: etcMenuItem.implicitHeight - 5
-                                        //    width: height
-                                        //    anchors {
-                                        //        left: parent.left
-                                        //        leftMargin: 5
-                                        //        verticalCenter: parent.verticalCenter
-                                        //    }
-                                        //    checkable : true
-                                        //    imageSource: "qrc:/icon/UserID.png"
-                                        //    bgColor: "transparent"
-                                        //    imageColor: notifyToggleButton.down ? "#666666" : (notifyToggleButton.checked ? "#000000" : "#cccccc")
-//
-                                        //    onClicked: {
-                                        //        
-                                        //    }
-                                        //}
-
-                                        //CustomImageButton {
-                                        //    id: sessionFavoriteButton
-                                        //    height: etcMenuItem.implicitHeight - 5
-                                        //    width: height
-                                        //    anchors {
-                                        //        left: notifyToggleButton.right
-                                        //        verticalCenter: parent.verticalCenter
-                                        //    }
-                                        //    checkable : true
-                                        //    imageSource: "qrc:/icon/UserID.png"
-                                        //    bgColor: "transparent"
-                                        //    imageColor: sessionFavoriteButton.down ? "#666666" : (sessionFavoriteButton.checked ? "#000000" : "#cccccc")
-//
-                                        //    onClicked: {
-                                        //        
-                                        //    }
-                                        //}
-
-                                        //CustomImageButton {
-                                        //    id: sessionLeaveButton
-                                        //    height: etcMenuItem.implicitHeight - 5
-                                        //    width: height
-                                        //    anchors {
-                                        //        right: parent.right
-                                        //        rightMargin: 5
-                                        //        verticalCenter: parent.verticalCenter
-                                        //    }
-                                        //    imageSource: "qrc:/icon/UserID.png"
-                                        //    bgColor: "transparent"
-                                        //    imageColor: sessionLeaveButton.hovered ? "#666666" : "transparent"
-//
-                                        //    onClicked: {
-                                        //        
-                                        //    }
-                                        //}
                                     }
                                     background: Rectangle {
                                         anchors.fill: parent

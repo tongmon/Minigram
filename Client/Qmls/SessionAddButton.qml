@@ -12,6 +12,7 @@ Image {
     source: "qrc:/icon/UserID.png"
 
     property string groupName: ""
+    property var addedPerson: ({})
     
     Popup {
         id: groupNameDecisionPopup
@@ -19,7 +20,7 @@ Image {
         y: (applicationWindow.height - height) / 2 - sessionAddButton.y
         width: 500
         height: 300
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
 
         contentItem: Rectangle {
             anchors.fill: parent
@@ -41,7 +42,7 @@ Image {
                             Layout.alignment: Qt.AlignVCenter
                             Layout.preferredWidth: groupNameDecisionPopup.width * 0.25
                             Layout.preferredHeight: width
-                            source: "file:/C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png" // "qrc:/icon/UserID.png"
+                            source: "qrc:/icon/UserID.png"
                             overlayColor: Qt.rgba(100, 100, 100, hovered ? 0.7 : 0)
                             rounded: true
 
@@ -158,10 +159,11 @@ Image {
                 
                 ListView {
                     id: selectedPersonView
-                    Layout.fillWidth: true     
-                    Layout.preferredHeight: contactChoicePopup.height * 0.15
-                    orientation: ListView.Horizontal 
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50
+                    orientation: ListView.Horizontal
                     clip: true
+                    visible: selectedPersonModel.count ? true : false
                     
                     ScrollBar.horizontal: ScrollBar {
                         policy: ScrollBar.AsNeeded
@@ -172,12 +174,60 @@ Image {
                     }
 
                     delegate: Rectangle {
+                        id: selectedPerson
                         height: parent.height
                         width: 100
                         objectName: userID
                         color: "#B240F5"
 
                         property int selectedPersonIndex: index
+
+                        RowLayout {
+                            anchors.fill: parent
+                            spacing: 0
+
+                            Image {
+                                id: userImage
+                                Layout.preferredHeight: selectedPerson.height * 0.8
+                                Layout.preferredWidth: height
+                                source: userImageSource
+                                fillMode: Image.PreserveAspectFit
+
+                                layer {
+                                    enabled: true
+                                    effect: OpacityMask {
+                                        maskSource: Item {
+                                            width: userImage.width
+                                            height: userImage.height
+                                            Rectangle {
+                                                anchors.centerIn: parent
+                                                width: userImage.width
+                                                height: userImage.height
+                                                radius: Math.min(width, height)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Text {
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
+                                id: userNameText
+                                text: selectedPerson.objectName
+                            }
+
+                            Button {
+                                Layout.preferredHeight: selectedPerson.height * 0.8
+                                Layout.preferredWidth: height
+                                text: "Del"
+
+                                onClicked: {
+                                    delete addedPerson[selectedPerson.objectName];
+                                    selectedPersonModel.remove(selectedPerson.selectedPersonIndex)
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -214,7 +264,7 @@ Image {
                 }
 
                 ListView {
-                    id: contactListView
+                    id: userListView
                     Layout.fillWidth: true 
                     Layout.fillHeight: true
                     clip: true
@@ -224,16 +274,93 @@ Image {
                     }
 
                     model: ListModel {
-                        id: contactModel
+                        id: userModel
                     }
 
                     delegate: Rectangle {
+                        id: userInfo
                         height: 100
                         width: parent.width
                         objectName: userID
                         color: "#B240F5"
 
                         property int personIndex: index
+
+                        RowLayout {
+                            anchors.fill: parent
+                            spacing: 0
+
+                            Image {
+                                id: userImage
+                                Layout.alignment: Qt.AlignVCenter 
+                                Layout.preferredHeight: userInfo.height * 0.8
+                                Layout.preferredWidth: height
+                                source: userImageSource
+                                fillMode: Image.PreserveAspectFit
+
+                                layer {
+                                    enabled: true
+                                    effect: OpacityMask {
+                                        maskSource: Item {
+                                            width: userImage.width
+                                            height: userImage.height
+
+                                            Rectangle {
+                                                anchors.centerIn: parent
+                                                width: userImage.width
+                                                height: userImage.height
+                                                radius: Math.min(width, height)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Item {
+                                Layout.fillHeight: true
+                                Layout.fillWidth: true
+                                
+                                ColumnLayout {
+                                    anchors.fill: parent
+
+                                    Text {
+                                        text: userName
+                                    }
+                                    Text {
+                                        text: userInfo.objectName
+                                    }
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+
+                            onClicked: {
+                                if(!addedPerson.hasOwnProperty(userInfo.objectName)) {
+                                    selectedPersonModel.append({
+                                        "userID": userInfo.objectName,
+                                        "userImageSource": userImageSource
+                                    })
+                                    addedPerson[userInfo.objectName] = true
+                                }
+                            }
+                        }
+                    }
+
+                    Component.onCompleted: {
+                        userModel.append({
+                            "userID": "tongstar",
+                            "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+                            "userName": "KyungJoonLee"
+                        })
+
+                        userModel.append({
+                            "userID": "yellowjam",
+                            "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+                            "userName": "SukYeonLee"
+                        })
                     }
                 }
 
