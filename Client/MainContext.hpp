@@ -28,8 +28,8 @@ class MainContext : public QObject
     Q_INVOKABLE void initializeChatRoomList();
     Q_INVOKABLE void tryGetContactList();
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);
-    // Q_INVOKABLE void tryAddSession();
-    Q_INVOKABLE QStringList executeFileDialog(const QString &init_dir, const QString &filter, int max_file_cnt) const;
+    Q_INVOKABLE void tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids);
+    Q_INVOKABLE QStringList executeFileDialog(const QVariantMap &qvm) const;
 };
 
 #endif /* HEADER__FILE__MAINCONTEXT */

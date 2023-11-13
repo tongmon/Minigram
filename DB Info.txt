@@ -67,7 +67,7 @@ CREATE TABLE session_tb
     PRIMARY KEY (session_id)
 )
 
-session_id 제약: 생성자 ID + '-' + 세션 생성일 + '-' + 생성일 기준 생성 순서 6자리
+session_id 제약: 생성자 ID + '-' + 세션 생성일
 ex) tongstar-20231023-000001 / tongstar 사용자가 2023/10/23에 첫번째로 만든 채팅방이라는 정보가 담김
 
 
@@ -170,9 +170,7 @@ Minigram.exe
 cache
 	L sessions
 		L session_id
-			L session_cache_info.dat 
 			L session_img_info.bck
-			L sender_id + '_' + send_date
 	L contact
 		L user_id
 			L user_img_info.bck
@@ -189,11 +187,11 @@ MinigramServer.exe
 	L users
 		L user_id
 			L profile_img
-				L 날짜.png
+				L 날짜.txt
 	L sessions
 		L session_id
 			L session_img
-				L 날짜.png
+				L 날짜.txt
 
 ## 참고할 만한 글
 https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/

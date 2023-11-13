@@ -47,7 +47,12 @@ Image {
                             rounded: true
 
                             onClicked: {
-                                var selected_files = mainContext.executeFileDialog(".", "Image File(*.png)\0*.png\0", 1);
+                                var selected_files = mainContext.executeFileDialog({
+                                    "title": "Selete profile image",
+                                    "init_dir": ".",
+                                    "filter": "Image File(*.png)\0*.png\0",
+                                    "max_file_cnt": 1
+                                })
                                 if(selected_files.length)
                                     source = "file:///" + selected_files[0]
                             }
@@ -131,7 +136,7 @@ Image {
                                     contactChoicePopup.open()
                                 }
                             }
-                        }                      
+                        }
                     }
                 }
             }
@@ -139,6 +144,7 @@ Image {
 
         onClosed: {
             groupNameTextField.text = ""
+            sessionImageSelectButton.source = "qrc:/icon/UserID.png"
         }
     }
 
@@ -349,18 +355,9 @@ Image {
                         }
                     }
 
+                    // 테스트 코드
                     Component.onCompleted: {
-                        userModel.append({
-                            "userID": "tongstar",
-                            "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                            "userName": "KyungJoonLee"
-                        })
-
-                        userModel.append({
-                            "userID": "yellowjam",
-                            "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                            "userName": "SukYeonLee"
-                        })
+                        
                     }
                 }
 
@@ -390,6 +387,20 @@ Image {
                             text: "Confirm"
 
                             onClicked: {
+                                var img_path = sessionImageSelectButton.source.toString()
+                                switch (img_path[0])
+                                {
+                                // 파일 선택한 경우
+                                case 'f':
+                                    img_path = decodeURIComponent(img_path.replace(/^(file:\/{3})/,""));
+                                    break
+                                // qrc, http 등... 유저가 세션 이미지를 따로 선택하지 않은 경우
+                                default:
+                                    img_path = ""
+                                    break
+                                }
+
+                                mainContext.tryAddSession(groupName, img_path, Object.keys(addedPerson))
                                 groupNameDecisionPopup.close()
                                 contactChoicePopup.close()
                             }
@@ -399,8 +410,26 @@ Image {
             }
         }
 
+        // 테스트 코드
+        onOpened: {
+            userModel.append({
+                "userID": "tongstar",
+                "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+                "userName": "KyungJoonLee"
+            })
+            
+            userModel.append({
+                "userID": "yellowjam",
+                "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+                "userName": "SukYeonLee"
+            })        
+        }
+
         onClosed: {
             userNameSearchField.text = ""
+            addedPerson = ({})
+            selectedPersonModel.clear()
+            userModel.clear()
         }
     }
 

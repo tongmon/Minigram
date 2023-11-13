@@ -5,11 +5,11 @@
 #include "WinQuickWindow.hpp"
 
 #include <QBuffer>
-#include <QFileDialog>
 #include <QImage>
 #include <QMetaObject>
 
 #include <fstream>
+#include <regex>
 #include <sstream>
 
 #include <boost/algorithm/string.hpp>
@@ -274,7 +274,7 @@ void MainContext::initializeChatRoomList()
     return;
 }
 
-Q_INVOKABLE void MainContext::tryGetContactList()
+void MainContext::tryGetContactList()
 {
     auto &central_server = m_window.GetServerHandle();
 
@@ -392,7 +392,7 @@ Q_INVOKABLE void MainContext::tryGetContactList()
     });
 }
 
-// 1: 로그인 성공, 2: ID 중복, 3: 서버 오류
+// 1: 가입 성공, 2: ID 중복, 3: 서버 오류
 void MainContext::trySignUp(const QVariantMap &qvm)
 {
     auto &central_server = m_window.GetServerHandle();
@@ -405,13 +405,9 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
     if (!qvm["img_path"].toString().isEmpty())
     {
-        QString img_path = qvm["img_path"].toString(),
-                source_prefix = "file:///",
-                user_img_path = img_path.mid(img_path.indexOf(source_prefix) + source_prefix.length());
-
         QBuffer buf;
         buf.open(QIODevice::WriteOnly);
-        QImage img(user_img_path);
+        QImage img(qvm["img_path"].toString());
         img.save(&buf, "PNG");
         img_base64 = buf.data().toBase64().toStdString();
     }
@@ -455,7 +451,6 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
                 std::vector<std::string> parsed;
                 boost::split(parsed, session->GetResponse(), boost::is_any_of("|"));
-                std::string_view register_date = parsed.size() > 1 ? parsed[0] : "";
                 int result = parsed[0][0];
 
                 // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
@@ -464,6 +459,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/user";
                     boost::filesystem::create_directories(user_cache_path);
 
+                    img_base64 = parsed[1] + "|" + img_base64;
                     std::ofstream img_file(user_cache_path + "/user_img_info.bck");
                     if (img_file.is_open())
                         img_file.write(img_base64.c_str(), img_base64.size());
@@ -479,17 +475,83 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     });
 }
 
+void MainContext::tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids)
+{
+    auto &central_server = m_window.GetServerHandle();
+
+    int request_id = central_server.MakeRequestID();
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+
+    std::string request = (m_user_id + "|" + session_name + "|").toStdString(),
+                img_base64 = "null";
+
+    if (!img_path.isEmpty())
+    {
+        QBuffer buf;
+        buf.open(QIODevice::WriteOnly);
+        QImage img(img_path);
+        img.save(&buf, "PNG");
+        img_base64 = buf.data().toBase64().toStdString();
+        request += (img_base64 + "|");
+    }
+
+    for (int i = 0; i < participant_ids.size(); i++)
+        request += (participant_ids[0] + "|").toStdString();
+    request.pop_back();
+
+    TCPHeader header(USER_REGISTER_TYPE, request.size());
+    request = header.GetHeaderBuffer() + request;
+
+    central_server.AsyncWrite(request_id, request, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+            return;
+
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            TCPHeader header(session->GetResponse());
+
+            auto connection_type = header.GetConnectionType();
+            auto data_size = header.GetDataSize();
+
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                const std::string &response = session->GetResponse();
+
+                std::string session_cache_path = boost::dll::program_location().parent_path().string() + "/sessions/" + response;
+                boost::filesystem::create_directories(session_cache_path);
+
+                if (img_base64 != "null")
+                {
+                    std::smatch match;
+                    std::regex_search(response, match, std::regex("_"));
+                    img_base64 = match.suffix().str() + "|" + img_base64;
+
+                    std::ofstream img_file(session_cache_path + "/session_img_info.bck");
+                    if (img_file.is_open())
+                        img_file.write(img_base64.c_str(), img_base64.size());
+                }
+                
+                central_server.CloseRequest(session->GetID());
+            });
+        });
+    });
+}
+
 // Only for Windows
-Q_INVOKABLE QStringList MainContext::executeFileDialog(const QString &init_dir, const QString &filter, int max_file_cnt) const
+QStringList MainContext::executeFileDialog(const QVariantMap &qvm) const
 {
     QStringList ret;
-    int size = max_file_cnt * 256;
+    int max_cnt = qvm["max_file_cnt"].toInt(), size = max_cnt * 256;
 
     auto file_name = std::make_unique<wchar_t[]>(size);
     file_name[0] = 0;
 
-    std::wstring wfilter = filter.toStdWString(),
-                 winit_dir = init_dir.toStdWString();
+    std::wstring wfilter = qvm["filter"].toString().toStdWString(),
+                 winit_dir = qvm["init_dir"].toString().toStdWString();
 
     OPENFILENAMEW ofn;
     std::memset(&ofn, 0, sizeof(OPENFILENAMEW));
@@ -497,13 +559,14 @@ Q_INVOKABLE QStringList MainContext::executeFileDialog(const QString &init_dir, 
     ofn.hwndOwner = m_window.GetHandle();
     ofn.lpstrFilter = wfilter.c_str();
     ofn.lpstrFile = file_name.get();
+    ofn.lpstrTitle = qvm["title"].toString().toStdWString().c_str();
     ofn.nMaxFile = size;
     ofn.lpstrInitialDir = winit_dir.c_str();
-    ofn.Flags = OFN_EXPLORER | (max_file_cnt == 1 ? 0 : OFN_ALLOWMULTISELECT);
+    ofn.Flags = OFN_EXPLORER | (max_cnt == 1 ? 0 : OFN_ALLOWMULTISELECT);
 
     if (GetOpenFileNameW(&ofn))
     {
-        if (max_file_cnt == 1)
+        if (max_cnt == 1)
             ret.push_back(QString::fromWCharArray(ofn.lpstrFile));
         else
         {

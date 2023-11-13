@@ -104,11 +104,22 @@ Rectangle {
                     text: "Sign Up"
 
                     onClicked: {
+                        img_path = registerImage.source.toString()
+                        switch () 
+                        {
+                        case 'f':
+                            img_path = decodeURIComponent(img_path.replace(/^(file:\/{3})/,""));
+                            break
+                        default:
+                            img_path = ""
+                            break
+                        }
+                        
                         mainContext.trySignUp({
                             "id": registerIDField.text,
                             "pw": registerPasswordField.text,
                             "name": registerNameField.text,
-                            "img_path": registerImage.source
+                            "img_path": img_path
                         })
                     }
                 }
@@ -153,13 +164,13 @@ Rectangle {
         case 1:
             registerPopup.close()
             registerSuccessPopup.open()
-            break;
+            break
         case 2:
-            break;
+            break
         case 3:
-            break;
+            break
         default:
-            break;
+            break
         }
     }
 

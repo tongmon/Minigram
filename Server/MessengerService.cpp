@@ -420,6 +420,69 @@ void MessengerService::RegisterUserHandling()
                              });
 }
 
+// client send 형식
+// user_id | session_name | session_img_base64 | participant_id 01 | participant_id 02
+void MessengerService::SessionAddHandling()
+{
+    std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
+
+    std::vector<std::string> parsed;
+    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+
+    const std::string &null_str = "",
+                      &user_id = parsed[0],
+                      &session_name = parsed[1],
+                      &session_img = parsed[2],
+                      &cur_date = std::format("{0:%F %T}", tp),
+                      &session_id = user_id + "-" + cur_date;
+
+    std::string img_path = boost::dll::program_location().parent_path().string() + "/sessions/" + session_id + "/session_img";
+
+    // 세션 이미지 경로 생성
+    boost::filesystem::create_directories(img_path);
+
+    if (session_img != "null")
+    {
+        img_path += ("/" + cur_date + ".txt");
+        std::ofstream img_file(img_path);
+        if (img_file.is_open())
+            img_file.write(session_img.c_str(), session_img.size());
+    }
+    else
+        img_path = "";
+
+    *m_sql << "insert into session_tb values(:sid, :sname, :sinfo, :simgpath)",
+        soci::use(session_id), soci::use(session_name), soci::use(null_str), soci::use(img_path);
+
+    for (int i = 3; i < parsed.size(); i++)
+    {
+        *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
+            soci::use(session_id), soci::use(parsed[i]), soci::use(-1);
+    }
+
+    *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
+        soci::use(session_id), soci::use(user_id), soci::use(-1);
+
+    // mongo db 컬렉션 생성
+    auto mongo_client = MongoDBPool::Get().acquire();
+    auto mongo_db = (*mongo_client)["Minigram"];
+    mongo_db.create_collection(session_id + "_log");
+
+    TCPHeader header(USER_REGISTER_TYPE, session_id.size());
+    m_request = header.GetHeaderBuffer() + session_id;
+
+    boost::asio::async_write(*m_sock,
+                             boost::asio::buffer(m_request),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
+}
+
 void MessengerService::StartHandling()
 {
     boost::asio::async_read(*m_sock,
@@ -470,6 +533,9 @@ void MessengerService::StartHandling()
                                                                 break;
                                                             case USER_REGISTER_TYPE:
                                                                 RegisterUserHandling();
+                                                                break;
+                                                            case SESSION_ADD_TYPE:
+                                                                SessionAddHandling();
                                                                 break;
                                                             default:
                                                                 break;
