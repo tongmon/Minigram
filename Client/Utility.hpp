@@ -3,7 +3,9 @@
 
 #include <Windows.h>
 #include <algorithm>
+#include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 inline std::wstring StrToWStr(const std::string &str)
@@ -195,6 +197,49 @@ inline std::string DecodeURL(const std::string &str)
         }
     }
     return result;
+}
+
+// 정렬된 데이터 넘겨야 작동함
+template <typename OrderedWStrings>
+inline std::vector<std::wstring> GetFilteredData(const std::wstring &target, const OrderedWStrings &data)
+{
+    std::vector<std::wstring> ret;
+    auto lower = std::lower_bound(data.begin(), data.end(), target);
+    for (auto iter = lower; iter != data.end(); iter++)
+    {
+        std::wstring_view searched = *iter;
+
+        if (target.size() > searched.size())
+            break;
+        for (int i = 0; i < target.size(); i++)
+        {
+            if (target[i] != searched[i])
+                return ret;
+        }
+        ret.emplace_back(searched);
+    }
+    return ret;
+}
+
+template <typename V, template <typename...> class R>
+inline std::vector<std::wstring> GetFilteredData(const std::wstring &target, const R<std::wstring, V> &data)
+{
+    std::vector<std::wstring> ret;
+    auto lower = data.lower_bound(target);
+    for (auto iter = lower; iter != data.end(); iter++)
+    {
+        std::wstring_view searched = iter->first;
+
+        if (target.size() > searched.size())
+            break;
+        for (int i = 0; i < target.size(); i++)
+        {
+            if (target[i] != searched[i])
+                return ret;
+        }
+        ret.emplace_back(searched);
+    }
+    return ret;
 }
 
 #endif /* HEADER__FILE__UTILITY */

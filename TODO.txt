@@ -41,3 +41,20 @@ target_link_libraries(mytarget PUBLIC Qt6::Core5Compat)
 
 c++로 특정 모델 만들고 qml과 연동하기
 https://stackoverflow.com/questions/48534529/how-to-populate-listview-with-qstringlist
+https://makersweb.net/qt/14619
+
+
+
+
+텔레그램은 한글이 한글자 완성된 후에 찾을 수 있음(커서 기준)
+
+
+단어 자동 완성, 리스트뷰 filter에 관한 글들
+https://stackoverflow.com/questions/28499676/how-to-search-for-and-select-items-from-a-qlistview
+
+QSortFilterProxyModel -> listview search, filter 기능
+https://kunalmaemo.blogspot.com/2013/04/creating-qml-listview-with-search.html
+https://www.youtube.com/watch?v=6oQuxhDsv20&ab_channel=KunalParmar -> demo from listview filter
+
+한글자 칠 때마다 검색 내용 동적으로 변하는 거 -> incremental search, find as you type(FAYT), spell checker, dfs/bfs/trie
+https://ialy1595.github.io/post/korean-incremental-search/

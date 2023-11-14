@@ -392,6 +392,10 @@ void MainContext::tryGetContactList()
     });
 }
 
+void MainContext::tryAddContact(const QString &user_id)
+{
+}
+
 // 1: 가입 성공, 2: ID 중복, 3: 서버 오류
 void MainContext::trySignUp(const QVariantMap &qvm)
 {
@@ -534,7 +538,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                     if (img_file.is_open())
                         img_file.write(img_base64.c_str(), img_base64.size());
                 }
-                
+
                 central_server.CloseRequest(session->GetID());
             });
         });

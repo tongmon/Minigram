@@ -260,9 +260,14 @@ Image {
                                 color: "transparent"
                             }
 
+                            onTextChanged: {
+                                
+                            }
+
                             Keys.onReturnPressed: {
                             
                             }
+
                             Component.onCompleted: {
                             }
                         }
@@ -281,6 +286,10 @@ Image {
 
                     model: ListModel {
                         id: userModel
+
+                        Component.onCompleted: {
+                            
+                        }
                     }
 
                     delegate: Rectangle {
