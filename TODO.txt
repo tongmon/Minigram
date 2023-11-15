@@ -2,7 +2,7 @@
 
 ## DB
 
-1. 연락처
+1. 연락처 - 완료
 
 ## Server
 
@@ -58,3 +58,5 @@ https://www.youtube.com/watch?v=6oQuxhDsv20&ab_channel=KunalParmar -> demo from 
 
 한글자 칠 때마다 검색 내용 동적으로 변하는 거 -> incremental search, find as you type(FAYT), spell checker, dfs/bfs/trie
 https://ialy1595.github.io/post/korean-incremental-search/
+
+
