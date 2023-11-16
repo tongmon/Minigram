@@ -4,7 +4,7 @@
 #include <QAbstractListModel>
 #include <QMetaType>
 
-#include <string>
+#include <map>
 
 struct Contact
 {
@@ -37,8 +37,12 @@ class ContactModel : public QAbstractListModel
         INFO_ROLE
     };
     Q_OBJECT
+    Q_PROPERTY(QString orderBy MEMBER m_order_by NOTIFY orderByChanged) // MEMBER m_order_by
 
     QList<Contact> m_contacts;
+    std::map<std::wstring, Contact *> m_contact_id_filter;
+    std::map<std::wstring, Contact *> m_contact_name_filter;
+    QString m_order_by;
 
   public:
     ContactModel(QObject *parent = nullptr);
@@ -46,6 +50,11 @@ class ContactModel : public QAbstractListModel
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
+
+    Q_INVOKABLE void append(const Contact &contact);
+
+  signals:
+    void orderByChanged();
 };
 
 #endif /* HEADER__FILE__CONTACTMODEL */

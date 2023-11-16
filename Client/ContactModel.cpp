@@ -3,6 +3,7 @@
 ContactModel::ContactModel(QObject *parent)
     : QAbstractListModel(parent)
 {
+    m_order_by = "name";
 }
 
 int ContactModel::rowCount(const QModelIndex &parent) const
@@ -40,4 +41,34 @@ QHash<int, QByteArray> ContactModel::roleNames() const
     roles[IMG_ROLE] = "img";
     roles[INFO_ROLE] = "info";
     return roles;
+}
+
+Q_INVOKABLE void ContactModel::append(const Contact &contact)
+{
+    if (m_order_by == "name")
+    {
+    }
+    else if (m_order_by == "id")
+    {
+    }
+    else
+    {
+        m_contacts.append(contact);
+    }
+}
+
+void ContactModel::orderByChanged()
+{
+    if (m_order_by == "name")
+    {
+        std::sort(m_contacts.begin(), m_contacts.end(), [](const Contact &con1, const Contact &con2) -> bool {
+            return con1.user_name < con2.user_name;
+        });
+    }
+    else if (m_order_by == "id")
+    {
+        std::sort(m_contacts.begin(), m_contacts.end(), [](const Contact &con1, const Contact &con2) -> bool {
+            return con1.user_id < con2.user_id;
+        });
+    }
 }
