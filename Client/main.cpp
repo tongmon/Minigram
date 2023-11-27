@@ -1,4 +1,5 @@
-﻿#include "WinQuickWindow.hpp"
+﻿#include "ContactModel.hpp"
+#include "WinQuickWindow.hpp"
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -17,6 +18,10 @@ int main(int argc, char *argv[])
     QSurfaceFormat::setDefaultFormat(format);
 
     QGuiApplication app(argc, argv);
+
+#pragma region Register cpp type in qml
+    qmlRegisterType<ContactModel>("com.minigram.contactmodel", 1, 0, "ContactModel");
+#pragma endregion
 
     // 이 시점에 native event filter를 적용해주는 것이 중요하다.
     // QQuickWindow가 생성된 이후에 native event filter가 적용되면 윈도우를 frameless로 만들기 어렵다.

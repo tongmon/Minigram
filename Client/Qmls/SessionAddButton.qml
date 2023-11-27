@@ -3,6 +3,7 @@ import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 import QtGraphicalEffects 1.15
+import com.minigram.contactmodel 1.0
 
 Image {
     id: sessionAddButton
@@ -284,19 +285,16 @@ Image {
                         policy: ScrollBar.AsNeeded
                     }
 
-                    model: ListModel {
+                    model: ContactModel {
                         id: userModel
-
-                        Component.onCompleted: {
-                            
-                        }
+                        orderBy: "name"
                     }
 
                     delegate: Rectangle {
-                        id: userInfo
+                        id: userData
                         height: 100
                         width: parent.width
-                        objectName: userID
+                        objectName: userId
                         color: "#B240F5"
 
                         property int personIndex: index
@@ -306,9 +304,9 @@ Image {
                             spacing: 0
 
                             Image {
-                                id: userImage
+                                id: userImg
                                 Layout.alignment: Qt.AlignVCenter 
-                                Layout.preferredHeight: userInfo.height * 0.8
+                                Layout.preferredHeight: userData.height * 0.8
                                 Layout.preferredWidth: height
                                 source: userImageSource
                                 fillMode: Image.PreserveAspectFit
@@ -342,7 +340,7 @@ Image {
                                         text: userName
                                     }
                                     Text {
-                                        text: userInfo.objectName
+                                        text: userData.objectName
                                     }
                                 }
                             }
@@ -421,16 +419,30 @@ Image {
 
         // 테스트 코드
         onOpened: {
+            // userModel.append({
+            //     "userID": "tongstar",
+            //     "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+            //     "userName": "KyungJoonLee"
+            // })
+            // 
+            // userModel.append({
+            //     "userID": "yellowjam",
+            //     "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+            //     "userName": "SukYeonLee"
+            // })        
+
             userModel.append({
-                "userID": "tongstar",
-                "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                "userName": "KyungJoonLee"
+                "userId": "tongstar",
+                "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+                "userName": "KyungJoonLee",
+                "userInfo": ""
             })
-            
+
             userModel.append({
-                "userID": "yellowjam",
-                "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                "userName": "SukYeonLee"
+                "userId": "yellowjam",
+                "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+                "userName": "SukYeonLee",
+                "userInfo": ""
             })        
         }
 
