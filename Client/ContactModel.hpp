@@ -41,19 +41,20 @@ class ContactModel : public QAbstractListModel
     Q_OBJECT
     Q_PROPERTY(QString orderBy MEMBER m_order_by NOTIFY orderByChanged)
 
-    QList<Contact> m_contacts;
+    QList<Contact *> m_contacts;
     std::map<std::wstring, Contact *> m_contact_id_filter;
     std::map<std::wstring, Contact *> m_contact_name_filter;
     QString m_order_by;
 
   public:
     ContactModel(QObject *parent = nullptr);
+    ~ContactModel();
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
 
-    Q_INVOKABLE void append(Contact *contact);
+    Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void clear();
 
   signals:

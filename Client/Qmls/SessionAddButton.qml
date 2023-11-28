@@ -304,11 +304,11 @@ Image {
                             spacing: 0
 
                             Image {
-                                id: userImg
+                                id: userImage
                                 Layout.alignment: Qt.AlignVCenter 
                                 Layout.preferredHeight: userData.height * 0.8
                                 Layout.preferredWidth: height
-                                source: userImageSource
+                                source: userImg
                                 fillMode: Image.PreserveAspectFit
 
                                 layer {
@@ -359,6 +359,10 @@ Image {
                                     addedPerson[userInfo.objectName] = true
                                 }
                             }
+                        }
+
+                        Component.onCompleted: {
+                            // console.log("Created!")
                         }
                     }
 

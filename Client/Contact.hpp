@@ -20,12 +20,10 @@ class Contact : public QObject
     QString user_img; // base64 png
     QString user_info;
 
-    Contact(QObject *parent = nullptr);
-
-    Contact(const QString &id,
-            const QString &name,
-            const QString &base64_img,
-            const QString &info,
+    Contact(const QString &id = "",
+            const QString &name = "",
+            const QString &base64_img = "",
+            const QString &info = "",
             QObject *parent = nullptr);
 
     ~Contact();
