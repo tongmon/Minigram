@@ -3,12 +3,12 @@
 ContactModel::ContactModel(QObject *parent)
     : QAbstractListModel(parent)
 {
-    m_order_by = "name";
+    // m_order_by = "name";
     // sort_filter.setSourceModel(this);
     // sort_filter.setSortRole(NAME_ROLE);
     // sort_filter.setDynamicSortFilter(false);
 
-    QObject::connect(this, &ContactModel::orderByChanged, this, &ContactModel::ProcessOrderBy);
+    // QObject::connect(this, &ContactModel::orderByChanged, this, &ContactModel::ProcessOrderBy);
 }
 
 ContactModel::~ContactModel()
@@ -62,9 +62,9 @@ void ContactModel::append(const QVariantMap &qvm)
                                    qvm["userInfo"].toString(),
                                    this);
 
-    beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    // beginInsertRows(QModelIndex(), rowCount(), rowCount());
     m_contacts.append(contact);
-    endInsertRows();
+    // endInsertRows();
 
     // if (m_order_by == "name")
     // {
@@ -84,6 +84,7 @@ void ContactModel::clear()
     m_contacts.clear();
 }
 
+/*
 void ContactModel::ProcessOrderBy()
 {
     if (m_order_by == "name")
@@ -101,3 +102,4 @@ void ContactModel::ProcessOrderBy()
         //  });
     }
 }
+*/

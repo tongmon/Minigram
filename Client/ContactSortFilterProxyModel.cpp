@@ -1,21 +1,28 @@
-﻿#include "QuickSortFilterProxyModel.hpp"
+﻿#include "ContactSortFilterProxyModel.hpp"
 #include "Contact.hpp"
 
-QuickSortFilterProxyModel::QuickSortFilterProxyModel(QObject *parent)
+ContactSortFilterProxyModel::ContactSortFilterProxyModel(QObject *parent)
     : QSortFilterProxyModel(parent)
 {
-    QObject::connect(this, &QuickSortFilterProxyModel::sourceModelChanged, this, &QuickSortFilterProxyModel::ProcessSourceModel);
+    QObject::connect(this, &ContactSortFilterProxyModel::sourceModelChanged, this, &ContactSortFilterProxyModel::ProcessSourceModel);
     // QObject::connect(this, &QuickSortFilterProxyModel::filterCaseOptionChanged, this, &QuickSortFilterProxyModel::ProcessFilterCaseOption);
     // QObject::connect(this, &QuickSortFilterProxyModel::filterRegexChanged, this, &QuickSortFilterProxyModel::ProcessFilterRegex);
     // QObject::connect(this, &QuickSortFilterProxyModel::sortLocaleAwarenessChanged, this, &QuickSortFilterProxyModel::ProcessSortLocaleAwareness);
     // QObject::connect(this, &QuickSortFilterProxyModel::sortCaseOptionChanged, this, &QuickSortFilterProxyModel::ProcessSortCaseOption);
 }
 
-QuickSortFilterProxyModel::~QuickSortFilterProxyModel()
+ContactSortFilterProxyModel::~ContactSortFilterProxyModel()
 {
 }
 
-void QuickSortFilterProxyModel::ProcessSourceModel()
+void ContactSortFilterProxyModel::append(const QVariantMap &qvm)
+{
+    beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    m_source_model->append(qvm);
+    endInsertRows();
+}
+
+void ContactSortFilterProxyModel::ProcessSourceModel()
 {
     setSourceModel(m_source_model);
 }

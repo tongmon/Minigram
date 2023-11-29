@@ -3,7 +3,7 @@ import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 import QtGraphicalEffects 1.15
-import com.minigram.contactmodel 1.0
+import minigram.contact.component 1.0
 
 Image {
     id: sessionAddButton
@@ -275,6 +275,10 @@ Image {
                     }
                 }
 
+                ContactModel {
+                    id: contactModel
+                }
+
                 ListView {
                     id: userListView
                     Layout.fillWidth: true 
@@ -285,9 +289,11 @@ Image {
                         policy: ScrollBar.AsNeeded
                     }
 
-                    model: ContactModel {
-                        id: userModel
-                        orderBy: "name"
+                    model: ContactSortFilterProxyModel {
+                        id: contactSortFilterProxyModel
+                        sourceModel: contactModel
+                        dynamicSortFilter: true
+                        sortRole: 258
                     }
 
                     delegate: Rectangle {
@@ -435,21 +441,21 @@ Image {
             //     "userName": "SukYeonLee"
             // })        
 
-            userModel.append({
+            contactSortFilterProxyModel.append({
                 "userId": "tongstar",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
                 "userName": "zzz", // "KyungJoonLee",
                 "userInfo": ""
             })
 
-            userModel.append({
+            contactSortFilterProxyModel.append({
                 "userId": "yellowjam",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
                 "userName": "bbb", // "SukYeonLee",
                 "userInfo": ""
             }) 
 
-            userModel.append({
+            contactSortFilterProxyModel.append({
                 "userId": "zebra",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
                 "userName": "kkk", // "Zebra King",

@@ -1,15 +1,17 @@
-﻿#ifndef HEADER__FILE__QUICKSORTFILTERPROXYMODEL
-#define HEADER__FILE__QUICKSORTFILTERPROXYMODEL
+﻿#ifndef HEADER__FILE__CONTACTSORTFILTERPROXYMODEL
+#define HEADER__FILE__CONTACTSORTFILTERPROXYMODEL
+
+#include "ContactModel.hpp"
 
 #include <QMetaType>
 #include <QSortFilterProxyModel>
 
 #include <memory>
 
-class QuickSortFilterProxyModel : public QSortFilterProxyModel
+class ContactSortFilterProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT
-    Q_PROPERTY(QAbstractItemModel *sourceModel MEMBER m_source_model NOTIFY sourceModelChanged)
+    Q_PROPERTY(ContactModel *sourceModel MEMBER m_source_model NOTIFY sourceModelChanged)
     // Q_PROPERTY(bool dynamicSortFilter READ dynamicSortFilter WRITE setDynamicSortFilter NOTIFY dynamicSortFilterChanged)
     // Q_PROPERTY(int filterCaseOption MEMBER m_filter_case_option NOTIFY filterCaseOptionChanged)
     // Q_PROPERTY(int filterKeyColumn READ filterKeyColumn WRITE setFilterKeyColumn NOTIFY filterKeyColumnChanged)
@@ -20,14 +22,16 @@ class QuickSortFilterProxyModel : public QSortFilterProxyModel
     // Q_PROPERTY(int sortCaseOption MEMBER m_sort_case_option NOTIFY sortCaseOptionChanged)
     // Q_PROPERTY(int sortRole READ sortRole WRITE setSortRole NOTIFY sortRoleChanged)
 
-    QAbstractItemModel *m_source_model;
+    ContactModel *m_source_model;
     // int m_filter_case_option;
     // int m_sort_case_option;
     // QString m_filter_regex;
 
   public:
-    QuickSortFilterProxyModel(QObject *parent = nullptr);
-    ~QuickSortFilterProxyModel();
+    ContactSortFilterProxyModel(QObject *parent = nullptr);
+    ~ContactSortFilterProxyModel();
+
+    Q_INVOKABLE void append(const QVariantMap &qvm);
 
   signals:
     void sourceModelChanged();
@@ -46,4 +50,4 @@ class QuickSortFilterProxyModel : public QSortFilterProxyModel
     // void ProcessSortCaseOption();
 };
 
-#endif /* HEADER__FILE__QUICKSORTFILTERPROXYMODEL */
+#endif /* HEADER__FILE__CONTACTSORTFILTERPROXYMODEL */
