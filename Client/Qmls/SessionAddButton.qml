@@ -438,16 +438,23 @@ Image {
             userModel.append({
                 "userId": "tongstar",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                "userName": "KyungJoonLee",
+                "userName": "zzz", // "KyungJoonLee",
                 "userInfo": ""
             })
 
             userModel.append({
                 "userId": "yellowjam",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                "userName": "SukYeonLee",
+                "userName": "bbb", // "SukYeonLee",
                 "userInfo": ""
-            })        
+            }) 
+
+            userModel.append({
+                "userId": "zebra",
+                "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+                "userName": "kkk", // "Zebra King",
+                "userInfo": ""
+            })            
         }
 
         onClosed: {

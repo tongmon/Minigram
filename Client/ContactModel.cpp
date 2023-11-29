@@ -4,14 +4,16 @@ ContactModel::ContactModel(QObject *parent)
     : QAbstractListModel(parent)
 {
     m_order_by = "name";
+    // sort_filter.setSourceModel(this);
+    // sort_filter.setSortRole(NAME_ROLE);
+    // sort_filter.setDynamicSortFilter(false);
 
     QObject::connect(this, &ContactModel::orderByChanged, this, &ContactModel::ProcessOrderBy);
 }
 
 ContactModel::~ContactModel()
 {
-    for (int i = 0; i < m_contacts.size(); i++)
-        delete m_contacts[i];
+    qDeleteAll(m_contacts);
 }
 
 int ContactModel::rowCount(const QModelIndex &parent) const
@@ -22,7 +24,8 @@ int ContactModel::rowCount(const QModelIndex &parent) const
 
 QVariant ContactModel::data(const QModelIndex &index, int role) const
 {
-    if (index.row() < 0 && index.row() >= rowCount())
+    if ((index.row() < 0 && index.row() >= rowCount()) ||
+        !index.isValid())
         return QVariant();
 
     const Contact *contact = m_contacts[index.row()];
@@ -44,10 +47,10 @@ QVariant ContactModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> ContactModel::roleNames() const
 {
     QHash<int, QByteArray> roles;
-    roles[ID_ROLE] = "id";
-    roles[NAME_ROLE] = "name";
-    roles[IMG_ROLE] = "img";
-    roles[INFO_ROLE] = "info";
+    roles[ID_ROLE] = "userId";
+    roles[NAME_ROLE] = "userName";
+    roles[IMG_ROLE] = "userImg";
+    roles[INFO_ROLE] = "userInfo";
     return roles;
 }
 
@@ -59,7 +62,9 @@ void ContactModel::append(const QVariantMap &qvm)
                                    qvm["userInfo"].toString(),
                                    this);
 
+    beginInsertRows(QModelIndex(), rowCount(), rowCount());
     m_contacts.append(contact);
+    endInsertRows();
 
     // if (m_order_by == "name")
     // {
@@ -73,25 +78,26 @@ void ContactModel::append(const QVariantMap &qvm)
 
 void ContactModel::clear()
 {
-    while (!m_contacts.empty())
-    {
-        delete m_contacts.back();
-        m_contacts.pop_back();
-    }
+    beginRemoveRows(QModelIndex(), 0, rowCount() - 1);
+    endRemoveRows();
+    qDeleteAll(m_contacts);
+    m_contacts.clear();
 }
 
 void ContactModel::ProcessOrderBy()
 {
     if (m_order_by == "name")
     {
-        std::sort(m_contacts.begin(), m_contacts.end(), [](const Contact *con1, const Contact *con2) -> bool {
-            return con1->user_name < con2->user_name;
-        });
+        // m_sort_filter_proxy.setSortRole(NAME_ROLE);
+        //  std::sort(m_contacts.begin(), m_contacts.end(), [](const Contact *con1, const Contact *con2) -> bool {
+        //      return con1->user_name < con2->user_name;
+        //  });
     }
     else if (m_order_by == "id")
     {
-        std::sort(m_contacts.begin(), m_contacts.end(), [](const Contact *con1, const Contact *con2) -> bool {
-            return con1->user_id < con2->user_id;
-        });
+        // m_sort_filter_proxy.setSortRole(ID_ROLE);
+        //  std::sort(m_contacts.begin(), m_contacts.end(), [](const Contact *con1, const Contact *con2) -> bool {
+        //      return con1->user_id < con2->user_id;
+        //  });
     }
 }

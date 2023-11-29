@@ -5,29 +5,9 @@
 
 #include <QAbstractListModel>
 #include <QMetaType>
+#include <QSortFilterProxyModel>
 
 #include <map>
-
-// struct Contact
-//{
-//     Q_GADGET
-//     Q_PROPERTY(QString userName MEMBER user_name)
-//     Q_PROPERTY(QString userId MEMBER user_id)
-//     Q_PROPERTY(QString userImg MEMBER user_img)
-//     Q_PROPERTY(QString userInfo MEMBER user_info)
-//
-//   public:
-//     QString user_id;
-//     QString user_name;
-//     QString user_img; // base64 png
-//     QString user_info;
-//
-//     Contact(const QString &id = "", const QString &name = "", const QString &base64_img = "", const QString &info = "")
-//         : user_id{id}, user_name{name}, user_img{base64_img}, user_info{info}
-//     {
-//     }
-// };
-// Q_DECLARE_METATYPE(Contact)
 
 class ContactModel : public QAbstractListModel
 {
@@ -41,9 +21,10 @@ class ContactModel : public QAbstractListModel
     Q_OBJECT
     Q_PROPERTY(QString orderBy MEMBER m_order_by NOTIFY orderByChanged)
 
+    // QSortFilterProxyModel m_sort_filter_proxy;
     QList<Contact *> m_contacts;
-    std::map<std::wstring, Contact *> m_contact_id_filter;
-    std::map<std::wstring, Contact *> m_contact_name_filter;
+    // std::map<std::wstring, Contact *> m_contact_id_filter;
+    // std::map<std::wstring, Contact *> m_contact_name_filter;
     QString m_order_by;
 
   public:
