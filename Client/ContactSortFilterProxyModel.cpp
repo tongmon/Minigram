@@ -4,6 +4,7 @@
 ContactSortFilterProxyModel::ContactSortFilterProxyModel(QObject *parent)
     : QSortFilterProxyModel(parent)
 {
+    sort(0);
     QObject::connect(this, &ContactSortFilterProxyModel::sourceModelChanged, this, &ContactSortFilterProxyModel::ProcessSourceModel);
     // QObject::connect(this, &QuickSortFilterProxyModel::filterCaseOptionChanged, this, &QuickSortFilterProxyModel::ProcessFilterCaseOption);
     // QObject::connect(this, &QuickSortFilterProxyModel::filterRegexChanged, this, &QuickSortFilterProxyModel::ProcessFilterRegex);
@@ -15,12 +16,10 @@ ContactSortFilterProxyModel::~ContactSortFilterProxyModel()
 {
 }
 
-void ContactSortFilterProxyModel::append(const QVariantMap &qvm)
-{
-    beginInsertRows(QModelIndex(), rowCount(), rowCount());
-    m_source_model->append(qvm);
-    endInsertRows();
-}
+// void ContactSortFilterProxyModel::append(const QVariantMap &qvm)
+// {
+//     m_source_model->append(qvm);
+// }
 
 void ContactSortFilterProxyModel::ProcessSourceModel()
 {

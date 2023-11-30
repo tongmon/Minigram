@@ -31,7 +31,7 @@ class ContactSortFilterProxyModel : public QSortFilterProxyModel
     ContactSortFilterProxyModel(QObject *parent = nullptr);
     ~ContactSortFilterProxyModel();
 
-    Q_INVOKABLE void append(const QVariantMap &qvm);
+    // Q_INVOKABLE void append(const QVariantMap &qvm);
 
   signals:
     void sourceModelChanged();

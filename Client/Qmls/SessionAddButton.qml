@@ -183,8 +183,8 @@ Image {
                     delegate: Rectangle {
                         id: selectedPerson
                         height: parent.height
-                        width: 100
-                        objectName: userID
+                        width: userImage.width + userNameText.width + selectedPersonRemoveButton.width
+                        objectName: userId
                         color: "#B240F5"
 
                         property int selectedPersonIndex: index
@@ -218,13 +218,14 @@ Image {
                             }
 
                             Text {
+                                id: userNameText
                                 Layout.fillWidth: true
                                 Layout.alignment: Qt.AlignVCenter
-                                id: userNameText
                                 text: selectedPerson.objectName
                             }
 
                             Button {
+                                id: selectedPersonRemoveButton
                                 Layout.preferredHeight: selectedPerson.height * 0.8
                                 Layout.preferredWidth: height
                                 text: "Del"
@@ -292,7 +293,7 @@ Image {
                     model: ContactSortFilterProxyModel {
                         id: contactSortFilterProxyModel
                         sourceModel: contactModel
-                        dynamicSortFilter: true
+                        dynamicSortFilter: true // sort() 함수가 한번이라도 불렸을 때 효과있음
                         sortRole: 258
                     }
 
@@ -357,12 +358,12 @@ Image {
                             hoverEnabled: true
 
                             onClicked: {
-                                if(!addedPerson.hasOwnProperty(userInfo.objectName)) {
+                                if(!addedPerson.hasOwnProperty(userId)) {
                                     selectedPersonModel.append({
-                                        "userID": userInfo.objectName,
-                                        "userImageSource": userImageSource
+                                        "userId": userId,
+                                        "userImageSource": userImg
                                     })
-                                    addedPerson[userInfo.objectName] = true
+                                    addedPerson[userId] = true
                                 }
                             }
                         }
@@ -441,21 +442,21 @@ Image {
             //     "userName": "SukYeonLee"
             // })        
 
-            contactSortFilterProxyModel.append({
+            contactModel.append({
                 "userId": "tongstar",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
                 "userName": "zzz", // "KyungJoonLee",
                 "userInfo": ""
             })
 
-            contactSortFilterProxyModel.append({
+            contactModel.append({
                 "userId": "yellowjam",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
                 "userName": "bbb", // "SukYeonLee",
                 "userInfo": ""
             }) 
 
-            contactSortFilterProxyModel.append({
+            contactModel.append({
                 "userId": "zebra",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
                 "userName": "kkk", // "Zebra King",
@@ -467,7 +468,7 @@ Image {
             userNameSearchField.text = ""
             addedPerson = ({})
             selectedPersonModel.clear()
-            userModel.clear()
+            contactModel.clear()
         }
     }
 

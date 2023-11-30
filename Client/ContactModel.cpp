@@ -3,12 +3,6 @@
 ContactModel::ContactModel(QObject *parent)
     : QAbstractListModel(parent)
 {
-    // m_order_by = "name";
-    // sort_filter.setSourceModel(this);
-    // sort_filter.setSortRole(NAME_ROLE);
-    // sort_filter.setDynamicSortFilter(false);
-
-    // QObject::connect(this, &ContactModel::orderByChanged, this, &ContactModel::ProcessOrderBy);
 }
 
 ContactModel::~ContactModel()
@@ -62,18 +56,9 @@ void ContactModel::append(const QVariantMap &qvm)
                                    qvm["userInfo"].toString(),
                                    this);
 
-    // beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    beginInsertRows(QModelIndex(), rowCount(), rowCount());
     m_contacts.append(contact);
-    // endInsertRows();
-
-    // if (m_order_by == "name")
-    // {
-    // }
-    // else if (m_order_by == "id")
-    // {
-    // }
-    // else
-    //     m_contacts.append(contact);
+    endInsertRows();
 }
 
 void ContactModel::clear()
@@ -83,23 +68,3 @@ void ContactModel::clear()
     qDeleteAll(m_contacts);
     m_contacts.clear();
 }
-
-/*
-void ContactModel::ProcessOrderBy()
-{
-    if (m_order_by == "name")
-    {
-        // m_sort_filter_proxy.setSortRole(NAME_ROLE);
-        //  std::sort(m_contacts.begin(), m_contacts.end(), [](const Contact *con1, const Contact *con2) -> bool {
-        //      return con1->user_name < con2->user_name;
-        //  });
-    }
-    else if (m_order_by == "id")
-    {
-        // m_sort_filter_proxy.setSortRole(ID_ROLE);
-        //  std::sort(m_contacts.begin(), m_contacts.end(), [](const Contact *con1, const Contact *con2) -> bool {
-        //      return con1->user_id < con2->user_id;
-        //  });
-    }
-}
-*/

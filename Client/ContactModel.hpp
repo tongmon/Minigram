@@ -19,13 +19,8 @@ class ContactModel : public QAbstractListModel
         INFO_ROLE
     };
     Q_OBJECT
-    // Q_PROPERTY(QString orderBy MEMBER m_order_by NOTIFY orderByChanged)
 
-    // QSortFilterProxyModel m_sort_filter_proxy;
     QList<Contact *> m_contacts;
-    // std::map<std::wstring, Contact *> m_contact_id_filter;
-    // std::map<std::wstring, Contact *> m_contact_name_filter;
-    // QString m_order_by;
 
   public:
     ContactModel(QObject *parent = nullptr);
@@ -35,14 +30,8 @@ class ContactModel : public QAbstractListModel
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
 
-    void append(const QVariantMap &qvm);
-    void clear();
-
-    // signals:
-    //   void orderByChanged();
-    //
-    // public slots:
-    //  void ProcessOrderBy();
+    Q_INVOKABLE void append(const QVariantMap &qvm);
+    Q_INVOKABLE void clear();
 };
 
 #endif /* HEADER__FILE__CONTACTMODEL */
