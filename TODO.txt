@@ -44,11 +44,6 @@ https://stackoverflow.com/questions/48534529/how-to-populate-listview-with-qstri
 https://makersweb.net/qt/14619
 
 
-
-
-텔레그램은 한글이 한글자 완성된 후에 찾을 수 있음(커서 기준)
-
-
 단어 자동 완성, 리스트뷰 filter에 관한 글들
 https://stackoverflow.com/questions/28499676/how-to-search-for-and-select-items-from-a-qlistview
 
@@ -60,4 +55,5 @@ https://www.youtube.com/watch?v=6oQuxhDsv20&ab_channel=KunalParmar -> demo from 
 https://ialy1595.github.io/post/korean-incremental-search/
 
 
-
+- 테스트 경로
+db에 유저 4개 정도 추가 -> tongstar로 회원가입해서 유저 추가[trySignUp 검사] -> 로그인 -> 친구 추가 -> 세션 만들기(한 3개 정도) -> 특정 세션에서 대화 -> 대화 중이지 않은 세션에서 메시지 갱신 되는지 확인 -> 다른 세션 입장시 채팅방 갱신 여부

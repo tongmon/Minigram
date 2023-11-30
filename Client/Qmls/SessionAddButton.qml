@@ -263,7 +263,7 @@ Image {
                             }
 
                             onTextChanged: {
-                                
+                                contactSortFilterProxyModel.filterRegex = userNameSearchField.text
                             }
 
                             Keys.onReturnPressed: {
@@ -295,6 +295,7 @@ Image {
                         sourceModel: contactModel
                         dynamicSortFilter: true // sort() 함수가 한번이라도 불렸을 때 효과있음
                         sortRole: 258
+                        filterRole: 258
                     }
 
                     delegate: Rectangle {
