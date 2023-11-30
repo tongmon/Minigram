@@ -396,7 +396,8 @@ void MainContext::tryAddContact(const QString &user_id)
 {
 }
 
-// 1: 가입 성공, 2: ID 중복, 3: 서버 오류
+// Server에 전달하는 버퍼 형식: ID | PW | Name | Image(base64)
+// Server에서 받는 버퍼 형식: Login Result | Register Date
 void MainContext::trySignUp(const QVariantMap &qvm)
 {
     auto &central_server = m_window.GetServerHandle();
@@ -405,7 +406,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
     std::string request = (qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString(),
-                img_base64;
+                img_base64 = "null";
 
     if (!qvm["img_path"].toString().isEmpty())
     {
@@ -463,10 +464,13 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/user";
                     boost::filesystem::create_directories(user_cache_path);
 
-                    img_base64 = parsed[1] + "|" + img_base64;
-                    std::ofstream img_file(user_cache_path + "/user_img_info.bck");
-                    if (img_file.is_open())
-                        img_file.write(img_base64.c_str(), img_base64.size());
+                    if (img_base64 != "null")
+                    {
+                        img_base64 = parsed[1] + "|" + img_base64;
+                        std::ofstream img_file(user_cache_path + "/user_img_info.bck");
+                        if (img_file.is_open())
+                            img_file.write(img_base64.c_str(), img_base64.size());
+                    }
                 }
 
                 QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),

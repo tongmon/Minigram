@@ -1,5 +1,10 @@
 # 개발할 기능들
 
+## 코드 최적화
+
+1. 버퍼로 사용중인 std::string을 std::vector<std::byte>로 변경하기
+2. const string& 이나 string_view로 바꿀 수 있는 것들 찾아서 모두 바꾸기
+
 ## DB
 
 1. 연락처 - 완료

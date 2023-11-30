@@ -368,28 +368,31 @@ void MessengerService::ContactListInitHandling()
                              });
 }
 
+// Client에서 받는 버퍼 형식: ID | PW | Name | Image(base64)
+// Client에 전달하는 버퍼 형식: Login Result | Register Date
 void MessengerService::RegisterUserHandling()
 {
     std::vector<std::string> parsed;
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
 
     int cnt = 0;
-    std::string user_id = parsed[0], user_pw = parsed[1], user_name = parsed[2], user_img = parsed.size() > 3 ? parsed[3] : "";
+    const std::string &user_id = parsed[0], &user_pw = parsed[1], &user_name = parsed[2], &user_img = parsed[3] == "null" ? "" : parsed[3];
 
     *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
         soci::into(cnt), soci::use(user_id);
 
     // 아이디 중복
     if (cnt)
-        m_request = {2};
+        m_request = {ID_DUPLICATION};
     else
     {
         std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
         std::string img_path, cur_date = std::format("{0:%F %T}", tp);
 
-        m_request = {1};
+        m_request = {REGISTER_SUCCESS};
         m_request = "|" + cur_date;
 
+        // user profile image 저장
         if (!user_img.empty())
         {
             img_path = boost::dll::program_location().parent_path().string() + "/users/" + user_id + "/profile_img";

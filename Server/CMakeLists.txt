@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.23)
 
 execute_process(
+  COMMAND git pull
+  WORKING_DIRECTORY ${CMAKE_TOOLCHAIN_FILE}/../../..)
+  
+execute_process(
   COMMAND vcpkg x-update-baseline --add-initial-baseline
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
