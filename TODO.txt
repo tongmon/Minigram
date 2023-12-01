@@ -4,6 +4,7 @@
 
 1. 버퍼로 사용중인 std::string을 std::vector<std::byte>로 변경하기
 2. const string& 이나 string_view로 바꿀 수 있는 것들 찾아서 모두 바꾸기
+3. 람다에서 사라질 변수들 참조로 받던거 복사로 변경
 
 ## DB
 
@@ -61,4 +62,4 @@ https://ialy1595.github.io/post/korean-incremental-search/
 
 
 - 테스트 경로
-db에 유저 4개 정도 추가 -> tongstar로 회원가입해서 유저 추가[trySignUp 검사 O] -> 로그인[tryLogin 검사 O] -> 친구 추가 -> 세션 만들기(한 3개 정도) -> 특정 세션에서 대화 -> 대화 중이지 않은 세션에서 메시지 갱신 되는지 확인 -> 다른 세션 입장시 채팅방 갱신 여부
+db에 유저 4개 정도 추가 -> tongstar로 회원가입해서 유저 추가[trySignUp 검사 O] -> 로그인[tryLogin 검사 O] -> 친구 추가[tryAddContact 검사] -> 세션 만들기(한 3개 정도) -> 특정 세션에서 대화 -> 대화 중이지 않은 세션에서 메시지 갱신 되는지 확인 -> 다른 세션 입장시 채팅방 갱신 여부
