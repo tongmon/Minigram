@@ -2,6 +2,7 @@
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
+import minigram.contact.component 1.0
 
 ApplicationWindow {
     id: applicationWindow
@@ -18,6 +19,20 @@ ApplicationWindow {
 
     property string userID
     property string userPW
+
+    ContactModel {
+        id: contactModel
+        objectName: "contactModel"
+    }
+
+    ContactSortFilterProxyModel {
+        id: contactSortFilterProxyModel
+        objectName: "contactSortFilterProxyModel"
+        sourceModel: contactModel
+        dynamicSortFilter: true // sort() 함수가 한번이라도 불렸을 때 효과있음
+        sortRole: 258
+        filterRole: 258
+    }
 
     // 메인 뷰
     Loader { 

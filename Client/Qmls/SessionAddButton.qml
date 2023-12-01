@@ -276,9 +276,9 @@ Image {
                     }
                 }
 
-                ContactModel {
-                    id: contactModel
-                }
+                //ContactModel {
+                //    id: contactModel
+                //}
 
                 ListView {
                     id: userListView
@@ -290,13 +290,14 @@ Image {
                         policy: ScrollBar.AsNeeded
                     }
 
-                    model: ContactSortFilterProxyModel {
-                        id: contactSortFilterProxyModel
-                        sourceModel: contactModel
-                        dynamicSortFilter: true // sort() 함수가 한번이라도 불렸을 때 효과있음
-                        sortRole: 258
-                        filterRole: 258
-                    }
+                    model: contactSortFilterProxyModel
+                    //model: ContactSortFilterProxyModel {
+                    //    id: contactSortFilterProxyModel
+                    //    sourceModel: contactModel
+                    //    dynamicSortFilter: true // sort() 함수가 한번이라도 불렸을 때 효과있음
+                    //    sortRole: 258
+                    //    filterRole: 258
+                    //}
 
                     delegate: Rectangle {
                         id: userData

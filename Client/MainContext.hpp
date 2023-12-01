@@ -5,6 +5,7 @@
 #include <QQmlComponent>
 
 class WinQuickWindow;
+class ContactModel;
 
 class MainContext : public QObject
 {
@@ -17,6 +18,8 @@ class MainContext : public QObject
     QString m_user_img;
     QString m_user_pw;
 
+    ContactModel *m_contact_model;
+
   public:
     MainContext(WinQuickWindow &window);
     ~MainContext();
@@ -27,7 +30,7 @@ class MainContext : public QObject
     Q_INVOKABLE void trySendTextChat(const QString &session_id, const QString &content);
     Q_INVOKABLE void initializeChatRoomList();
     Q_INVOKABLE void tryGetContactList();
-    Q_INVOKABLE void tryAddContact(const QString& user_id);
+    Q_INVOKABLE void tryAddContact(const QString &user_id);
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);
     Q_INVOKABLE void tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids);
     Q_INVOKABLE QStringList executeFileDialog(const QVariantMap &qvm) const;

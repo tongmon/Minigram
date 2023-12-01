@@ -183,12 +183,19 @@ Rectangle {
         return false
     }
 
-    // 로그인 성공시 화면 전환
-    function successLogin()
+    function processLogin(result)
     {
-        userID = userIDTextField.text
-        userPW = passwordTextField.text
-        mainWindowLoader.source = "qrc:/qml/MainPage.qml"
+        // 로그인 성공
+        if (result) 
+        {
+            userID = userIDTextField.text
+            userPW = passwordTextField.text
+            mainWindowLoader.source = "qrc:/qml/MainPage.qml"
+            return
+        }
+
+        // 로그인 실패
+
     }
 
     ColumnLayout {

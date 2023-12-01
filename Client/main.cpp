@@ -20,6 +20,7 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
 
 #pragma region Register cpp type to qml
+    qmlRegisterType<ContactModel>("minigram.contact.component", 1, 0, "Contact");
     qmlRegisterType<ContactModel>("minigram.contact.component", 1, 0, "ContactModel");
     qmlRegisterType<ContactSortFilterProxyModel>("minigram.contact.component", 1, 0, "ContactSortFilterProxyModel");
 #pragma endregion

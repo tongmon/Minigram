@@ -34,13 +34,13 @@ MessengerService::~MessengerService()
 {
 }
 
-// client send 형식
-// 로그인한 ip | 로그인한 port | 로그인한 user_id | 로그인한 유저 pw
+// Client에서 받는 버퍼 형식: Client IP | Client Port | ID | PW
+// Client에 전달하는 버퍼 형식: 로그인 성공 여부
 void MessengerService::LoginHandling()
 {
     std::vector<std::string> parsed;
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    std::string ip = parsed[0], port = parsed[1], id = parsed[2], pw = parsed[3];
+    const std::string &ip = parsed[0], &port = parsed[1], &id = parsed[2], &pw = parsed[3];
 
     std::cout << "ID: " << id << "  Password: " << pw << "\n";
 
@@ -49,9 +49,9 @@ void MessengerService::LoginHandling()
     *m_sql << "select password from user_tb where user_id = :id", soci::into(pw_from_db, ind), soci::use(id);
 
     if (ind == soci::i_ok)
-        m_request = {char(pw_from_db == pw ? 1 : 0)};
+        m_request = {pw_from_db == pw};
     else
-        m_request = {0};
+        m_request = {false};
 
     // 로그인한 사람의 ip, port 정보 갱신
     if (m_request[0])
@@ -383,7 +383,7 @@ void MessengerService::RegisterUserHandling()
 
     // 아이디 중복
     if (cnt)
-        m_request = {ID_DUPLICATION};
+        m_request = {REGISTER_DUPLICATION};
     else
     {
         std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
@@ -486,6 +486,53 @@ void MessengerService::SessionAddHandling()
                              });
 }
 
+void MessengerService::ContactAddHandling()
+{
+    std::vector<std::string> parsed;
+    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+
+    const std::string &user_id = parsed[0], user_id_to_add = parsed[1];
+
+    m_request = {CONTACTADD_SUCCESS};
+
+    int cnt = 0;
+    *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
+        soci::into(cnt), soci::use(user_id_to_add);
+
+    // id가 존재하지 않는 경우
+    if (!cnt)
+        m_request = {CONTACTADD_ID_NO_EXSIST};
+    else
+    {
+        *m_sql << "count(*) from contact_tb where exist(select 1 from contact_tb where user_id=:uid and acquaintance_id=:acqid)",
+            soci::into(cnt), soci::use(user_id), soci::use(user_id_to_add);
+
+        // id가 존재하는데 이미 추가요청을 보냈거나 친구인 경우
+        if (cnt)
+            m_request = {CONTACTADD_DUPLICATION};
+    }
+
+    if (m_request[0] == CONTACTADD_SUCCESS)
+    {
+        *m_sql << "insert into contact_tb values(:uid, :acqid, :status)",
+            soci::use(user_id), soci::use(user_id_to_add), soci::use(static_cast<int>(RELATION_PROCEEDING));
+    }
+
+    TCPHeader header(CONTACT_ADD_TYPE, m_request.size());
+    m_request = header.GetHeaderBuffer() + m_request;
+
+    boost::asio::async_write(*m_sock,
+                             boost::asio::buffer(m_request),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
+}
+
 void MessengerService::StartHandling()
 {
     boost::asio::async_read(*m_sock,
@@ -539,6 +586,9 @@ void MessengerService::StartHandling()
                                                                 break;
                                                             case SESSION_ADD_TYPE:
                                                                 SessionAddHandling();
+                                                                break;
+                                                            case CONTACT_ADD_TYPE:
+                                                                ContactAddHandling();
                                                                 break;
                                                             default:
                                                                 break;

@@ -1,4 +1,5 @@
 ﻿#include "MainContext.hpp"
+#include "ContactModel.hpp"
 #include "NetworkDefinition.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
@@ -22,6 +23,7 @@
 MainContext::MainContext(WinQuickWindow &window)
     : m_window{window}
 {
+    m_contact_model = m_window.GetQuickWindow().findChild<ContactModel *>("contactModel");
 }
 
 MainContext::~MainContext()
@@ -32,6 +34,8 @@ void MainContext::RecieveTextChat(const std::string &content)
 {
 }
 
+// Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
+// Server에서 받는 버퍼 형식: 로그인 성공 여부
 void MainContext::tryLogin(const QString &id, const QString &pw)
 {
     auto &central_server = m_window.GetServerHandle();
@@ -64,13 +68,9 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                 if (!session.get() || !session->IsValid())
                     return;
 
-                // 로그인 성공
-                if (session->GetResponse()[0])
-                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"), "successLogin");
-                else
-                {
-                    // 로그인 실패시 로직
-                }
+                QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
+                                          "processLogin",
+                                          Q_ARG(int, session->GetResponse()[0]));
 
                 central_server.CloseRequest(session->GetID());
             });
@@ -392,8 +392,63 @@ void MainContext::tryGetContactList()
     });
 }
 
+// Server에 전달하는 버퍼 형식: current user id | user id to add
+// Server에서 받는 버퍼 형식: contact가 추가되었는지 결과값
 void MainContext::tryAddContact(const QString &user_id)
 {
+    auto &central_server = m_window.GetServerHandle();
+
+    static int request_id = -1;
+    if (request_id < 0)
+        request_id = central_server.MakeRequestID();
+    else
+    {
+        // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
+        return;
+    }
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+
+    std::string request = m_user_id.toStdString() + "|" + user_id.toStdString();
+
+    TCPHeader header(USER_REGISTER_TYPE, request.size());
+    request = header.GetHeaderBuffer() + request;
+
+    central_server.AsyncWrite(request_id, request, [&central_server, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            request_id = -1;
+            return;
+        }
+
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                request_id = -1;
+                return;
+            }
+
+            TCPHeader header(session->GetResponse());
+
+            auto connection_type = header.GetConnectionType();
+            auto data_size = header.GetDataSize();
+
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    request_id = -1;
+                    return;
+                }
+
+                // session->GetResponse()[0] 종류에 따라 로직 추가해야 됨
+                if (session->GetResponse()[0] == CONTACTADD_SUCCESS)
+                {
+                }
+
+                central_server.CloseRequest(session->GetID());
+                request_id = -1;
+            });
+        });
+    });
 }
 
 // Server에 전달하는 버퍼 형식: ID | PW | Name | Image(base64)
@@ -427,7 +482,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
         {
             QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
                                       "manageRegisterResult",
-                                      Q_ARG(int, SERVER_CONNECTION_FAIL));
+                                      Q_ARG(int, REGISTER_CONNECTION_FAIL));
             return;
         }
 
@@ -436,7 +491,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
             {
                 QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
                                           "manageRegisterResult",
-                                          Q_ARG(int, SERVER_CONNECTION_FAIL));
+                                          Q_ARG(int, REGISTER_CONNECTION_FAIL));
                 return;
             }
 
@@ -450,7 +505,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                 {
                     QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
                                               "manageRegisterResult",
-                                              Q_ARG(int, SERVER_CONNECTION_FAIL));
+                                              Q_ARG(int, REGISTER_CONNECTION_FAIL));
                     return;
                 }
 
