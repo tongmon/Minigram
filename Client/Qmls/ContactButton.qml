@@ -10,15 +10,39 @@ Image {
     width: height
     source: "qrc:/icon/UserID.png"
 
-    function addContact(ary)
+    function processAddContact(result, contact)
     {
-        contactModel.append({
-            "userID": ary[0],
-            "userName": ary[1],
-            "userImageSource": ary[2],
-            "userInfo": ary[3]
-        })
+        switch (result)
+        {
+        case 0:
+            contactModel.append({
+                "userId": "tongstar",
+                "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
+                "userName": "zzz", // "KyungJoonLee",
+                "userInfo": ""                
+            })
+            break
+        // 중복 추가
+        case 1:
+            break
+        // 추가하려는 ID에 해당하는 유저 없음
+        case 2:
+            break
+        // 서버 오류
+        case 3:
+            break
+        }
     }
+
+    //function addContact(ary)
+    //{
+    //    contactModel.append({
+    //        "userID": ary[0],
+    //        "userName": ary[1],
+    //        "userImageSource": ary[2],
+    //        "userInfo": ary[3]
+    //    })
+    //}
 
     Popup {
         id: contactPopup

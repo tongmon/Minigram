@@ -486,6 +486,8 @@ void MessengerService::SessionAddHandling()
                              });
 }
 
+// Client에서 받는 버퍼 형식: current user id | user id to add
+// Client에 전달하는 버퍼 형식: contact add result | added user name | added user img date | added user base64 img
 void MessengerService::ContactAddHandling()
 {
     std::vector<std::string> parsed;
@@ -512,11 +514,29 @@ void MessengerService::ContactAddHandling()
             m_request = {CONTACTADD_DUPLICATION};
     }
 
+    std::string user_name, img_path, img_date, img_data;
+    user_name = img_date = img_data = "null";
+
     if (m_request[0] == CONTACTADD_SUCCESS)
     {
         *m_sql << "insert into contact_tb values(:uid, :acqid, :status)",
             soci::use(user_id), soci::use(user_id_to_add), soci::use(static_cast<int>(RELATION_PROCEEDING));
+
+        *m_sql << "select user_nm, img_path from user_tb where user_id=:uid",
+            soci::into(user_name), soci::into(img_path), soci::use(user_id_to_add);
+
+        boost::filesystem::path path = img_path;
+        if (!img_path.empty())
+        {
+            int width, height, channels;
+            unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
+            std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
+            img_date = path.stem().string();
+            img_data = EncodeBase64(img_buffer);
+        }
     }
+
+    m_request += "|" + user_name + "|" + img_date + "|" + img_data;
 
     TCPHeader header(CONTACT_ADD_TYPE, m_request.size());
     m_request = header.GetHeaderBuffer() + m_request;
