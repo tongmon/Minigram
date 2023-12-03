@@ -11,6 +11,37 @@ class Buffer
     std::vector<std::byte> m_buf;
 
   public:
+    // struct BufferIterator
+    //{
+    //     std::byte cur_data;
+    //
+    //    explicit BufferIterator(std::byte cur)
+    //        : cur_data(cur)
+    //    {
+    //    }
+    //
+    //    bool operator!=(const BufferIterator &other)
+    //    {
+    //        return cur_data != other.cur_data;
+    //    }
+    //
+    //    BufferIterator &operator++()
+    //    {
+    //
+    //    }
+    //};
+
+    Buffer(const char *str = nullptr)
+    {
+        Append(str);
+    }
+
+    template <typename T>
+    Buffer(T &&buf)
+    {
+        m_buf = std::forward<T>(buf.m_buf);
+    }
+
     const std::byte *Data()
     {
         return m_buf.empty() ? nullptr : &m_buf[0];
@@ -18,12 +49,39 @@ class Buffer
 
     void Append(const char *str)
     {
-        char *pt = str;
-        while (pt)
-        {
-            m_buf.push_back(static_cast<std::byte>(*pt));
-            pt++;
-        }
+        while (str)
+            m_buf.push_back(static_cast<std::byte>(*(str++)));
+    }
+
+    void Append(const Buffer &other)
+    {
+    }
+
+    auto begin()
+    {
+        return m_buf.begin();
+    }
+
+    auto end()
+    {
+        return m_buf.end();
+    }
+
+    Buffer operator+(const Buffer &other)
+    {
+        Buffer ret;
+    }
+
+    Buffer &operator+=(const Buffer &other)
+    {
+        Append(other);
+        return *this;
+    }
+
+    Buffer &operator+=(const char *str)
+    {
+        Append(str);
+        return *this;
     }
 };
 
