@@ -6,6 +6,27 @@
 #include <cstdint>
 #include <string>
 
+class Buffer
+{
+    std::vector<std::byte> m_buf;
+
+  public:
+    const std::byte *Data()
+    {
+        return m_buf.empty() ? nullptr : &m_buf[0];
+    }
+
+    void Append(const char *str)
+    {
+        char *pt = str;
+        while (pt)
+        {
+            m_buf.push_back(static_cast<std::byte>(*pt));
+            pt++;
+        }
+    }
+};
+
 class TCPHeader
 {
     enum
