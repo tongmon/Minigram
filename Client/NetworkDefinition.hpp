@@ -11,26 +11,6 @@ class Buffer
     std::vector<std::byte> m_buf;
 
   public:
-    // struct BufferIterator
-    //{
-    //     std::byte cur_data;
-    //
-    //    explicit BufferIterator(std::byte cur)
-    //        : cur_data(cur)
-    //    {
-    //    }
-    //
-    //    bool operator!=(const BufferIterator &other)
-    //    {
-    //        return cur_data != other.cur_data;
-    //    }
-    //
-    //    BufferIterator &operator++()
-    //    {
-    //
-    //    }
-    //};
-
     Buffer(const char *str = nullptr)
     {
         Append(str);
@@ -42,9 +22,21 @@ class Buffer
         m_buf = std::forward<T>(buf.m_buf);
     }
 
-    const std::byte *Data()
+    const std::byte *Data(int st = 0) const
     {
-        return m_buf.empty() ? nullptr : &m_buf[0];
+        return (m_buf.empty() || m_buf.size() <= st) ? nullptr : &m_buf[st];
+    }
+
+    std::string Str(int st = 0, int fin = -1) const
+    {
+        std::string ret(fin == -1 ? m_buf.size() - st : fin - st + 1, '0');
+        std::transform(m_buf.begin() + st,
+                       (fin == -1 ? m_buf.end() : m_buf.begin() + fin),
+                       ret.begin(),
+                       [](const std::byte &ele) -> char {
+                           return static_cast<char>(ele);
+                       });
+        return ret;
     }
 
     void Append(const char *str)
@@ -55,16 +47,33 @@ class Buffer
 
     void Append(const Buffer &other)
     {
+        for (const auto &buf : other)
+            m_buf.push_back(buf);
     }
 
-    auto begin()
+    auto begin() const
     {
         return m_buf.begin();
     }
 
-    auto end()
+    auto end() const
     {
         return m_buf.end();
+    }
+
+    operator std::vector<std::byte>::iterator()
+    {
+        return m_buf.begin();
+    }
+
+    operator const std::byte *() const
+    {
+        return m_buf.empty() ? nullptr : &m_buf[0];
+    }
+
+    operator const char *() const
+    {
+        return reinterpret_cast<const char *>(m_buf.empty() ? nullptr : &m_buf[0]);
     }
 
     Buffer operator+(const Buffer &other)
