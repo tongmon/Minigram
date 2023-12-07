@@ -85,7 +85,7 @@ void TCPClient::AsyncWrite(unsigned int request_id,
     lock.unlock();
 
     boost::asio::async_write(session->m_sock,
-                             boost::asio::buffer(session->m_request),
+                             session->m_request.AsioBuffer(),
                              [this, session, on_finish_write](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
@@ -125,14 +125,13 @@ void TCPClient::AsyncWrite(unsigned int request_id,
         return;
     }
 
-    // m_active_sessions[request_id]->m_request = request;
-    m_active_sessions[request_id]->m_request = request.Str();
+    m_active_sessions[request_id]->m_request = request;
 
     session = m_active_sessions[request_id];
     lock.unlock();
 
     boost::asio::async_write(session->m_sock,
-                             boost::asio::buffer(session->m_request),
+                             session->m_request.AsioBuffer(),
                              [this, session, on_finish_write](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
@@ -182,8 +181,10 @@ void TCPClient::AsyncRead(unsigned int request_id, size_t buffer_size, std::func
                                 }
 
                                 session->m_response_buf.commit(bytes_transferred);
-                                std::istream strm(&session->m_response_buf);
-                                std::getline(strm, session->m_response);
+                                session->m_response = session->m_response_buf;
+
+                                // std::istream strm(&session->m_response_buf);
+                                // std::getline(strm, session->m_response);
 
                                 on_finish_read(session);
                             });
@@ -214,8 +215,10 @@ void TCPClient::AsyncReadUntil(unsigned int request_id,
                                           return;
                                       }
 
-                                      std::istream strm(&session->m_response_buf);
-                                      std::getline(strm, session->m_response);
+                                      session->m_response = session->m_response_buf;
+
+                                      // std::istream strm(&session->m_response_buf);
+                                      // std::getline(strm, session->m_response);
 
                                       on_finish_read_until(session);
                                   });

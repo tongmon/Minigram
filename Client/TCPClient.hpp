@@ -15,16 +15,66 @@
 
 class Buffer;
 
+// class Session
+//{
+//     friend class TCPClient;
+//
+//     boost::asio::ip::tcp::socket m_sock;
+//     boost::asio::ip::tcp::endpoint m_ep;
+//     std::string m_request;
+//
+//     boost::asio::streambuf m_response_buf;
+//     std::string m_response;
+//
+//     boost::system::error_code m_ec;
+//
+//     unsigned int m_id;
+//
+//     bool m_was_cancelled;
+//     std::mutex m_cancel_guard;
+//
+//   public:
+//     Session(boost::asio::io_service &ios,
+//             const std::string &raw_ip_address,
+//             unsigned short port_num,
+//             const std::string &request,
+//             unsigned int id)
+//         : m_sock(ios),
+//           m_ep(boost::asio::ip::address::from_string(raw_ip_address), port_num),
+//           m_request(request),
+//           m_id(id),
+//           m_was_cancelled(false)
+//     {
+//     }
+//
+//     bool IsValid()
+//     {
+//         return m_ec == boost::system::errc::success;
+//     }
+//
+//     std::string GetResponse()
+//     {
+//         return m_response;
+//     }
+//
+//     unsigned int GetID()
+//     {
+//         return m_id;
+//     }
+// };
+
+class Buffer;
+
 class Session
 {
     friend class TCPClient;
 
     boost::asio::ip::tcp::socket m_sock;
     boost::asio::ip::tcp::endpoint m_ep;
-    std::string m_request;
+    Buffer m_request;
 
     boost::asio::streambuf m_response_buf;
-    std::string m_response;
+    Buffer m_response;
 
     boost::system::error_code m_ec;
 
@@ -37,7 +87,7 @@ class Session
     Session(boost::asio::io_service &ios,
             const std::string &raw_ip_address,
             unsigned short port_num,
-            const std::string &request,
+            const Buffer &request,
             unsigned int id)
         : m_sock(ios),
           m_ep(boost::asio::ip::address::from_string(raw_ip_address), port_num),
@@ -52,7 +102,7 @@ class Session
         return m_ec == boost::system::errc::success;
     }
 
-    std::string GetResponse()
+    const Buffer &GetResponse()
     {
         return m_response;
     }

@@ -4,7 +4,10 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <istream>
 #include <string>
+
+#include <boost/asio.hpp>
 
 class Buffer
 {
@@ -22,9 +25,29 @@ class Buffer
         m_buf = std::forward<T>(buf.m_buf);
     }
 
+    auto begin() const
+    {
+        return m_buf.begin();
+    }
+
+    auto end() const
+    {
+        return m_buf.end();
+    }
+
     const std::byte *Data(int st = 0) const
     {
         return (m_buf.empty() || m_buf.size() <= st) ? nullptr : &m_buf[st];
+    }
+
+    auto Size() const
+    {
+        return m_buf.size();
+    }
+
+    auto AsioBuffer()
+    {
+        return boost::asio::buffer(Data(), Size());
     }
 
     std::string Str(int st = 0, int fin = -1) const
@@ -51,16 +74,6 @@ class Buffer
             m_buf.push_back(buf);
     }
 
-    auto begin() const
-    {
-        return m_buf.begin();
-    }
-
-    auto end() const
-    {
-        return m_buf.end();
-    }
-
     operator std::vector<std::byte>::iterator()
     {
         return m_buf.begin();
@@ -74,6 +87,14 @@ class Buffer
     operator const char *() const
     {
         return reinterpret_cast<const char *>(m_buf.empty() ? nullptr : &m_buf[0]);
+    }
+
+    Buffer &operator=(const boost::asio::streambuf &stbuf)
+    {
+        m_buf.clear();
+        m_buf.reserve(stbuf.size());
+        boost::asio::buffer_copy(boost::asio::buffer(Data(), stbuf.size()), stbuf.data());
+        return *this;
     }
 
     Buffer operator+(const Buffer &other)
