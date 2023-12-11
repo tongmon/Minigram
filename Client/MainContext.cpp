@@ -45,10 +45,13 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
     m_user_id = id, m_user_pw = pw;
 
-    std::string request = m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
-                          m_user_id.toStdString() + "|" + m_user_pw.toStdString();
+    Buffer request(m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
+                   m_user_id.toStdString() + "|" + m_user_pw.toStdString());
 
-    TCPHeader header(LOGIN_CONNECTION_TYPE, request.size());
+    // std::string request = m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
+    //                       m_user_id.toStdString() + "|" + m_user_pw.toStdString();
+
+    TCPHeader header(LOGIN_CONNECTION_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     central_server.AsyncWrite(request_id, request, [&central_server, this](std::shared_ptr<Session> session) -> void {
@@ -85,11 +88,11 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = m_user_id.toStdString() + "|" +
-                          session_id.toStdString() + "|" +
-                          EncodeBase64(StrToUtf8(content.toStdString()));
+    Buffer request(m_user_id.toStdString() + "|" +
+                   session_id.toStdString() + "|" +
+                   EncodeBase64(StrToUtf8(content.toStdString())));
 
-    TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.size());
+    TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     central_server.AsyncWrite(request_id, request, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
@@ -140,8 +143,8 @@ void MainContext::initializeChatRoomList()
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = m_user_id.toStdString(),
-                file_path = boost::dll::program_location().parent_path().string() + "/cache/sessions";
+    Buffer request(m_user_id.toStdString());
+    std::string file_path = boost::dll::program_location().parent_path().string() + "/cache/sessions";
 
     boost::filesystem::directory_iterator root{file_path};
     while (root != boost::filesystem::directory_iterator{})
@@ -165,7 +168,7 @@ void MainContext::initializeChatRoomList()
         request += "|" + dir.path().filename().string() + "/" + img_update_date;
     }
 
-    TCPHeader header(CHATROOMLIST_INITIAL_TYPE, request.size());
+    TCPHeader header(CHATROOMLIST_INITIAL_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     central_server.AsyncWrite(request_id, request, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
@@ -408,9 +411,9 @@ void MainContext::tryAddContact(const QString &user_id)
     }
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = m_user_id.toStdString() + "|" + user_id.toStdString();
+    Buffer request(m_user_id.toStdString() + "|" + user_id.toStdString());
 
-    TCPHeader header(USER_REGISTER_TYPE, request.size());
+    TCPHeader header(USER_REGISTER_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     central_server.AsyncWrite(request_id, request, [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
@@ -440,7 +443,7 @@ void MainContext::tryAddContact(const QString &user_id)
                 }
 
                 std::vector<std::string> parsed;
-                boost::split(parsed, session->GetResponse(), boost::is_any_of("|"));
+                boost::split(parsed, session->GetResponse().CStr(), boost::is_any_of("|"));
                 std::string_view result = parsed[0], user_name = parsed[1], img_date = parsed[2], img_data = parsed[3];
 
                 QVariantMap qvm;
@@ -489,8 +492,8 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = (qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString(),
-                img_base64 = "null";
+    Buffer request((qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString());
+    std::string img_base64 = "null";
 
     if (!qvm["img_path"].toString().isEmpty())
     {
@@ -503,7 +506,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
     request += ("|" + img_base64);
 
-    TCPHeader header(USER_REGISTER_TYPE, request.size());
+    TCPHeader header(USER_REGISTER_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     central_server.AsyncWrite(request_id, request, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
@@ -539,7 +542,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                 }
 
                 std::vector<std::string> parsed;
-                boost::split(parsed, session->GetResponse(), boost::is_any_of("|"));
+                boost::split(parsed, session->GetResponse().CStr(), boost::is_any_of("|"));
                 int result = parsed[0][0];
 
                 // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
@@ -574,8 +577,8 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = (m_user_id + "|" + session_name + "|").toStdString(),
-                img_base64 = "null";
+    Buffer request((m_user_id + "|" + session_name + "|").toStdString());
+    std::string img_base64 = "null";
 
     if (!img_path.isEmpty())
     {
@@ -587,11 +590,12 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
         request += (img_base64 + "|");
     }
 
-    for (int i = 0; i < participant_ids.size(); i++)
+    for (int i = 0; i < participant_ids.size() - 1; i++)
         request += (participant_ids[0] + "|").toStdString();
-    request.pop_back();
+    if (!participant_ids.empty())
+        request += participant_ids.back().toStdString();
 
-    TCPHeader header(USER_REGISTER_TYPE, request.size());
+    TCPHeader header(USER_REGISTER_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     central_server.AsyncWrite(request_id, request, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {

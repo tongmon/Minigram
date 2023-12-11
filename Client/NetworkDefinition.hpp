@@ -14,7 +14,17 @@ class Buffer
     std::vector<std::byte> m_buf;
 
   public:
+    Buffer(size_t reserve_num, const std::byte &reserve_data)
+    {
+        m_buf.resize(reserve_num, reserve_data);
+    }
+
     Buffer(const char *str = nullptr)
+    {
+        Append(str);
+    }
+
+    Buffer(const std::string &str)
     {
         Append(str);
     }
@@ -78,6 +88,12 @@ class Buffer
             m_buf.push_back(static_cast<std::byte>(*(str++)));
     }
 
+    void Append(const std::string &str)
+    {
+        for (const auto &c : str)
+            m_buf.push_back(static_cast<std::byte>(c));
+    }
+
     void Append(const Buffer &other)
     {
         for (const auto &buf : other)
@@ -113,17 +129,49 @@ class Buffer
         return m_buf[index];
     }
 
+    Buffer &operator=(const Buffer &other)
+    {
+        this->m_buf = other.m_buf;
+        return *this;
+    }
+    
+    Buffer &operator=(const std::string &other)
+    {
+        m_buf.clear();
+        m_buf.reserve(other.size());
+        Append(other);
+        return *this;
+    }
+
+    Buffer &operator=(const char *other)
+    {
+        m_buf.clear();
+        m_buf.reserve(lstrlenA(other));
+        Append(other);
+        return *this;
+    }
+
     Buffer &operator=(const boost::asio::streambuf &stbuf)
     {
         m_buf.clear();
         m_buf.reserve(stbuf.size());
-        boost::asio::buffer_copy(boost::asio::buffer(Data(), stbuf.size()), stbuf.data()); // 이 부분 문제있음
+
+        auto buf_begin = boost::asio::buffers_begin(stbuf.data());
+        for (auto iter = buf_begin; iter != buf_begin + stbuf.size(); iter++)
+            m_buf.push_back(static_cast<std::byte>(*iter));
+
+        // m_buf.assign(boost::asio::buffers_begin(bufs),
+        //              boost::asio::buffers_begin(bufs) + stbuf.size());
+
+        //  boost::asio::buffer_copy(boost::asio::buffer(Data(), stbuf.size()), stbuf.data()); // 이 부분 문제있음
         return *this;
     }
 
     Buffer operator+(const Buffer &other)
     {
         Buffer ret;
+        ret.Append(other);
+        return ret;
     }
 
     Buffer &operator+=(const Buffer &other)
@@ -133,6 +181,12 @@ class Buffer
     }
 
     Buffer &operator+=(const char *str)
+    {
+        Append(str);
+        return *this;
+    }
+
+    Buffer &operator+=(const std::string &str)
     {
         Append(str);
         return *this;
@@ -186,12 +240,21 @@ class TCPHeader
         return m_buffers[DATA_SIZE].number;
     }
 
-    std::string GetHeaderBuffer()
+    // std::string GetHeaderBuffer()
+    //{
+    //     std::string ret(BUFFER_CNT * 8, 0);
+    //     for (int i = 0; i < BUFFER_CNT; i++)
+    //         for (int j = 0; j < 8; j++)
+    //             ret[i * 8 + j] = static_cast<char>(m_buffers[i].bytes[j]);
+    //     return ret;
+    // }
+
+    Buffer GetHeaderBuffer()
     {
-        std::string ret(BUFFER_CNT * 8, 0);
+        Buffer ret(BUFFER_CNT * 8, static_cast<std::byte>(0));
         for (int i = 0; i < BUFFER_CNT; i++)
             for (int j = 0; j < 8; j++)
-                ret[i * 8 + j] = static_cast<char>(m_buffers[i].bytes[j]);
+                ret[i * 8 + j] = m_buffers[i].bytes[j];
         return ret;
     }
 };

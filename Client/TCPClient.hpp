@@ -128,9 +128,9 @@ class TCPClient
                       unsigned int request_id,
                       std::function<void(std::shared_ptr<Session>)> on_success_connection = {});
 
-    void AsyncWrite(unsigned int request_id,
-                    const std::string &request,
-                    std::function<void(std::shared_ptr<Session>)> on_finish_write = {});
+    // void AsyncWrite(unsigned int request_id,
+    //                 const std::string &request,
+    //                 std::function<void(std::shared_ptr<Session>)> on_finish_write = {});
 
     void AsyncWrite(unsigned int request_id,
                     const Buffer &request,
