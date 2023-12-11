@@ -19,11 +19,16 @@ class Buffer
         Append(str);
     }
 
-    template <typename T>
-    Buffer(T &&buf)
+    Buffer(const Buffer &buf)
     {
-        m_buf = std::forward<T>(buf.m_buf);
+        m_buf = buf.m_buf;
     }
+
+    // template <typename T>
+    // Buffer(T &&buf)
+    // {
+    //     m_buf = std::forward<T>(buf.m_buf);
+    // }
 
     auto begin() const
     {
@@ -38,6 +43,11 @@ class Buffer
     const std::byte *Data(int st = 0) const
     {
         return (m_buf.empty() || m_buf.size() <= st) ? nullptr : &m_buf[st];
+    }
+
+    const char *CStr(int st = 0) const
+    {
+        return (m_buf.empty() || m_buf.size() <= st) ? nullptr : reinterpret_cast<const char *>(&m_buf[st]);
     }
 
     auto Size() const
@@ -89,11 +99,25 @@ class Buffer
         return reinterpret_cast<const char *>(m_buf.empty() ? nullptr : &m_buf[0]);
     }
 
+    std::byte &operator[](size_t index)
+    {
+        if (index < 0 || index >= m_buf.size())
+            exit(1);
+        return m_buf[index];
+    }
+
+    const std::byte &operator[](size_t index) const
+    {
+        if (index < 0 || index >= m_buf.size())
+            exit(1);
+        return m_buf[index];
+    }
+
     Buffer &operator=(const boost::asio::streambuf &stbuf)
     {
         m_buf.clear();
         m_buf.reserve(stbuf.size());
-        boost::asio::buffer_copy(boost::asio::buffer(Data(), stbuf.size()), stbuf.data());
+        boost::asio::buffer_copy(boost::asio::buffer(Data(), stbuf.size()), stbuf.data()); // 이 부분 문제있음
         return *this;
     }
 
@@ -133,6 +157,13 @@ class TCPHeader
 
   public:
     TCPHeader(const std::string &data)
+    {
+        for (int i = 0; i < BUFFER_CNT; i++)
+            for (int j = 0; j < 8; j++)
+                m_buffers[i].bytes[j] = static_cast<std::byte>(data[i * 8 + j]);
+    }
+
+    TCPHeader(const Buffer &data)
     {
         for (int i = 0; i < BUFFER_CNT; i++)
             for (int j = 0; j < 8; j++)

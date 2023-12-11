@@ -70,7 +70,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
                 QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
                                           "processLogin",
-                                          Q_ARG(int, session->GetResponse()[0]));
+                                          Q_ARG(int, static_cast<int>(session->GetResponse()[0])));
 
                 central_server.CloseRequest(session->GetID());
             });
@@ -116,7 +116,7 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
                 qvm.insert("userName", m_user_name);
                 qvm.insert("userImage", m_user_img);
                 qvm.insert("chatContent", content);
-                qvm.insert("chatDate", session->GetResponse().c_str());
+                qvm.insert("chatDate", session->GetResponse().CStr());
                 qvm.insert("isOpponent", false);
 
                 // 챗 버블 실제로 추가하는 로직
@@ -185,7 +185,7 @@ void MainContext::initializeChatRoomList()
                 if (!session.get() || !session->IsValid())
                     return;
 
-                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse()));
+                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse().CStr()));
 
                 boost::json::error_code ec;
                 boost::json::value json_data = boost::json::parse(json_txt, ec);
@@ -326,7 +326,7 @@ void MainContext::tryGetContactList()
                 if (!session.get() || !session->IsValid())
                     return;
 
-                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse()));
+                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse().CStr()));
 
                 boost::json::error_code ec;
                 boost::json::value json_data = boost::json::parse(json_txt, ec);
@@ -611,7 +611,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                 if (!session.get() || !session->IsValid())
                     return;
 
-                const std::string &response = session->GetResponse();
+                const std::string &response = session->GetResponse().CStr();
 
                 std::string session_cache_path = boost::dll::program_location().parent_path().string() + "/sessions/" + response;
                 boost::filesystem::create_directories(session_cache_path);
