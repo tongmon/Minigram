@@ -443,14 +443,17 @@ void MainContext::tryAddContact(const QString &user_id)
                 }
 
                 std::vector<std::string> parsed;
-                boost::split(parsed, session->GetResponse().CStr(), boost::is_any_of("|"));
-                std::string_view result = parsed[0], user_name = parsed[1], img_date = parsed[2], img_data = parsed[3];
+                boost::split(parsed, session->GetResponse().CStr(2), boost::is_any_of("|"));
+                std::string_view user_name = parsed[0],
+                                 img_date = parsed[1],
+                                 img_data = parsed[2];
+                int result = static_cast<int>(session->GetResponse()[0]);
 
                 QVariantMap qvm;
                 qvm["userId"] = qvm["userName"] = qvm["userImg"] = "";
 
                 // session->GetResponse()[0] 종류에 따라 로직 추가해야 됨
-                if (result[0] == CONTACTADD_SUCCESS)
+                if (result == CONTACTADD_SUCCESS)
                 {
                     qvm["userId"] = user_id;
                     qvm["userName"] = user_name.data();
@@ -473,7 +476,7 @@ void MainContext::tryAddContact(const QString &user_id)
 
                 QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("contactButton"),
                                           "processAddContact",
-                                          Q_ARG(int, result[0]),
+                                          Q_ARG(int, result),
                                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
 
                 central_server.CloseRequest(session->GetID());

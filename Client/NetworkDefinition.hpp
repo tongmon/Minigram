@@ -16,7 +16,8 @@ class Buffer
   public:
     Buffer(size_t reserve_num, const std::byte &reserve_data)
     {
-        m_buf.resize(reserve_num, reserve_data);
+        m_buf.resize(reserve_num + 1, reserve_data);
+        m_buf[reserve_num] = static_cast<std::byte>(0);
     }
 
     Buffer(const char *str = nullptr)
@@ -84,18 +85,37 @@ class Buffer
 
     void Append(const char *str)
     {
-        while (str)
+        if (!m_buf.empty())
+            m_buf.pop_back();
+
+        int len = lstrlenA(str);
+        m_buf.reserve(m_buf.size() + len + 1);
+
+        while (len--)
             m_buf.push_back(static_cast<std::byte>(*(str++)));
+
+        m_buf.push_back(static_cast<std::byte>(0));
     }
 
     void Append(const std::string &str)
     {
+        if (!m_buf.empty())
+            m_buf.pop_back();
+
+        m_buf.reserve(m_buf.size() + str.size() + 1);
+
         for (const auto &c : str)
             m_buf.push_back(static_cast<std::byte>(c));
+
+        m_buf.push_back(static_cast<std::byte>(0));
     }
 
     void Append(const Buffer &other)
     {
+        if (!m_buf.empty())
+            m_buf.pop_back();
+
+        m_buf.reserve(m_buf.size() + other.m_buf.size());
         for (const auto &buf : other)
             m_buf.push_back(buf);
     }
@@ -134,11 +154,10 @@ class Buffer
         this->m_buf = other.m_buf;
         return *this;
     }
-    
+
     Buffer &operator=(const std::string &other)
     {
         m_buf.clear();
-        m_buf.reserve(other.size());
         Append(other);
         return *this;
     }
@@ -146,7 +165,6 @@ class Buffer
     Buffer &operator=(const char *other)
     {
         m_buf.clear();
-        m_buf.reserve(lstrlenA(other));
         Append(other);
         return *this;
     }
