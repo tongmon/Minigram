@@ -24,11 +24,14 @@ class MainContext : public QObject
     MainContext(WinQuickWindow &window);
     ~MainContext();
 
+    // 서버에서 클라로 전송할 때 대응하는 함수들
     void RecieveTextChat(const std::string &content);
 
+    // 클라에서 서버로 전송하기 위한 함수들
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
     Q_INVOKABLE void trySendTextChat(const QString &session_id, const QString &content);
-    Q_INVOKABLE void initializeChatRoomList();
+    Q_INVOKABLE void tryInitSessionList();
+    Q_INVOKABLE void tryRefreshSession();
     Q_INVOKABLE void tryGetContactList();
     Q_INVOKABLE void tryAddContact(const QString &user_id);
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);

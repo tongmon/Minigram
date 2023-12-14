@@ -283,7 +283,6 @@ void MainContext::tryInitSessionList()
 
 void MainContext::tryRefreshSession()
 {
-    return;
 }
 
 void MainContext::tryGetContactList()
