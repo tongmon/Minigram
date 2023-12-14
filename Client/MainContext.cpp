@@ -81,6 +81,8 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
     });
 }
 
+// Server에 전달하는 버퍼 형식: sender id | session id | encoded content
+// Server에서 받는 버퍼 형식: message send date
 void MainContext::trySendTextChat(const QString &session_id, const QString &content)
 {
     auto &central_server = m_window.GetServerHandle();
@@ -136,7 +138,9 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
 }
 
 // 채팅방 초기화 로직
-void MainContext::initializeChatRoomList()
+// 해당 함수에서 각 세션의 리스트를 채우진 않음
+// 안읽은 메시지, 가장 최근 메시지 정도를 가져옴
+void MainContext::tryInitSessionList()
 {
     auto &central_server = m_window.GetServerHandle();
 
@@ -274,6 +278,11 @@ void MainContext::initializeChatRoomList()
         });
     });
 
+    return;
+}
+
+void MainContext::tryRefreshSession()
+{
     return;
 }
 
@@ -573,6 +582,8 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     });
 }
 
+// Server에 전달하는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(base64) | 세션 참가자 id 배열
+// Server에서 받는 버퍼 형식: 세션 id
 void MainContext::tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids)
 {
     auto &central_server = m_window.GetServerHandle();
@@ -580,7 +591,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    Buffer request((m_user_id + "|" + session_name + "|").toStdString());
+    Buffer request(m_user_id + "|" + session_name + "|");
     std::string img_base64 = "null";
 
     if (!img_path.isEmpty())
@@ -594,9 +605,9 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
     }
 
     for (int i = 0; i < participant_ids.size() - 1; i++)
-        request += (participant_ids[0] + "|").toStdString();
+        request += (participant_ids[i] + "|");
     if (!participant_ids.empty())
-        request += participant_ids.back().toStdString();
+        request += participant_ids.back();
 
     TCPHeader header(USER_REGISTER_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;

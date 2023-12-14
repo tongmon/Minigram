@@ -9,6 +9,8 @@
 
 #include <boost/asio.hpp>
 
+#include <QString>
+
 class Buffer
 {
     std::vector<std::byte> m_buf;
@@ -18,6 +20,11 @@ class Buffer
     {
         m_buf.resize(reserve_num + 1, reserve_data);
         m_buf[reserve_num] = static_cast<std::byte>(0);
+    }
+
+    Buffer(const Buffer &buf)
+    {
+        m_buf = buf.m_buf;
     }
 
     Buffer(const char *str = nullptr)
@@ -30,9 +37,9 @@ class Buffer
         Append(str);
     }
 
-    Buffer(const Buffer &buf)
+    Buffer(const QString &str)
     {
-        m_buf = buf.m_buf;
+        Append(str);
     }
 
     // template <typename T>
@@ -110,6 +117,19 @@ class Buffer
         m_buf.push_back(static_cast<std::byte>(0));
     }
 
+    void Append(const QString &str)
+    {
+        if (!m_buf.empty())
+            m_buf.pop_back();
+
+        m_buf.reserve(m_buf.size() + str.size() + 1);
+
+        for (const auto &c : str)
+            m_buf.push_back(static_cast<std::byte>(c.toLatin1()));
+
+        m_buf.push_back(static_cast<std::byte>(0));
+    }
+
     void Append(const Buffer &other)
     {
         if (!m_buf.empty())
@@ -155,6 +175,13 @@ class Buffer
         return *this;
     }
 
+    Buffer &operator=(const char *other)
+    {
+        m_buf.clear();
+        Append(other);
+        return *this;
+    }
+
     Buffer &operator=(const std::string &other)
     {
         m_buf.clear();
@@ -162,7 +189,7 @@ class Buffer
         return *this;
     }
 
-    Buffer &operator=(const char *other)
+    Buffer &operator=(const QString &other)
     {
         m_buf.clear();
         Append(other);
@@ -185,9 +212,9 @@ class Buffer
         return *this;
     }
 
-    Buffer operator+(const Buffer &other)
+    Buffer operator+(const Buffer &other) const
     {
-        Buffer ret;
+        Buffer ret(*this);
         ret.Append(other);
         return ret;
     }
@@ -205,6 +232,12 @@ class Buffer
     }
 
     Buffer &operator+=(const std::string &str)
+    {
+        Append(str);
+        return *this;
+    }
+
+    Buffer &operator+=(const QString &str)
     {
         Append(str);
         return *this;

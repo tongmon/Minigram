@@ -62,4 +62,15 @@ https://ialy1595.github.io/post/korean-incremental-search/
 
 
 - 테스트 경로
-db에 유저 4개 정도 추가 -> tongstar로 회원가입해서 유저 추가[trySignUp 검사 O] -> 로그인[tryLogin 검사 O] -> 친구 추가[tryAddContact 검사] -> 세션 만들기(한 3개 정도) -> 특정 세션에서 대화 -> 대화 중이지 않은 세션에서 메시지 갱신 되는지 확인 -> 다른 세션 입장시 채팅방 갱신 여부
+db에 유저 4개 정도 추가 -> tongstar로 회원가입해서 유저 추가[trySignUp 검사 O] -> 로그인[tryLogin 검사 O] -> 친구 추가[tryAddContact O 검사] -> 세션 만들기(한 3개 정도)[tryAddSession 검사 O] -> 특정 세션에서 대화[trySendTextChat 검사 O] -> 대화 중이지 않은 세션에서 메시지 갱신 되는지 확인 -> 다른 세션 입장시 채팅방 갱신 여부
+
+-- 메시지 받는 기능 테스트 경로
+세션 보유를 많이하고 있는 유저로 로그인 -> 해당 유저의 세션 읽어들이는 로직 트리거 [initializeSessionList 검사] -> 특정 유저가 해당 유저로 메시지를 보냄 -> 해당 유저 클라이언트에서 그 메시지가 속한 세션 갱신[RecieveTextChat 검사]
+
+세션 보유를 많이하고 있는 유저로 로그인 -> 해당 유저의 세션 읽어들이는 로직 트리거 [initializeSessionList 검사] -> 특정 세션을 클릭하여 접속[tryRefreshSession 검사]
+
+topwindow인지 검사하고 있는 함수가 있어야 됨 ex) activate window
+
+클라에서 메시지 받을 때 topwindow인지 검사, topwindow가 세션 안읽은 메시지 +1 처리
+
+우선적으로 해야 하는 것: session, sessionmodel, chat, chatmodel 관련 로직들 구축

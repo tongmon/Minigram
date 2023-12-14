@@ -15,7 +15,7 @@ class MessengerService : public Service
     std::unique_ptr<soci::session> m_sql;
 
     void LoginHandling();
-    void MessageHandling();
+    void TextMessageHandling();
     void ChatRoomListInitHandling();
     void ContactListInitHandling();
     void RegisterUserHandling();

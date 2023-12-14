@@ -74,9 +74,9 @@ void MessengerService::LoginHandling()
                              });
 }
 
-// client send 형식
-// 보낸 사람 id | 채팅방 id | 컨텐츠 타입 | 채팅 내용
-void MessengerService::MessageHandling()
+// Client에서 받는 버퍼 형식: sender id | session id | encoded content
+// Client에 전달하는 버퍼 형식: message send date
+void MessengerService::TextMessageHandling()
 {
     std::vector<std::string> parsed;
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
@@ -423,8 +423,8 @@ void MessengerService::RegisterUserHandling()
                              });
 }
 
-// client send 형식
-// user_id | session_name | session_img_base64 | participant_id 01 | participant_id 02
+// Client에서 받는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(base64) | 세션 참가자 id 배열
+// Client에 전달하는 버퍼 형식: 세션 id
 void MessengerService::SessionAddHandling()
 {
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
@@ -593,7 +593,7 @@ void MessengerService::StartHandling()
                                                                 LoginHandling();
                                                                 break;
                                                             case TEXTCHAT_CONNECTION_TYPE:
-                                                                MessageHandling();
+                                                                TextMessageHandling();
                                                                 break;
                                                             case CHATROOMLIST_INITIAL_TYPE:
                                                                 ChatRoomListInitHandling();

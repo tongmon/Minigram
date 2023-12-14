@@ -68,7 +68,7 @@ CREATE TABLE session_tb
 )
 
 session_id 제약: 생성자 ID + '-' + 세션 생성일
-ex) tongstar-20231023-000001 / tongstar 사용자가 2023/10/23에 첫번째로 만든 채팅방이라는 정보가 담김
+ex) tongstar-20231023 11:21:06.0532 / tongstar 사용자가 2023/10/23 11시 21분 6초 532ms에 첫번째로 만든 채팅방이라는 정보가 담김
 
 
 ### participant_tb
@@ -114,7 +114,7 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 
 #### 
 
-#### Chat Room Init
+#### Session Init
 채팅방 초기화시 밑과 같은 형식을 서버와 클라이언트가 주고 받음
 실제 채팅방의 컨텐츠를 모두 가져오진 않고 마지막 채팅 내용과 사용자가 읽지 않은 메시지 개수 정도를 가져옴
 
