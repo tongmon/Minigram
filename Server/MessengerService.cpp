@@ -170,7 +170,10 @@ void MessengerService::TextMessageHandling()
 // client send 형식
 // user_id | session_id / YYYY-MM-DD hh:mm:ss.ms | session_id / YYYY-MM-DD hh:mm:ss.ms ...
 // session_id / YYYY-MM-DD hh:mm:ss.ms => 채팅방 id / 채팅방 이미지 바뀐 시각
-void MessengerService::ChatRoomListInitHandling()
+
+// Client에서 받는 버퍼 형식: current user id | ( session id / session img date ) 배열
+// Client에 전달하는 버퍼 형식:
+void MessengerService::SessionListInitHandling()
 {
     using namespace bsoncxx;
     using namespace bsoncxx::builder;
@@ -179,7 +182,7 @@ void MessengerService::ChatRoomListInitHandling()
     std::unordered_map<std::string, std::string> session_cache;
 
     boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    std::string user_id = parsed[0]; // string_view로 속도 개선 가능, soci에서 string_view로 하면 컴파일 오류 뜸
+    const std::string &user_id = parsed[0];
 
     for (int i = 1; i < parsed.size(); i++)
     {
@@ -206,8 +209,7 @@ void MessengerService::ChatRoomListInitHandling()
         if (session_cache.find(session_id) == session_cache.end())
         {
             session_data["session_id"] = session_id;
-            session_data["session_name"] = session_nm;
-            session_data["session_img"] = session_data["session_img_date"] = session_data["session_info"] = "";
+            session_data["session_name"] = session_data["session_img"] = session_data["session_img_date"] = session_data["session_info"] = "";
             session_data["unread_count"] = -1;
             session_data["chat_info"] = boost::json::object{};
             session_array.push_back(session_data);
@@ -233,7 +235,7 @@ void MessengerService::ChatRoomListInitHandling()
         else
         {
             session_data["session_img"] = "";
-            session_data["session_img_date"] = img_path.empty() ? "absence" : "";
+            session_data["session_img_date"] = img_path.empty() ? "null" : "";
         }
 
         int64_t msg_id;
@@ -241,9 +243,12 @@ void MessengerService::ChatRoomListInitHandling()
             soci::into(msg_id), soci::use(user_id, "pid"), soci::use(session_id, "sid");
 
         auto mongo_coll = mongo_db[session_id + "_log"];
-        session_data["unread_count"] = mongo_coll.count_documents(basic::make_document(basic::kvp("send_date",
-                                                                                                  basic::make_document(basic::kvp("$gt",
-                                                                                                                                  msg_id)))));
+
+        // session_data["unread_count"] = mongo_coll.count_documents(basic::make_document(basic::kvp("send_date",
+        //                                                                                           basic::make_document(basic::kvp("$gt",
+        //                                                                                                                           msg_id)))));
+
+        session_data["unread_count"] = 0;
 
         auto opts = mongocxx::options::find{};
         opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
@@ -259,6 +264,8 @@ void MessengerService::ChatRoomListInitHandling()
             descendant["send_date"] = std::format("{0:%F %T}", send_date);
 
             descendant["content_type"] = doc["content_type"].get_string().value;
+
+            session_data["unread_count"] = doc["message_id"].get_int64().value - msg_id;
 
             // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
             // 추후 사진, 동영상, 이모티콘 등으로 나눠야 함
@@ -596,7 +603,7 @@ void MessengerService::StartHandling()
                                                                 TextMessageHandling();
                                                                 break;
                                                             case CHATROOMLIST_INITIAL_TYPE:
-                                                                ChatRoomListInitHandling();
+                                                                SessionListInitHandling();
                                                                 break;
                                                             case CONTACTLIST_INITIAL_TYPE:
                                                                 ContactListInitHandling();

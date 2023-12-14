@@ -138,8 +138,10 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
 }
 
 // 채팅방 초기화 로직
-// 해당 함수에서 각 세션의 리스트를 채우진 않음
-// 안읽은 메시지, 가장 최근 메시지 정도를 가져옴
+// 처음 로그인이 성공할 때만 트리거 됨.
+// 해당 함수에서 각 세션의 리스트를 채우진 않고 각종 세션 정보를 초기화하고 해당 세션에서 읽지 않은 메시지 개수, 가장 최근 메시지 등을 가져옴
+// Server에 전달하는 버퍼 형식: current user id | ( session id / session img date ) 배열
+// Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryInitSessionList()
 {
     auto &central_server = m_window.GetServerHandle();
@@ -150,6 +152,7 @@ void MainContext::tryInitSessionList()
     Buffer request(m_user_id.toStdString());
     std::string file_path = boost::dll::program_location().parent_path().string() + "/cache/sessions";
 
+    // 세션 이미지가 저장되어 있는지 캐시 파일을 찾아봄
     boost::filesystem::directory_iterator root{file_path};
     while (root != boost::filesystem::directory_iterator{})
     {
@@ -163,6 +166,7 @@ void MainContext::tryInitSessionList()
             if (file.path().filename() == "session_img_info.bck")
             {
                 std::ifstream of(file.path().c_str());
+                // 세션 이미지 캐시 파일이 존재한다면 해당 이미지가 갱신된 최근 날짜를 획득
                 if (of.is_open())
                     std::getline(of, img_update_date, '|');
                 break;
@@ -196,11 +200,11 @@ void MainContext::tryInitSessionList()
 
                 boost::json::error_code ec;
                 boost::json::value json_data = boost::json::parse(json_txt, ec);
-                auto session_arrray = json_data.as_object()["chatroom_init_data"].as_array();
+                auto session_array = json_data.as_object()["chatroom_init_data"].as_array();
 
-                for (int i = 0; i < session_arrray.size(); i++)
+                for (int i = 0; i < session_array.size(); i++)
                 {
-                    auto session_data = session_arrray[i].as_object();
+                    auto session_data = session_array[i].as_object();
 
                     if (session_data["unread_count"].as_int64() < 0)
                     {
