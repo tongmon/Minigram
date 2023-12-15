@@ -3,6 +3,7 @@ import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 import minigram.contact.component 1.0
+import minigram.chatsession.component 1.0
 
 ApplicationWindow {
     id: applicationWindow
@@ -31,6 +32,20 @@ ApplicationWindow {
         sourceModel: contactModel
         dynamicSortFilter: true // sort() 함수가 한번이라도 불렸을 때 효과있음
         sortRole: 258
+        filterRole: 258
+    }
+
+    ChatSessionModel {
+        id: chatSessionModel
+        objectName: "chatSessionModel"
+    }
+
+    ChatSessionSortFilterProxyModel {
+        id: chatSessionSortFilterProxyModel
+        objectName: "chatSessionSortFilterProxyModel"
+        sourceModel: chatSessionModel
+        dynamicSortFilter: true
+        sortRole: 261
         filterRole: 258
     }
 

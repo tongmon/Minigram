@@ -172,7 +172,7 @@ void MessengerService::TextMessageHandling()
 // session_id / YYYY-MM-DD hh:mm:ss.ms => 채팅방 id / 채팅방 이미지 바뀐 시각
 
 // Client에서 받는 버퍼 형식: current user id | ( session id / session img date ) 배열
-// Client에 전달하는 버퍼 형식:
+// Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::SessionListInitHandling()
 {
     using namespace bsoncxx;

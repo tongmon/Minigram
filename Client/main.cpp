@@ -1,4 +1,5 @@
-﻿#include "ContactSortFilterProxyModel.hpp"
+﻿#include "ChatSessionSortFilterProxyModel.hpp"
+#include "ContactSortFilterProxyModel.hpp"
 #include "WinQuickWindow.hpp"
 
 #include <QGuiApplication>
@@ -20,9 +21,13 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
 
 #pragma region Register cpp type to qml
-    qmlRegisterType<ContactModel>("minigram.contact.component", 1, 0, "Contact");
+    qmlRegisterType<Contact>("minigram.contact.component", 1, 0, "Contact");
     qmlRegisterType<ContactModel>("minigram.contact.component", 1, 0, "ContactModel");
     qmlRegisterType<ContactSortFilterProxyModel>("minigram.contact.component", 1, 0, "ContactSortFilterProxyModel");
+
+    qmlRegisterType<ChatSession>("minigram.chatsession.component", 1, 0, "ChatSession");
+    qmlRegisterType<ChatSessionModel>("minigram.chatsession.component", 1, 0, "ChatSessionModel");
+    qmlRegisterType<ChatSessionSortFilterProxyModel>("minigram.chatsession.component", 1, 0, "ChatSessionSortFilterProxyModel");
 #pragma endregion
 
     // 이 시점에 native event filter를 적용해주는 것이 중요하다.

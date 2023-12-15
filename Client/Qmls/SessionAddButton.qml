@@ -432,38 +432,26 @@ Image {
 
         // 테스트 코드
         onOpened: {
-            // userModel.append({
-            //     "userID": "tongstar",
-            //     "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-            //     "userName": "KyungJoonLee"
-            // })
-            // 
-            // userModel.append({
-            //     "userID": "yellowjam",
-            //     "userImageSource": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-            //     "userName": "SukYeonLee"
-            // })        
-
             contactModel.append({
                 "userId": "tongstar",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                "userName": "zzz", // "KyungJoonLee",
+                "userName": "abratacabra",
                 "userInfo": ""
             })
 
             contactModel.append({
                 "userId": "yellowjam",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                "userName": "bbb", // "SukYeonLee",
+                "userName": "kingofkfc",
                 "userInfo": ""
             }) 
 
             contactModel.append({
                 "userId": "zebra",
                 "userImg": "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png",
-                "userName": "kkk", // "Zebra King",
+                "userName": "yellowyolo",
                 "userInfo": ""
-            })            
+            })         
         }
 
         onClosed: {

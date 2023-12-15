@@ -6,6 +6,7 @@
 
 class WinQuickWindow;
 class ContactModel;
+class ChatSessionModel;
 
 class MainContext : public QObject
 {
@@ -19,6 +20,7 @@ class MainContext : public QObject
     QString m_user_pw;
 
     ContactModel *m_contact_model;
+    ChatSessionModel *m_chat_session_model;
 
   public:
     MainContext(WinQuickWindow &window);

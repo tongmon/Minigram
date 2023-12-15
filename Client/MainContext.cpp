@@ -1,4 +1,5 @@
 ﻿#include "MainContext.hpp"
+#include "ChatSessionModel.hpp"
 #include "ContactModel.hpp"
 #include "NetworkDefinition.hpp"
 #include "TCPClient.hpp"
@@ -24,6 +25,7 @@ MainContext::MainContext(WinQuickWindow &window)
     : m_window{window}
 {
     m_contact_model = m_window.GetQuickWindow().findChild<ContactModel *>("contactModel");
+    m_chat_session_model = m_window.GetQuickWindow().findChild<ChatSessionModel *>("chatSessionModel");
 }
 
 MainContext::~MainContext()
@@ -179,11 +181,11 @@ void MainContext::tryInitSessionList()
     TCPHeader header(CHATROOMLIST_INITIAL_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
-    central_server.AsyncWrite(request_id, request, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id, request, [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
@@ -192,7 +194,7 @@ void MainContext::tryInitSessionList()
             auto connection_type = header.GetConnectionType();
             auto data_size = header.GetDataSize();
 
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
@@ -225,7 +227,7 @@ void MainContext::tryInitSessionList()
                     }
 
                     /// 세션 이미지가 없는 경우
-                    if (session_data["session_img_date"].as_string() == "absence")
+                    if (session_data["session_img_date"].as_string() == "null")
                     {
                         qvm.insert("sessionImage", "");
                     }
@@ -252,7 +254,7 @@ void MainContext::tryInitSessionList()
                         if (img_bck.is_open())
                         {
                             std::getline(img_bck, base64_img, '|');
-                            base64_img.clear();
+                            // base64_img.clear(); // 필요없을 듯, 확인필요
                             std::getline(img_bck, base64_img);
                         }
 
@@ -264,18 +266,26 @@ void MainContext::tryInitSessionList()
                     {
                         qvm.insert("recentChatDate", "");
                         qvm.insert("recentChatContent", "");
+                        qvm.insert("recentChatSenderId", "");
                     }
                     else
                     {
                         auto chat_info = session_data["chat_info"].as_object();
                         qvm.insert("recentChatDate", chat_info["send_date"].as_string().c_str());
-                        qvm.insert("recentChatContent", chat_info["content"].as_string().c_str());
+                        qvm.insert("recentChatSenderId", chat_info["sender_id"].as_string().c_str());
+
+                        if (chat_info["send_date"].as_string() != "text")
+                            qvm.insert("recentChatContent", chat_info["content"].as_string().c_str());
+                        else
+                        {
+                            qvm.insert("recentChatContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
+                        }
                     }
 
                     // 실제 채팅방 삽입하는 로직
-                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
-                                              "addSession",
-                                              Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                    // QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
+                    //                           "addSession",
+                    //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                 }
                 central_server.CloseRequest(session->GetID());
             });

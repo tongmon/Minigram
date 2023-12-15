@@ -1,5 +1,4 @@
 ﻿#include "ContactSortFilterProxyModel.hpp"
-#include "Contact.hpp"
 
 ContactSortFilterProxyModel::ContactSortFilterProxyModel(QObject *parent)
     : QSortFilterProxyModel(parent)

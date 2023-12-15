@@ -6,8 +6,6 @@
 #include <QMetaType>
 #include <QSortFilterProxyModel>
 
-#include <memory>
-
 class ContactSortFilterProxyModel : public QSortFilterProxyModel
 {
     Q_OBJECT
