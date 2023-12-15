@@ -120,7 +120,7 @@ Rectangle {
                 spacing: 0                
 
                 Rectangle {
-                    Layout.preferredWidth: chatRoomListView.width - 10
+                    Layout.preferredWidth: chatSessionListView.width - 10
                     Layout.preferredHeight: 30
                     Layout.topMargin: 5
                     Layout.bottomMargin: 5
@@ -129,9 +129,14 @@ Rectangle {
                     radius: 5
 
                     TextField {
+                        id: chatSessionSearchField
                         anchors.fill: parent
                         selectByMouse: true
                         inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
+
+                        onTextChanged: {
+                            chatSessionSortFilterProxyModel.filterRegex = chatSessionSearchField.text
+                        }
 
                         Keys.onReturnPressed: {
                         
@@ -143,7 +148,7 @@ Rectangle {
                 }
 
                 ListView {
-                    id: chatRoomListView
+                    id: chatSessionListView
                     Layout.preferredWidth: 250
                     Layout.fillHeight: true
                     clip: true
@@ -152,15 +157,13 @@ Rectangle {
                         policy: ScrollBar.AsNeeded
                     }
 
-                    model: ListModel {
-                        id: chatRoomListModel
-                    }
+                    model: chatSessionSortFilterProxyModel
 
                     delegate: Rectangle {
-                        property int chatRoomIndex: index
+                        property int chatSessionIndex: index
 
-                        id: chatRoomID
-                        objectName: sessionID
+                        id: sessionInfoRect
+                        objectName: sessionId
                         width: parent.width
                         height: 98
                         color: "#B240F5"
@@ -170,23 +173,21 @@ Rectangle {
                             spacing: 0
 
                             Rectangle {
-                                id: sessionImageRect
-                                Layout.fillHeight: true
-                                Layout.preferredWidth: sessionImageRect.height
                                 color: "transparent"
+                                Layout.fillHeight: true
+                                Layout.preferredWidth: height
 
-                                Rectangle {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    height: parent.height * 0.8
-                                    width: parent.width * 0.8
-                                    radius: width * 2
-
-                                    Image {
-                                        anchors.fill: parent
-                                        source: sessionImage // "qrc:/icon/UserID.png" 
-                                        fillMode: Image.PreserveAspectFit
-                                    }    
+                                CustomImageButton {
+                                    id: sessionImageButton
+                                    anchors {
+                                        fill: parent
+                                        leftMargin: 5
+                                        rightMargin: 5
+                                        topMargin: 5
+                                        bottomMargin: 5
+                                    }
+                                    rounded: true
+                                    source: "data:image/png;base64," + sessionImg
                                 }
                             }
 
@@ -203,18 +204,19 @@ Rectangle {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter 
                                         anchors.left: parent.left
-                                        anchors.right: recentChatDateText.left
-                                        anchors.rightMargin: 10
+                                        //anchors.leftMargin: 5
+                                        width: parent.width / 2
                                         clip: true
                                         text: sessionName
                                     }
 
                                     Text {
-                                        id: recentChatDateText
                                         anchors.verticalCenter: parent.verticalCenter
                                         anchors.right: parent.right
                                         anchors.rightMargin: 5
-                                        text: recentChatDate
+                                        width: parent.width / 2
+                                        clip: true
+                                        text: recentSendDate
                                     }                                
                                 }
 
@@ -226,7 +228,7 @@ Rectangle {
                                     Text {                               
                                         anchors.verticalCenter: parent.verticalCenter 
                                         anchors.left: parent.left                            
-                                        text: recentChatContent
+                                        text: recentContent
                                     }                            
                                 }
                             }
@@ -245,13 +247,13 @@ Rectangle {
                             hoverEnabled: true
 
                             onEntered: {
-                                chatRoomID.color = "#BD5CF5"
+                                sessionInfoRect.color = "#BD5CF5"
                             }
                             onExited: {
-                                chatRoomID.color = "#B240F5"
+                                sessionInfoRect.color = "#B240F5"
                             }
                             onClicked: {
-                                currentRoomID = chatRoomID.objectName
+                                currentRoomID = sessionInfoRect.objectName
                                 currentSessionName = sessionName
 
                                 if(chatView.empty)
@@ -263,8 +265,30 @@ Rectangle {
                     }
 
                     Component.onCompleted: {           
-                        addSessionTest("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
-                        addSessionTest("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
+                        // addSessionTest("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
+                        // addSessionTest("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
+
+                        chatSessionModel.append({
+                            "sessionId": "tongstar-20231023 11:21:06.0532",
+                            "sessionName": "안양팸",
+                            "sessionImg": "",
+                            "recentSenderId": "tongstar",
+                            "recentSendDate": "20231215 10:21:06.1211",
+                            "recentContentType": "text",
+                            "recentContent": "Hello Everyone!",
+                            "unreadCnt": 10
+                        })
+
+                        chatSessionModel.append({
+                            "sessionId": "yellowjam-20221122 09:56:16.4215",
+                            "sessionName": "엄마",
+                            "sessionImg": "",
+                            "recentSenderId": "yellowjam",
+                            "recentSendDate": "20231214 09:11:25.4533",
+                            "recentContentType": "text",
+                            "recentContent": "How is ur weekend?",
+                            "unreadCnt": 1
+                        })
                     }
                 }            
             }
