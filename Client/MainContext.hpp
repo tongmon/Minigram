@@ -33,7 +33,7 @@ class MainContext : public QObject
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
     Q_INVOKABLE void trySendTextChat(const QString &session_id, const QString &content);
     Q_INVOKABLE void tryInitSessionList();
-    Q_INVOKABLE void tryRefreshSession();
+    Q_INVOKABLE void tryRefreshSession(int session_index);
     Q_INVOKABLE void tryGetContactList();
     Q_INVOKABLE void tryAddContact(const QString &user_id);
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);

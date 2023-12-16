@@ -60,6 +60,47 @@ QHash<int, QByteArray> ChatSessionModel::roleNames() const
     return roles;
 }
 
+bool ChatSessionModel::setData(const QModelIndex &index, const QVariant &value, int role)
+{
+    if (!hasIndex(index.row(), index.column(), index.parent()) || !value.isValid())
+        return false;
+
+    ChatSession *chat_session = m_chat_sessions[index.row()];
+    switch (role)
+    {
+    case ID_ROLE:
+        chat_session->session_id = value.toString();
+        break;
+    case NAME_ROLE:
+        chat_session->session_name = value.toString();
+        break;
+    case IMG_ROLE:
+        chat_session->session_img = value.toString();
+        break;
+    case RECENT_SENDER_ID_ROLE:
+        chat_session->recent_sender_id = value.toString();
+        break;
+    case RECENT_SEND_DATE_ROLE:
+        chat_session->recent_send_date = value.toString();
+        break;
+    case RECENT_CONTENT_TYPE_ROLE:
+        chat_session->recent_content_type = value.toString();
+        break;
+    case RECENT_CONTENT_ROLE:
+        chat_session->recent_content = value.toString();
+        break;
+    case UNREAD_CNT_ROLE:
+        chat_session->unread_cnt = value.toInt();
+        break;
+    default:
+        return false;
+    }
+
+    emit dataChanged(index, index, {role});
+
+    return true;
+}
+
 void ChatSessionModel::append(const QVariantMap &qvm)
 {
     ChatSession *chat_session = new ChatSession(qvm["sessionId"].toString(),

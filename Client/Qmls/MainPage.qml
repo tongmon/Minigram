@@ -139,8 +139,9 @@ Rectangle {
                         }
 
                         Keys.onReturnPressed: {
-                        
+                            mainContext.tryRefreshSession(0);
                         }
+
                         background: Rectangle {
                             color: "transparent"
                         }

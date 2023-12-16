@@ -9,6 +9,11 @@
 
 class ChatSessionModel : public QAbstractListModel
 {
+    Q_OBJECT
+
+    QList<ChatSession *> m_chat_sessions;
+
+  public:
     enum ContactRoles
     {
         ID_ROLE = Qt::UserRole + 1,
@@ -20,17 +25,14 @@ class ChatSessionModel : public QAbstractListModel
         RECENT_CONTENT_ROLE,
         UNREAD_CNT_ROLE
     };
-    Q_OBJECT
 
-    QList<ChatSession *> m_chat_sessions;
-
-  public:
     ChatSessionModel(QObject *parent = nullptr);
     ~ChatSessionModel();
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
+    bool setData(const QModelIndex &index, const QVariant &value, int role);
 
     Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void clear();

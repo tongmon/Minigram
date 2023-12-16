@@ -215,8 +215,9 @@ void MainContext::tryInitSessionList()
                     }
 
                     QVariantMap qvm;
-                    qvm.insert("sessionID", session_data["session_id"].as_string().c_str());
+                    qvm.insert("sessionId", session_data["session_id"].as_string().c_str());
                     qvm.insert("sessionName", session_data["session_name"].as_string().c_str());
+                    qvm.insert("unreadCnt", session_data["unread_count"].as_int64());
 
                     std::string session_dir = file_path + "/" + session_data["session_id"].as_string().c_str();
 
@@ -229,13 +230,13 @@ void MainContext::tryInitSessionList()
                     /// 세션 이미지가 없는 경우
                     if (session_data["session_img_date"].as_string() == "null")
                     {
-                        qvm.insert("sessionImage", "");
+                        qvm.insert("sessionImg", "");
                     }
                     // 서버에서 새로운 세션 이미지를 떨궈주면 로컬 캐시 파일 생성
                     else if (!session_data["session_img"].as_string().empty())
                     {
                         std::string_view base64_img = session_data["session_img"].as_string().c_str();
-                        qvm.insert("sessionImage", base64_img.data());
+                        qvm.insert("sessionImg", base64_img.data());
 
                         std::ofstream img_bck(session_dir + "/session_img_info.bck");
                         if (img_bck.is_open())
@@ -258,27 +259,27 @@ void MainContext::tryInitSessionList()
                             std::getline(img_bck, base64_img);
                         }
 
-                        qvm.insert("sessionImage", base64_img.data());
+                        qvm.insert("sessionImg", base64_img.data());
                     }
 
                     // 채팅방에 대화가 아무것도 없는 경우
                     if (session_data["chat_info"].as_object().empty())
                     {
-                        qvm.insert("recentChatDate", "");
-                        qvm.insert("recentChatContent", "");
-                        qvm.insert("recentChatSenderId", "");
+                        qvm.insert("recentSendDate", "");
+                        qvm.insert("recentContent", "");
+                        qvm.insert("recentSenderId", "");
                     }
                     else
                     {
                         auto chat_info = session_data["chat_info"].as_object();
-                        qvm.insert("recentChatDate", chat_info["send_date"].as_string().c_str());
-                        qvm.insert("recentChatSenderId", chat_info["sender_id"].as_string().c_str());
+                        qvm.insert("recentSendDate", chat_info["send_date"].as_string().c_str());
+                        qvm.insert("recentSenderId", chat_info["sender_id"].as_string().c_str());
 
                         if (chat_info["send_date"].as_string() != "text")
-                            qvm.insert("recentChatContent", chat_info["content"].as_string().c_str());
+                            qvm.insert("recentContent", chat_info["content"].as_string().c_str());
                         else
                         {
-                            qvm.insert("recentChatContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
+                            qvm.insert("recentContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
                         }
                     }
 
@@ -286,6 +287,8 @@ void MainContext::tryInitSessionList()
                     // QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
                     //                           "addSession",
                     //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                    m_chat_session_model->append(qvm);
                 }
                 central_server.CloseRequest(session->GetID());
             });
@@ -295,8 +298,15 @@ void MainContext::tryInitSessionList()
     return;
 }
 
-void MainContext::tryRefreshSession()
+void MainContext::tryRefreshSession(int session_index)
 {
+    auto t = m_chat_session_model->setData(m_chat_session_model->index(0), "love u", ChatSessionModel::NAME_ROLE);
+
+    int p = 0;
+
+    //     auto t = m_chat_session_model->Get(session_index);
+    // t->session_name = "love u";
+    // m_chat_session_model->datachanged();
 }
 
 void MainContext::tryGetContactList()
