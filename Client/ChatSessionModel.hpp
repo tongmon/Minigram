@@ -11,6 +11,7 @@ class ChatSessionModel : public QAbstractListModel
 {
     Q_OBJECT
 
+    QHash<QString, size_t> m_id_index_map;
     QList<ChatSession *> m_chat_sessions;
 
   public:
@@ -23,6 +24,7 @@ class ChatSessionModel : public QAbstractListModel
         RECENT_SEND_DATE_ROLE,
         RECENT_CONTENT_TYPE_ROLE,
         RECENT_CONTENT_ROLE,
+        RECENT_MESSAGEID_ROLE,
         UNREAD_CNT_ROLE
     };
 
@@ -30,6 +32,7 @@ class ChatSessionModel : public QAbstractListModel
     ~ChatSessionModel();
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
+    QVariant data(const QString &session_id, int role = Qt::DisplayRole) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
     bool setData(const QModelIndex &index, const QVariant &value, int role);

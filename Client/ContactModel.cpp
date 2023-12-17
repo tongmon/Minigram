@@ -16,6 +16,11 @@ int ContactModel::rowCount(const QModelIndex &parent) const
     return m_contacts.size();
 }
 
+QVariant ContactModel::data(const QString &user_id, int role) const
+{
+    return data(index(m_id_index_map[user_id]), role);
+}
+
 QVariant ContactModel::data(const QModelIndex &index, int role) const
 {
     if ((index.row() < 0 && index.row() >= rowCount()) ||
@@ -57,6 +62,7 @@ void ContactModel::append(const QVariantMap &qvm)
                                    this);
 
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    m_id_index_map[contact->user_id] = m_contacts.size();
     m_contacts.append(contact);
     endInsertRows();
 }
@@ -67,4 +73,5 @@ void ContactModel::clear()
     endRemoveRows();
     qDeleteAll(m_contacts);
     m_contacts.clear();
+    m_id_index_map.clear();
 }

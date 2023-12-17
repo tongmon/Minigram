@@ -109,6 +109,7 @@
         "qobject": "cpp",
         "qmetaobject": "cpp",
         "qqmlcomponent": "cpp",
-        "qquickwindow": "cpp"
+        "qquickwindow": "cpp",
+        "qabstractlistmodel": "cpp"
     }
 }

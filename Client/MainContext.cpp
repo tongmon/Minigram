@@ -266,21 +266,24 @@ void MainContext::tryInitSessionList()
                     if (session_data["chat_info"].as_object().empty())
                     {
                         qvm.insert("recentSendDate", "");
-                        qvm.insert("recentContent", "");
                         qvm.insert("recentSenderId", "");
+                        qvm.insert("recentContentType", "");
+                        qvm.insert("recentContent", "");
+                        qvm.insert("recentMessageId", 0);
                     }
                     else
                     {
                         auto chat_info = session_data["chat_info"].as_object();
                         qvm.insert("recentSendDate", chat_info["send_date"].as_string().c_str());
                         qvm.insert("recentSenderId", chat_info["sender_id"].as_string().c_str());
+                        qvm.insert("recentContentType", chat_info["content_type"].as_string().c_str());
 
                         if (chat_info["send_date"].as_string() != "text")
                             qvm.insert("recentContent", chat_info["content"].as_string().c_str());
                         else
-                        {
                             qvm.insert("recentContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
-                        }
+
+                        qvm.insert("recentMessageId", chat_info["message_id"].as_int64());
                     }
 
                     // 실제 채팅방 삽입하는 로직
@@ -300,13 +303,30 @@ void MainContext::tryInitSessionList()
 
 void MainContext::tryRefreshSession(int session_index)
 {
-    auto t = m_chat_session_model->setData(m_chat_session_model->index(0), "love u", ChatSessionModel::NAME_ROLE);
-
-    int p = 0;
+    // auto t = m_chat_session_model->setData(m_chat_session_model->index(0), "love u", ChatSessionModel::NAME_ROLE);
 
     //     auto t = m_chat_session_model->Get(session_index);
     // t->session_name = "love u";
     // m_chat_session_model->datachanged();
+
+    if (!m_chat_session_model->data(m_chat_session_model->index(session_index), ChatSessionModel::UNREAD_CNT_ROLE).toInt())
+        return;
+
+    auto &central_server = m_window.GetServerHandle();
+
+    static int request_id = -1;
+    if (request_id < 0)
+        request_id = central_server.MakeRequestID();
+    else
+    {
+        // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
+        return;
+    }
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+}
+
+void MainContext::tryFetchMoreMessage(int session_index)
+{
 }
 
 void MainContext::tryGetContactList()

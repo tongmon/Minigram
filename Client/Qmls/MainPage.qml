@@ -277,6 +277,7 @@ Rectangle {
                             "recentSendDate": "20231215 10:21:06.1211",
                             "recentContentType": "text",
                             "recentContent": "Hello Everyone!",
+                            "recentMessageId": 442,
                             "unreadCnt": 10
                         })
 
@@ -288,6 +289,7 @@ Rectangle {
                             "recentSendDate": "20231214 09:11:25.4533",
                             "recentContentType": "text",
                             "recentContent": "How is ur weekend?",
+                            "recentMessageId": 371,
                             "unreadCnt": 1
                         })
                     }

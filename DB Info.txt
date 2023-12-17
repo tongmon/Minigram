@@ -131,9 +131,10 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 
 			// 마지막으로 생성된 채팅 정보
 			"chat_info": {
-				"sender_id": 	"보낸 사람 USER_ID"
+				"sender_id": 	"보낸 사람 USER_ID",
 				"send_date": 	"2023-10-19 13:21:40.125",
-				"content_type": "text"
+				"message_id":	462,
+				"content_type": "text",
 
 				// content_type이 text가 아니라면 content 내용은 간략화됨
 				"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
@@ -143,6 +144,22 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 	]
 }
 
+#### Session Refresh
+채팅방을 눌렀을 때 서버가 보내주는 정보
+
+{
+	"fetch_cnt": 100,
+	"fetched_chat_list" [
+		{
+			"sender_id": 	"보낸 사람 USER_ID",
+			"send_date": 	"2023-10-19 13:21:40.125",
+			"message_id":	462,
+			"content_type": "text",
+			"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
+		},
+		...
+	]
+}
 
 #### Contact Init
 연락처 목록 초기화시 서버에서 클라로 던져주는 json 데이터

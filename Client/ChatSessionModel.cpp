@@ -16,6 +16,11 @@ int ChatSessionModel::rowCount(const QModelIndex &parent) const
     return m_chat_sessions.size();
 }
 
+QVariant ChatSessionModel::data(const QString &session_id, int role) const
+{
+    return data(index(m_id_index_map[session_id]), role);
+}
+
 QVariant ChatSessionModel::data(const QModelIndex &index, int role) const
 {
     if ((index.row() < 0 && index.row() >= rowCount()) ||
@@ -39,6 +44,8 @@ QVariant ChatSessionModel::data(const QModelIndex &index, int role) const
         return chat_session->recent_content_type;
     case RECENT_CONTENT_ROLE:
         return chat_session->recent_content;
+    case RECENT_MESSAGEID_ROLE:
+        return chat_session->recent_message_id;
     case UNREAD_CNT_ROLE:
         return chat_session->unread_cnt;
     default:
@@ -56,6 +63,7 @@ QHash<int, QByteArray> ChatSessionModel::roleNames() const
     roles[RECENT_SEND_DATE_ROLE] = "recentSendDate";
     roles[RECENT_CONTENT_TYPE_ROLE] = "recentContentType";
     roles[RECENT_CONTENT_ROLE] = "recentContent";
+    roles[RECENT_MESSAGEID_ROLE] = "recentMessageId";
     roles[UNREAD_CNT_ROLE] = "unreadCnt";
     return roles;
 }
@@ -89,6 +97,9 @@ bool ChatSessionModel::setData(const QModelIndex &index, const QVariant &value, 
     case RECENT_CONTENT_ROLE:
         chat_session->recent_content = value.toString();
         break;
+    case RECENT_MESSAGEID_ROLE:
+        chat_session->recent_message_id = value.toInt();
+        break;
     case UNREAD_CNT_ROLE:
         chat_session->unread_cnt = value.toInt();
         break;
@@ -110,10 +121,12 @@ void ChatSessionModel::append(const QVariantMap &qvm)
                                                 qvm["recentSendDate"].toString(),
                                                 qvm["recentContentType"].toString(),
                                                 qvm["recentContent"].toString(),
+                                                qvm["recentMessageId"].toInt(),
                                                 qvm["unreadCnt"].toInt(),
                                                 this);
 
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    m_id_index_map[chat_session->session_id] = m_chat_sessions.size();
     m_chat_sessions.append(chat_session);
     endInsertRows();
 }
@@ -124,4 +137,5 @@ void ChatSessionModel::clear()
     endRemoveRows();
     qDeleteAll(m_chat_sessions);
     m_chat_sessions.clear();
+    m_id_index_map.clear();
 }

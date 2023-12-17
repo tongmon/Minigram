@@ -262,10 +262,10 @@ void MessengerService::SessionListInitHandling()
 
             std::chrono::system_clock::time_point send_date(doc["send_date"].get_date().value);
             descendant["send_date"] = std::format("{0:%F %T}", send_date);
-
+            descendant["message_id"] = doc["message_id"].get_int64().value;
             descendant["content_type"] = doc["content_type"].get_string().value;
 
-            session_data["unread_count"] = doc["message_id"].get_int64().value - msg_id;
+            session_data["unread_count"] = descendant["message_id"].as_int64() - msg_id;
 
             // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
             // 추후 사진, 동영상, 이모티콘 등으로 나눠야 함

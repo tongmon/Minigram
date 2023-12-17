@@ -9,6 +9,12 @@
 
 class ContactModel : public QAbstractListModel
 {
+    Q_OBJECT
+
+    QHash<QString, size_t> m_id_index_map;
+    QList<Contact *> m_contacts;
+
+  public:
     enum ContactRoles
     {
         ID_ROLE = Qt::UserRole + 1,
@@ -16,15 +22,12 @@ class ContactModel : public QAbstractListModel
         IMG_ROLE,
         INFO_ROLE
     };
-    Q_OBJECT
 
-    QList<Contact *> m_contacts;
-
-  public:
     ContactModel(QObject *parent = nullptr);
     ~ContactModel();
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
+    QVariant data(const QString &user_id, int role) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
 
