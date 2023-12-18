@@ -139,7 +139,7 @@ Rectangle {
                         }
 
                         Keys.onReturnPressed: {
-                            mainContext.tryRefreshSession(0);
+                            // mainContext.tryRefreshSession(0);
                         }
 
                         background: Rectangle {

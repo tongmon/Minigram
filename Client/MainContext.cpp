@@ -301,15 +301,11 @@ void MainContext::tryInitSessionList()
     return;
 }
 
-void MainContext::tryRefreshSession(int session_index)
+// Server에 전달하는 버퍼 형식: login user id | session_id
+// Server에서 받는 버퍼 형식: DB Info.txt 참고
+void MainContext::tryRefreshSession(const QString &session_id)
 {
-    // auto t = m_chat_session_model->setData(m_chat_session_model->index(0), "love u", ChatSessionModel::NAME_ROLE);
-
-    //     auto t = m_chat_session_model->Get(session_index);
-    // t->session_name = "love u";
-    // m_chat_session_model->datachanged();
-
-    if (!m_chat_session_model->data(m_chat_session_model->index(session_index), ChatSessionModel::UNREAD_CNT_ROLE).toInt())
+    if (!m_chat_session_model->data(session_id, ChatSessionModel::UNREAD_CNT_ROLE).toInt())
         return;
 
     auto &central_server = m_window.GetServerHandle();

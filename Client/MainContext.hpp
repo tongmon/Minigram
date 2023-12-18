@@ -33,7 +33,7 @@ class MainContext : public QObject
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
     Q_INVOKABLE void trySendTextChat(const QString &session_id, const QString &content);
     Q_INVOKABLE void tryInitSessionList();
-    Q_INVOKABLE void tryRefreshSession(int session_index);
+    Q_INVOKABLE void tryRefreshSession(const QString& session_id);
     Q_INVOKABLE void tryFetchMoreMessage(int session_index); // 스크롤바 올리는 경우 과거 채팅 받아오는 함수
     Q_INVOKABLE void tryGetContactList();
     Q_INVOKABLE void tryAddContact(const QString &user_id);
