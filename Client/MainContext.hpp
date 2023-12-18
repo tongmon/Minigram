@@ -5,6 +5,7 @@
 #include <QQmlComponent>
 
 class WinQuickWindow;
+class ChatModel;
 class ContactModel;
 class ChatSessionModel;
 
@@ -22,6 +23,8 @@ class MainContext : public QObject
     ContactModel *m_contact_model;
     ChatSessionModel *m_chat_session_model;
 
+    QHash<QString, ChatModel *> m_chat_model_map; // key: session_id, val: chat_model
+
   public:
     MainContext(WinQuickWindow &window);
     ~MainContext();
@@ -33,7 +36,7 @@ class MainContext : public QObject
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
     Q_INVOKABLE void trySendTextChat(const QString &session_id, const QString &content);
     Q_INVOKABLE void tryInitSessionList();
-    Q_INVOKABLE void tryRefreshSession(const QString& session_id);
+    Q_INVOKABLE void tryRefreshSession(const QString &session_id);
     Q_INVOKABLE void tryFetchMoreMessage(int session_index); // 스크롤바 올리는 경우 과거 채팅 받아오는 함수
     Q_INVOKABLE void tryGetContactList();
     Q_INVOKABLE void tryAddContact(const QString &user_id);

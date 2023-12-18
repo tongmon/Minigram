@@ -39,6 +39,11 @@ QQuickWindow &WinQuickWindow::GetQuickWindow()
     return *m_quick_window;
 }
 
+QQmlApplicationEngine &WinQuickWindow::GetEngine()
+{
+    return *m_engine;
+}
+
 bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
 {
     m_quick_window = qobject_cast<QQuickWindow *>(engine.rootObjects().at(0));
@@ -46,6 +51,7 @@ bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
     if (!m_quick_window)
         return false;
 
+    m_engine = &engine;
     m_hwnd = (HWND)m_quick_window->winId();
     m_resize_border_width = m_quick_window->property("resizeBorderWidth").toInt() * m_quick_window->devicePixelRatio();
 

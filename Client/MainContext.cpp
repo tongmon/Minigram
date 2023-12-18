@@ -1,4 +1,5 @@
 ﻿#include "MainContext.hpp"
+#include "ChatModel.hpp"
 #include "ChatSessionModel.hpp"
 #include "ContactModel.hpp"
 #include "NetworkDefinition.hpp"
@@ -625,6 +626,8 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 // Server에서 받는 버퍼 형식: 세션 id
 void MainContext::tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids)
 {
+    static QQmlComponent component(&m_window.GetEngine(), QUrl("qrc:/qml/ChatListView.qml"));
+
     auto &central_server = m_window.GetServerHandle();
 
     int request_id = central_server.MakeRequestID();
@@ -651,11 +654,18 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
     TCPHeader header(USER_REGISTER_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
-    central_server.AsyncWrite(request_id, request, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+    std::shared_ptr<QVariantMap> qvm(new QVariantMap);
+
+    (*qvm)["sessionName"] = session_name;
+    (*qvm)["sessionImg"] = img_base64.c_str();
+    (*qvm)["recentSenderId"] = (*qvm)["recentSendDate"] = (*qvm)["recentContentType"] = (*qvm)["recentContent"] = "";
+    (*qvm)["recentMessageId"] = (*qvm)["unreadCnt"] = 0;
+
+    central_server.AsyncWrite(request_id, request, [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
@@ -664,11 +674,12 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
             auto connection_type = header.GetConnectionType();
             auto data_size = header.GetDataSize();
 
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), data_size, [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
                 const std::string &response = session->GetResponse().CStr();
+                std::string img_base64 = (*qvm)["sessionImg"].toString().toStdString();
 
                 std::string session_cache_path = boost::dll::program_location().parent_path().string() + "/sessions/" + response;
                 boost::filesystem::create_directories(session_cache_path);
@@ -683,6 +694,17 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                     if (img_file.is_open())
                         img_file.write(img_base64.c_str(), img_base64.size());
                 }
+
+                (*qvm)["sessionId"] = response.c_str();
+                m_chat_session_model->append(*qvm);
+
+                auto chat_listview_rect = component.create(); // stackview에 이 녀석을 넣어야 함
+                auto chat_listview = chat_listview_rect->children()[0];
+                m_chat_model_map[response.c_str()] = new ChatModel(chat_listview);
+
+                QVariant var;
+                var.setValue(m_chat_model_map[response.c_str()]);
+                chat_listview->setProperty("model", var);
 
                 central_server.CloseRequest(session->GetID());
             });
