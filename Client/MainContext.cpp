@@ -144,6 +144,74 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
     return;
 }
 
+// Server에 전달하는 버퍼 형식: sender id | session id | content_type | content
+// Server에서 받는 버퍼 형식: message send date | message id
+void MainContext::trySendChat(const QString &session_id, unsigned char content_type, const QString &content)
+{
+    static TCPClient &central_server = m_window.GetServerHandle();
+
+    int request_id = central_server.MakeRequestID();
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+
+    std::unique_ptr<QVariantMap> qvm(new QVariantMap);
+    qvm->insert("sessionId", session_id);
+    qvm->insert("senderId", m_user_id);
+    qvm->insert("contentType", content_type);
+    qvm->insert("isOpponent", false);
+
+    Buffer request(m_user_id.toStdString() + "|" +
+                   session_id.toStdString() + "|");
+    request += content_type;
+    request += '|';
+
+    switch (content_type)
+    {
+    case TEXT_CHAT:
+        request += EncodeBase64(StrToUtf8(content.toStdString()));
+        qvm->insert("content", content);
+        break;
+    default:
+        request += 26;
+        break;
+    }
+
+    TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.Size());
+    request = header.GetHeaderBuffer() + request;
+
+    central_server.AsyncWrite(request_id, request, [qvm = std::move(qvm), this](std::shared_ptr<Session> session) mutable -> void {
+        if (!session.get() || !session->IsValid())
+            return;
+
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [qvm = std::move(qvm), this](std::shared_ptr<Session> session) mutable -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            TCPHeader header(session->GetResponse());
+
+            auto connection_type = header.GetConnectionType();
+            auto data_size = header.GetDataSize();
+
+            central_server.AsyncRead(session->GetID(), data_size, [qvm = std::move(qvm), this](std::shared_ptr<Session> session) mutable -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
+                qvm->insert("messageId", 1111);
+                qvm->insert("sendDate", "some date");
+
+                // 챗 버블 실제로 추가하는 로직
+                QMetaObject::invokeMethod(m_main_page,
+                                          "addChat",
+                                          Q_ARG(QVariant, QVariant::fromValue(*qvm)));
+
+                central_server.CloseRequest(session->GetID());
+            });
+        });
+    });
+
+    return;
+}
+
 // 채팅방 초기화 로직
 // 처음 로그인이 성공할 때만 트리거 됨.
 // 해당 함수에서 각 세션의 리스트를 채우진 않고 각종 세션 정보를 초기화하고 해당 세션에서 읽지 않은 메시지 개수, 가장 최근 메시지 등을 가져옴

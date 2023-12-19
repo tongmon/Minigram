@@ -27,6 +27,11 @@ class Buffer
         m_buf = buf.m_buf;
     }
 
+    Buffer(const std::byte &letter)
+    {
+        Append(letter);
+    }
+
     Buffer(const char *str = nullptr)
     {
         Append(str);
@@ -104,6 +109,15 @@ class Buffer
         m_buf.push_back(static_cast<std::byte>(0));
     }
 
+    void Append(const std::byte &letter)
+    {
+        if (!m_buf.empty())
+            m_buf.pop_back();
+
+        m_buf.push_back(letter);
+        m_buf.push_back(static_cast<std::byte>(0));
+    }
+
     void Append(const std::string &str)
     {
         if (!m_buf.empty())
@@ -175,6 +189,13 @@ class Buffer
         return *this;
     }
 
+    Buffer &operator=(const std::byte &other)
+    {
+        m_buf.clear();
+        Append(other);
+        return *this;
+    }
+
     Buffer &operator=(const char *other)
     {
         m_buf.clear();
@@ -222,6 +243,18 @@ class Buffer
     Buffer &operator+=(const Buffer &other)
     {
         Append(other);
+        return *this;
+    }
+
+    Buffer &operator+=(const std::byte &other)
+    {
+        Append(other);
+        return *this;
+    }
+
+    Buffer &operator+=(const unsigned char &other)
+    {
+        Append(static_cast<std::byte>(other));
         return *this;
     }
 
