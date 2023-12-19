@@ -1,4 +1,5 @@
-﻿#include "ChatSessionSortFilterProxyModel.hpp"
+﻿#include "ChatModel.hpp"
+#include "ChatSessionSortFilterProxyModel.hpp"
 #include "ContactSortFilterProxyModel.hpp"
 #include "WinQuickWindow.hpp"
 
@@ -21,6 +22,9 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
 
 #pragma region Register cpp type to qml
+    qmlRegisterType<Chat>("minigram.chat.component", 1, 0, "Chat");
+    qmlRegisterType<ChatModel>("minigram.chat.component", 1, 0, "ChatModel");
+
     qmlRegisterType<Contact>("minigram.contact.component", 1, 0, "Contact");
     qmlRegisterType<ContactModel>("minigram.contact.component", 1, 0, "ContactModel");
     qmlRegisterType<ContactSortFilterProxyModel>("minigram.contact.component", 1, 0, "ContactSortFilterProxyModel");
@@ -40,7 +44,7 @@ int main(int argc, char *argv[])
 
     QQmlApplicationEngine engine;
 
-    const QUrl url(QStringLiteral("qrc:/qml/MainWindow.qml"));
+    const QUrl url(QStringLiteral("qrc:/qml/ApplicationWindow.qml"));
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreated,

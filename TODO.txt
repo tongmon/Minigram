@@ -73,5 +73,6 @@ topwindow인지 검사하고 있는 함수가 있어야 됨 ex) activate window
 
 클라에서 메시지 받을 때 topwindow인지 검사, topwindow가 세션 안읽은 메시지 +1 처리
 
-우선적으로 해야 하는 것: session, sessionmodel, chat, chatmodel 관련 로직들 구축
+우선적으로 해야 하는 것: session, sessionmodel, chat, chatmodel 관련 로직들 구축 -> 일단 함
 
+채팅 보내는 함수들 구조 다시 변경해야 함, qml 소통 방식 바뀜

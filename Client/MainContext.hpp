@@ -23,7 +23,9 @@ class MainContext : public QObject
     ContactModel *m_contact_model;
     ChatSessionModel *m_chat_session_model;
 
-    QHash<QString, ChatModel *> m_chat_model_map; // key: session_id, val: chat_model
+    QObject *m_application_window;
+    QObject *m_main_page;
+    QObject *m_login_page;
 
   public:
     MainContext(WinQuickWindow &window);

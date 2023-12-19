@@ -18,9 +18,9 @@
     <qresource prefix="/qml">
         <file alias="MainPage.qml">Qmls/MainPage.qml</file>
         <file alias="LoginPage.qml">Qmls/LoginPage.qml</file>
-        <file alias="MainWindow.qml">Qmls/MainWindow.qml</file>
+        <file alias="ApplicationWindow.qml">Qmls/ApplicationWindow.qml</file>
         <file alias="TitleBar.qml">Qmls/TitleBar.qml</file>
-        <file alias="ChatBubbleText.qml">Qmls/ChatBubbleText.qml</file>
+        <file alias="TextChat.qml">Qmls/TextChat.qml</file>
         <file alias="ChatListView.qml">Qmls/ChatListView.qml</file>
         <file alias="SettingButton.qml">Qmls/SettingButton.qml</file>
         <file alias="ContactButton.qml">Qmls/ContactButton.qml</file>

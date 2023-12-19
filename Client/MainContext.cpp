@@ -27,6 +27,10 @@ MainContext::MainContext(WinQuickWindow &window)
 {
     m_contact_model = m_window.GetQuickWindow().findChild<ContactModel *>("contactModel");
     m_chat_session_model = m_window.GetQuickWindow().findChild<ChatSessionModel *>("chatSessionModel");
+
+    m_application_window = m_window.GetQuickWindow().findChild<QObject *>("applicationWindow");
+    m_main_page = m_window.GetQuickWindow().findChild<QObject *>("mainPage");
+    m_login_page = m_window.GetQuickWindow().findChild<QObject *>("loginPage");
 }
 
 MainContext::~MainContext()
@@ -696,15 +700,8 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                 }
 
                 (*qvm)["sessionId"] = response.c_str();
-                m_chat_session_model->append(*qvm);
 
-                auto chat_listview_rect = component.create(); // stackview에 이 녀석을 넣어야 함
-                auto chat_listview = chat_listview_rect->children()[0];
-                m_chat_model_map[response.c_str()] = new ChatModel(chat_listview);
-
-                QVariant var;
-                var.setValue(m_chat_model_map[response.c_str()]);
-                chat_listview->setProperty("model", var);
+                // 여기에 invokeMethod
 
                 central_server.CloseRequest(session->GetID());
             });

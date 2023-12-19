@@ -13,64 +13,75 @@ Rectangle {
     property string currentSessionName: ""
 
     // chat list view 템플릿이 찍어낸 객체
-    property var chatViewObjects: ({})
+    property var chatListViewMap: ({})
 
     // chat list view 템플릿
     property var chatListViewComponent: Qt.createComponent("qrc:/qml/ChatListView.qml")
 
-    function addSession(obj)
+    function addSession(sessionInfo)
     {
-        chatRoomListModel.append({
-            "sessionID": obj["sessionID"],
-            "sessionName": obj["sessionName"],
-            "sessionImage": "image://mybase64/data:image/png;base64," + obj["sessionImage"],
-            "recentChatDate": obj["recentChatDate"],
-            "recentChatContent": obj["recentChatContent"]
-        })
-
-        chatViewObjects[obj["sessionID"]] = chatListViewComponent.createObject(chatView)
+        chatSessionModel.append(sessionInfo)
+        chatListViewMap[sessionInfo["sessionId"]] = chatListViewComponent.createObject(chatView)
     }
 
-    // 테스트 전용 함수
-    function addSessionTest(sessionID, sessionName, sessionImage, recentChatDate, recentChatContent)
+    function addChat(chatInfo)
     {
-        chatRoomListModel.append({
-            "sessionID": sessionID,
-            "sessionName": sessionName,
-            "sessionImage": "image://mybase64/data:image/png;base64," + sessionImage,
-            "recentChatDate": recentChatDate,
-            "recentChatContent": recentChatContent
-        })
-    
-        chatViewObjects[sessionID] = chatListViewComponent.createObject(chatView)
+        chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
     }
 
-    function addChatBubbleText(obj)
-    {
-        chatViewObjects[obj["sessionID"]].children[0].model.append({
-            "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
-            "isOpponent": obj["isOpponent"],
-            "senderID": obj["senderID"],
-            "senderName": obj["senderName"],
-            "senderImage": obj["senderImage"],
-            "chatContent": obj["chatContent"],
-            "chatDate": obj["chatDate"]
-        })
-    }
-
-    // 테스트 전용 함수
-    function addChatBubbleTextTest(sessionID, isOpponent, senderID, senderName, senderImage, chatContent, chatDate)
-    {
-        chatViewObjects[sessionID].children[0].model.append({
-            "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
-            "isOpponent": isOpponent,
-            "senderID": senderID,
-            "senderName": senderName,
-            "senderImage": senderImage,
-            "chatContent": chatContent,
-            "chatDate": chatDate
-        })
-    }
+    //function addSession(obj)
+    //{
+    //    chatRoomListModel.append({
+    //        "sessionID": obj["sessionID"],
+    //        "sessionName": obj["sessionName"],
+    //        "sessionImage": "image://mybase64/data:image/png;base64," + obj["sessionImage"],
+    //        "recentChatDate": obj["recentChatDate"],
+    //        "recentChatContent": obj["recentChatContent"]
+    //    })
+//
+    //    chatViewObjects[obj["sessionID"]] = chatListViewComponent.createObject(chatView)
+    //}
+//
+    //// 테스트 전용 함수
+    //function addSessionTest(sessionID, sessionName, sessionImage, recentChatDate, recentChatContent)
+    //{
+    //    chatRoomListModel.append({
+    //        "sessionID": sessionID,
+    //        "sessionName": sessionName,
+    //        "sessionImage": "image://mybase64/data:image/png;base64," + sessionImage,
+    //        "recentChatDate": recentChatDate,
+    //        "recentChatContent": recentChatContent
+    //    })
+    //
+    //    chatViewObjects[sessionID] = chatListViewComponent.createObject(chatView)
+    //}
+//
+    //function addChatBubbleText(obj)
+    //{
+    //    chatViewObjects[obj["sessionID"]].children[0].model.append({
+    //        "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
+    //        "isOpponent": obj["isOpponent"],
+    //        "senderID": obj["senderID"],
+    //        "senderName": obj["senderName"],
+    //        "senderImage": obj["senderImage"],
+    //        "chatContent": obj["chatContent"],
+    //        "chatDate": obj["chatDate"]
+    //    })
+    //}
+//
+    //// 테스트 전용 함수
+    //function addChatBubbleTextTest(sessionID, isOpponent, senderID, senderName, senderImage, chatContent, chatDate)
+    //{
+    //    chatViewObjects[sessionID].children[0].model.append({
+    //        "chatBubbleSource": "qrc:/qml/ChatBubbleText.qml",
+    //        "isOpponent": isOpponent,
+    //        "senderID": senderID,
+    //        "senderName": senderName,
+    //        "senderImage": senderImage,
+    //        "chatContent": chatContent,
+    //        "chatDate": chatDate
+    //    })
+    //}
 
     ColumnLayout {
         anchors.fill: parent
@@ -258,9 +269,9 @@ Rectangle {
                                 currentSessionName = sessionName
 
                                 if(chatView.empty)
-                                    chatView.push(chatViewObjects[currentRoomID], StackView.Immediate)
+                                    chatView.push(chatListViewMap[currentRoomID], StackView.Immediate)
                                 else
-                                    chatView.replace(null, chatViewObjects[currentRoomID], StackView.Immediate)
+                                    chatView.replace(null, chatListViewMap[currentRoomID], StackView.Immediate)
                             }
                         }
                     }
@@ -269,7 +280,7 @@ Rectangle {
                         // addSessionTest("test_01", "chat room 1", "", "1997-03-09", "chat preview in chat room 1")
                         // addSessionTest("test_02", "chat room 2", "", "2023-09-21", "chat preview in chat room 2")
 
-                        chatSessionModel.append({
+                        addSession({
                             "sessionId": "tongstar-20231023 11:21:06.0532",
                             "sessionName": "안양팸",
                             "sessionImg": "",
@@ -281,7 +292,7 @@ Rectangle {
                             "unreadCnt": 10
                         })
 
-                        chatSessionModel.append({
+                        addSession({
                             "sessionId": "yellowjam-20221122 09:56:16.4215",
                             "sessionName": "엄마",
                             "sessionImg": "",
@@ -292,6 +303,30 @@ Rectangle {
                             "recentMessageId": 371,
                             "unreadCnt": 1
                         })
+
+                        //chatSessionModel.append({
+                        //    "sessionId": "tongstar-20231023 11:21:06.0532",
+                        //    "sessionName": "안양팸",
+                        //    "sessionImg": "",
+                        //    "recentSenderId": "tongstar",
+                        //    "recentSendDate": "20231215 10:21:06.1211",
+                        //    "recentContentType": "text",
+                        //    "recentContent": "Hello Everyone!",
+                        //    "recentMessageId": 442,
+                        //    "unreadCnt": 10
+                        //})
+//
+                        //chatSessionModel.append({
+                        //    "sessionId": "yellowjam-20221122 09:56:16.4215",
+                        //    "sessionName": "엄마",
+                        //    "sessionImg": "",
+                        //    "recentSenderId": "yellowjam",
+                        //    "recentSendDate": "20231214 09:11:25.4533",
+                        //    "recentContentType": "text",
+                        //    "recentContent": "How is ur weekend?",
+                        //    "recentMessageId": 371,
+                        //    "unreadCnt": 1
+                        //})
                     }
                 }            
             }
@@ -521,6 +556,7 @@ Rectangle {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     id: chatView
+                    objectName: "chatView"
 
                     // initialItem: Rectangle {
                     //     anchors.fill: parent
@@ -561,13 +597,24 @@ Rectangle {
 
                                 // c++ 단에서 수행해야 함, 테스트 끝나면 밑 두줄 삭제 요망
                                 var chatTime = Qt.formatDateTime(new Date(), "yyyy-MM-dd hh:mm:ss.zzz")
-                                addChatBubbleTextTest(currentRoomID, 
-                                                  false, 
-                                                  "tongstar",
-                                                  "KyungJoonLee",
-                                                  "qrc:/icon/UserID.png",
-                                                  text,
-                                                  chatTime)
+                                
+                                addChat({
+                                    "messageId": 0,
+                                    "sessionId": currentRoomID,
+                                    "senderId": "tongstar",
+                                    "sendDate": chatTime,
+                                    "contentType": 0,
+                                    "content": text,
+                                    "isOpponent": false
+                                })
+
+                                //addChatBubbleTextTest(currentRoomID, 
+                                //                  false, 
+                                //                  "tongstar",
+                                //                  "KyungJoonLee",
+                                //                  "qrc:/icon/UserID.png",
+                                //                  text,
+                                //                  chatTime)
 
                                 text = ""  
                             }                

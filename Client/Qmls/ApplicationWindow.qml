@@ -7,6 +7,7 @@ import minigram.chatsession.component 1.0
 
 ApplicationWindow {
     id: applicationWindow
+    objectName: "applicationWindow"
     visible: true
     width: 1024
     height: 768

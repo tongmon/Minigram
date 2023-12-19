@@ -4,10 +4,10 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 
 Item {
-    property int chatBubbleMargin: 3
+    property int contentMargin: 3
 
     width: parent.width
-    height: chatBubbleLayout.spacing + (isOpponent ? chatBubbleSenderText.paintedHeight : 0) + chatBubbleBackground.height
+    height: chatLayout.spacing + (isOpponent ? chatSenderText.paintedHeight : 0) + chatBackground.height
 
     RowLayout {       
         anchors.fill: parent
@@ -26,11 +26,11 @@ Item {
         }
 
         ColumnLayout {
-            id: chatBubbleLayout
+            id: chatLayout
             spacing: 3
 
             Text {
-                id: chatBubbleSenderText
+                id: chatSenderText
                 text: senderName
                 font.pixelSize: 15
                 visible: isOpponent
@@ -38,14 +38,14 @@ Item {
             }
 
             Canvas {
-                id: chatBubbleBackground
-                Layout.preferredWidth: Math.max(chatBubbleContent.width, chatDateText.paintedWidth) + chatBubbleStemSize.width + chatBubbleMargin * 2
-                Layout.preferredHeight: chatBubbleContent.height + chatDateText.paintedHeight + chatBubbleMargin * 2
+                id: chatBackground
+                Layout.preferredWidth: Math.max(chatContent.width, chatDateText.paintedWidth) + chatBubbleStemSize.width + contentMargin * 2
+                Layout.preferredHeight: chatContent.height + chatDateText.paintedHeight + contentMargin * 2
 
                 Item {
-                    id: chatBubbleContent
-                    x: isOpponent ? (chatBubbleStemSize.width + chatBubbleMargin) : chatBubbleMargin
-                    y: chatBubbleMargin
+                    id: chatContent
+                    x: isOpponent ? (chatBubbleStemSize.width + contentMargin) : contentMargin
+                    y: contentMargin
                     width: Math.min(chatBubbleMaximumWidth, Math.max(chatBubbleMinimumSize.width, Math.max(dummyText.paintedWidth, chatDateText.paintedWidth)))
                     height: Math.max(chatContentTextEdit.paintedHeight, chatBubbleMinimumSize.height)
 
@@ -55,7 +55,7 @@ Item {
                         anchors.left: parent.left
                         width: parent.width
                         height: parent.height
-                        text: chatContent
+                        text: content
                         font.pixelSize: 15
                         selectByMouse: true
                         wrapMode: TextEdit.Wrap
@@ -73,10 +73,10 @@ Item {
 
                 Text {
                     id: chatDateText
-                    anchors.top: chatBubbleContent.bottom
-                    anchors.left: isOpponent ? undefined : chatBubbleContent.left
-                    anchors.right: isOpponent ? chatBubbleContent.right : undefined
-                    text: chatDate
+                    anchors.top: chatContent.bottom
+                    anchors.left: isOpponent ? undefined : chatContent.left
+                    anchors.right: isOpponent ? chatContent.right : undefined
+                    text: sendDate
                 }
 
                 onPaint: {

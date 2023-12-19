@@ -350,6 +350,14 @@ enum ContactRelationStatus
     RELATION_BLOCKED
 };
 
+enum ChatType
+{
+    TEXT_CHAT,
+    IMG_CHAT,
+    VIDEO_CHAT,
+    CHAT_TYPE_CNT
+};
+
 // constexpr std::uint64_t LOGIN_CONNECTION_TYPE = 0;
 // constexpr std::uint64_t TEXTCHAT_CONNECTION_TYPE = 1;
 // constexpr std::uint64_t IMAGECHAT_CONNECTION_TYPE = 2;

@@ -10,6 +10,14 @@ ChatSessionModel::~ChatSessionModel()
     qDeleteAll(m_chat_sessions);
 }
 
+void ChatSessionModel::Append(ChatSession *chat_session)
+{
+    beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    m_id_index_map[chat_session->session_id] = m_chat_sessions.size();
+    m_chat_sessions.append(chat_session);
+    endInsertRows();
+}
+
 int ChatSessionModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);

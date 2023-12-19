@@ -42,6 +42,10 @@ QVariant ChatModel::data(const QModelIndex &index, int role) const
         return chat->content_type;
     case CONTENT_ROLE:
         return chat->content;
+    case QML_SOURCE_ROLE:
+        return chat->qml_source;
+    case IS_OPPONENT_ROLE:
+        return chat->is_oppoent;
     default:
         return QVariant();
     }
@@ -56,6 +60,8 @@ QHash<int, QByteArray> ChatModel::roleNames() const
     roles[SEND_DATE_ROLE] = "sendDate";
     roles[CONTENT_TYPE_ROLE] = "contentType";
     roles[CONTENT_ROLE] = "content";
+    roles[QML_SOURCE_ROLE] = "qmlSource";
+    roles[IS_OPPONENT_ROLE] = "isOpponent";
     return roles;
 }
 
@@ -65,8 +71,9 @@ void ChatModel::append(const QVariantMap &qvm)
                           qvm["sessionId"].toString(),
                           qvm["senderId"].toString(),
                           qvm["sendDate"].toString(),
-                          qvm["contentType"].toString(),
-                          qvm["content"].toString());
+                          qvm["contentType"].toInt(),
+                          qvm["content"].toString(),
+                          qvm["isOpponent"].toBool());
 
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
     m_id_index_map[chat->message_id] = m_chats.size();

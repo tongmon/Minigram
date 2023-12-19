@@ -31,6 +31,8 @@ class ChatSessionModel : public QAbstractListModel
     ChatSessionModel(QObject *parent = nullptr);
     ~ChatSessionModel();
 
+    void Append(ChatSession* chat_session);
+
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
     QVariant data(const QString &session_id, int role = Qt::DisplayRole) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;

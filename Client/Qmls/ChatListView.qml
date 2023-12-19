@@ -2,13 +2,14 @@
 import QtQuick.Window 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
+import minigram.chat.component 1.0
 
 Rectangle {
     color: "transparent"
 
     ListView {
         anchors.fill: parent
-        id: chatBubbleListView
+        id: chatListView
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
@@ -16,29 +17,29 @@ Rectangle {
             policy: ScrollBar.AsNeeded
         }
     
-        model: ListModel {
+        model: ChatModel {
             id: chatListModel
         }
 
         delegate: Item {
             width: parent.width
-            height: chatBubbleLoader.height
-            objectName: senderID // 어떤 사람이 연속으로 메시지를 보내고 있는지 알기 위함
+            height: chatLoader.height
+            objectName: senderId // 어떤 사람이 연속으로 메시지를 보내고 있는지 알기 위함
 
             // 말풍선 꼭다리 부분 크기
             property var chatBubbleStemSize: Qt.size(11, 8)
 
             // 말풍선 최대 너비
-            property var chatBubbleMaximumWidth: chatBubbleListView.width * 0.6
+            property var chatBubbleMaximumWidth: chatListView.width * 0.6
 
             // 말풍선 최소 크기
             property var chatBubbleMinimumSize: Qt.size(10, 10)
 
             Loader {
-                id: chatBubbleLoader
+                id: chatLoader
                 width: parent.width
                 height: (item !== null && typeof(item) !== 'undefined') ? item.height : 0
-                source: chatBubbleSource
+                source: qmlSource // "qrc:/qml/TextChat.qml"
 
                 onLoaded: {
                     // item.objectName = chatBubbleID

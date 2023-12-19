@@ -22,7 +22,9 @@ class ChatModel : public QAbstractListModel
         SENDER_ID_ROLE,
         SEND_DATE_ROLE,
         CONTENT_TYPE_ROLE,
-        CONTENT_ROLE
+        CONTENT_ROLE,
+        QML_SOURCE_ROLE,
+        IS_OPPONENT_ROLE
     };
 
     ChatModel(QObject *parent = nullptr);
