@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QQmlComponent>
 
+class Buffer;
 class WinQuickWindow;
 class ChatModel;
 class ContactModel;
@@ -32,7 +33,7 @@ class MainContext : public QObject
     ~MainContext();
 
     // 서버에서 클라로 전송할 때 대응하는 함수들
-    void RecieveTextChat(const std::string &content);
+    void RecieveChat(const Buffer &server_response);
 
     // 클라에서 서버로 전송하기 위한 함수들
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);

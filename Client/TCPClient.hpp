@@ -1,7 +1,7 @@
 ﻿#ifndef HEADER__FILE__TCPCLIENT
 #define HEADER__FILE__TCPCLIENT
 
-#include "NetworkDefinition.hpp"
+#include "Buffer.hpp"
 
 #include <functional>
 #include <map>

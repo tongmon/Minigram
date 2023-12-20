@@ -16,6 +16,7 @@ class MessengerService : public Service
 
     void LoginHandling();
     void TextMessageHandling();
+    void ChatHandling();
     void SessionListInitHandling();
     void ContactListInitHandling();
     void RegisterUserHandling();

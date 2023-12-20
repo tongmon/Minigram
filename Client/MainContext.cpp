@@ -37,7 +37,7 @@ MainContext::~MainContext()
 {
 }
 
-void MainContext::RecieveTextChat(const std::string &content)
+void MainContext::RecieveChat(const Buffer &server_response)
 {
 }
 
@@ -101,7 +101,7 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
                    session_id.toStdString() + "|" +
                    EncodeBase64(StrToUtf8(content.toStdString())));
 
-    TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.Size());
+    TCPHeader header(CHAT_SEND_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     central_server.AsyncWrite(request_id, request, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
@@ -153,7 +153,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::unique_ptr<QVariantMap> qvm(new QVariantMap);
+    QSharedPointer<QVariantMap> qvm(new QVariantMap);
     qvm->insert("sessionId", session_id);
     qvm->insert("senderId", m_user_id);
     qvm->insert("contentType", content_type);
@@ -175,14 +175,14 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
         break;
     }
 
-    TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.Size());
+    TCPHeader header(CHAT_SEND_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
-    central_server.AsyncWrite(request_id, request, [qvm = std::move(qvm), this](std::shared_ptr<Session> session) mutable -> void {
+    central_server.AsyncWrite(request_id, request, [qvm, this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [qvm = std::move(qvm), this](std::shared_ptr<Session> session) mutable -> void {
+        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [qvm, this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
@@ -191,7 +191,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
             auto connection_type = header.GetConnectionType();
             auto data_size = header.GetDataSize();
 
-            central_server.AsyncRead(session->GetID(), data_size, [qvm = std::move(qvm), this](std::shared_ptr<Session> session) mutable -> void {
+            central_server.AsyncRead(session->GetID(), data_size, [qvm, this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
@@ -534,7 +534,7 @@ void MainContext::tryAddContact(const QString &user_id)
 
     Buffer request(m_user_id.toStdString() + "|" + user_id.toStdString());
 
-    TCPHeader header(USER_REGISTER_TYPE, request.Size());
+    TCPHeader header(CONTACT_ADD_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     central_server.AsyncWrite(request_id, request, [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
@@ -723,7 +723,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
     if (!participant_ids.empty())
         request += participant_ids.back();
 
-    TCPHeader header(USER_REGISTER_TYPE, request.Size());
+    TCPHeader header(SESSION_ADD_TYPE, request.Size());
     request = header.GetHeaderBuffer() + request;
 
     std::shared_ptr<QVariantMap> qvm(new QVariantMap);

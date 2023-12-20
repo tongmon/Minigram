@@ -34,8 +34,10 @@ void Service::StartHandling()
                                 }
 
                                 m_server_request_buf.commit(bytes_transferred);
-                                std::istream strm(&m_server_request_buf);
-                                std::getline(strm, m_server_request);
+                                m_server_request = m_server_request_buf;
+
+                                // std::istream strm(&m_server_request_buf);
+                                // std::getline(strm, m_server_request);
 
                                 TCPHeader header(m_server_request);
                                 auto connection_type = header.GetConnectionType();
@@ -52,15 +54,17 @@ void Service::StartHandling()
                                                             }
 
                                                             m_server_request_buf.commit(bytes_transferred);
-                                                            std::istream strm(&m_server_request_buf);
-                                                            std::getline(strm, m_server_request);
+                                                            m_server_request = m_server_request_buf;
+
+                                                            // std::istream strm(&m_server_request_buf);
+                                                            // std::getline(strm, m_server_request);
 
                                                             switch (connection_type)
                                                             {
                                                             case LOGIN_CONNECTION_TYPE:
                                                                 break;
-                                                            case TEXTCHAT_CONNECTION_TYPE:
-                                                                m_window.GetMainContext().RecieveTextChat(m_server_request);
+                                                            case CHAT_SEND_TYPE:
+                                                                m_window.GetMainContext().RecieveChat(m_server_request);
                                                                 break;
                                                             case CHATROOMLIST_INITIAL_TYPE:
                                                                 break;

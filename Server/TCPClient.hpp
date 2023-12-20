@@ -1,6 +1,8 @@
 ﻿#ifndef HEADER__FILE__TCPCLIENT
 #define HEADER__FILE__TCPCLIENT
 
+#include "Buffer.hpp"
+
 #include <functional>
 #include <map>
 #include <memory>
@@ -77,6 +79,10 @@ class TCPClient
                       unsigned short port_num,
                       unsigned int request_id,
                       std::function<void(std::shared_ptr<Session>)> on_success_connection = {});
+
+    void AsyncWrite(unsigned int request_id,
+                    const Buffer &request,
+                    std::function<void(std::shared_ptr<Session>)> on_finish_write = {});
 
     void AsyncWrite(unsigned int request_id,
                     const std::string &request,

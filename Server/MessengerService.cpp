@@ -140,7 +140,7 @@ void MessengerService::TextMessageHandling()
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
         std::string request = sender_id + "|" + session_id + "|" + send_date + "|" + content;
-        TCPHeader header(TEXTCHAT_CONNECTION_TYPE, request.size());
+        TCPHeader header(CHAT_SEND_TYPE, request.size());
         request = header.GetHeaderBuffer() + request;
 
         m_peer->AsyncWrite(request_id, request, [peer = m_peer](std::shared_ptr<Session> session) -> void {
@@ -151,7 +151,7 @@ void MessengerService::TextMessageHandling()
         });
     }
 
-    TCPHeader header(TEXTCHAT_CONNECTION_TYPE, send_date.size());
+    TCPHeader header(CHAT_SEND_TYPE, send_date.size());
     m_request = header.GetHeaderBuffer() + send_date;
 
     // 채팅 송신이 완료되었으면 보낸 사람 클라이언트로 송신 시점을 보냄
@@ -165,6 +165,106 @@ void MessengerService::TextMessageHandling()
 
                                  delete this;
                              });
+}
+
+// Client에서 받는 버퍼 형식: sender id | session id | content_type | content
+// Client에 전달하는 버퍼 형식: message send date | message id
+void MessengerService::ChatHandling()
+{
+    // boost split 쓰는 부분 대체해야 함
+    std::vector<std::string> parsed;
+    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    Buffer sender_id = parsed[0], session_id = parsed[1], content_type_buf = parsed[2], content = parsed[3];
+
+    // mongodb에 채팅 내용 업로드
+    using namespace bsoncxx;
+    using namespace bsoncxx::builder;
+
+    auto mongo_client = MongoDBPool::Get().acquire();
+    auto mongo_db = (*mongo_client)["Minigram"];
+    auto mongo_coll = mongo_db[session_id.CStr()];
+
+    std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
+    std::string send_date = std::format("{0:%F %T}", tp);
+
+    int content_type = static_cast<int>(content_type_buf[0]); // *((unsigned char *)content_type_buf.ConvertToNonStringData().Data());
+
+    auto opts = mongocxx::options::find{};
+    opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
+    int64_t message_id = 0;
+
+    auto mongo_cursor = mongo_coll.find({}, opts);
+    if (mongo_cursor.begin() != mongo_cursor.end())
+    {
+        auto doc = *mongo_cursor.begin();
+        message_id = doc["message_id"].get_int64() + 1;
+    }
+
+    mongo_coll.insert_one(basic::make_document(basic::kvp("message_id", message_id),
+                                               basic::kvp("sender_id", sender_id.CStr()),
+                                               basic::kvp("send_date", types::b_date{tp}),
+                                               basic::kvp("content_type", content_type),
+                                               basic::kvp("content", content),
+                                               basic::kvp("read_by", basic::make_array(basic::make_document(basic::kvp("reader_id", sender_id))))));
+
+    // 채팅 내용 다른 사람에게 전송
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
+                                  soci::use(session_id, "sid"));
+
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        std::string participant_id = it->get<std::string>(0), login_ip;
+        int login_port;
+
+        // 보낸 사람은 제외
+        if (participant_id == sender_id.CStr())
+            continue;
+
+        *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
+            soci::into(login_ip), soci::into(login_port), soci::use(participant_id);
+
+        // 로그인 중이 아니면 푸시알림 건너뜀
+        if (login_ip.empty())
+            continue;
+
+        auto request_id = m_peer->MakeRequestID();
+        m_peer->AsyncConnect(login_ip, login_port, request_id);
+
+        Buffer request(sender_id + "|" + session_id + "|" + send_date + "|" + content_type_buf + "|" + content);
+        TCPHeader header(CHAT_SEND_TYPE, request.Size());
+        request = header.GetHeaderBuffer() + request;
+
+        // std::string request = sender_id + "|" + session_id + "|" + send_date + "|" + content;
+        // TCPHeader header(CHAT_SEND_TYPE, request.size());
+        // request = header.GetHeaderBuffer() + request;
+
+        // 밑 내용 Buffer 사용하는 AsyncWrite로 바꿔야함
+        // m_peer->AsyncWrite(request_id, request, [peer = m_peer](std::shared_ptr<Session> session) -> void {
+        //     if (!session.get() || !session->IsValid())
+        //         return;
+        //
+        //    peer->CloseRequest(session->GetID());
+        // });
+    }
+
+    m_request = send_date + "|";
+    m_request += message_id;
+
+    // TCPHeader header(CHAT_SEND_TYPE, send_date.size() + message_id);
+    // m_request = header.GetHeaderBuffer() + send_date;
+
+    // 밑 내용 Buffer 사용하는 AsyncWrite로 바꿔야함
+    // 채팅 송신이 완료되었으면 보낸 사람 클라이언트로 송신 시점을 보냄
+    // boost::asio::async_write(*m_sock,
+    //                          boost::asio::buffer(m_request),
+    //                          [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+    //                              if (ec != boost::system::errc::success)
+    //                              {
+    //                                  // write에 이상이 있는 경우
+    //                              }
+    //
+    //                              delete this;
+    //                          });
 }
 
 // client send 형식
@@ -599,8 +699,9 @@ void MessengerService::StartHandling()
                                                             case LOGIN_CONNECTION_TYPE:
                                                                 LoginHandling();
                                                                 break;
-                                                            case TEXTCHAT_CONNECTION_TYPE:
-                                                                TextMessageHandling();
+                                                            case CHAT_SEND_TYPE:
+                                                                // TextMessageHandling();
+                                                                ChatHandling();
                                                                 break;
                                                             case CHATROOMLIST_INITIAL_TYPE:
                                                                 SessionListInitHandling();

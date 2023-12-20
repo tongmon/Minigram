@@ -67,6 +67,12 @@ bool TCPClient::AsyncConnect(const std::string &raw_ip_address,
 }
 
 void TCPClient::AsyncWrite(unsigned int request_id,
+                           const Buffer &request,
+                           std::function<void(std::shared_ptr<Session>)> on_finish_write)
+{
+}
+
+void TCPClient::AsyncWrite(unsigned int request_id,
                            const std::string &request,
                            std::function<void(std::shared_ptr<Session>)> on_finish_write)
 {

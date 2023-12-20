@@ -1,10 +1,7 @@
 ﻿#ifndef HEADER__FILE__NETWORKDEFINITION
 #define HEADER__FILE__NETWORKDEFINITION
 
-#include <algorithm>
-#include <array>
-#include <cstdint>
-#include <string>
+#include "Buffer.hpp"
 
 class TCPHeader
 {
@@ -30,6 +27,13 @@ class TCPHeader
                 m_buffers[i].bytes[j] = static_cast<std::byte>(data[i * 8 + j]);
     }
 
+    TCPHeader(const Buffer &data)
+    {
+        for (int i = 0; i < BUFFER_CNT; i++)
+            for (int j = 0; j < 8; j++)
+                m_buffers[i].bytes[j] = static_cast<std::byte>(data[i * 8 + j]);
+    }
+
     TCPHeader(std::uint64_t connection_type, std::uint64_t data_size)
     {
         m_buffers[CONNECTION_TYPE].number = connection_type;
@@ -46,12 +50,21 @@ class TCPHeader
         return m_buffers[DATA_SIZE].number;
     }
 
-    std::string GetHeaderBuffer()
+    // std::string GetHeaderBuffer()
+    //{
+    //     std::string ret(BUFFER_CNT * 8, 0);
+    //     for (int i = 0; i < BUFFER_CNT; i++)
+    //         for (int j = 0; j < 8; j++)
+    //             ret[i * 8 + j] = static_cast<char>(m_buffers[i].bytes[j]);
+    //     return ret;
+    // }
+
+    Buffer GetHeaderBuffer()
     {
-        std::string ret(BUFFER_CNT * 8, 0);
+        Buffer ret(BUFFER_CNT * 8, static_cast<std::byte>(0));
         for (int i = 0; i < BUFFER_CNT; i++)
             for (int j = 0; j < 8; j++)
-                ret[i * 8 + j] = static_cast<char>(m_buffers[i].bytes[j]);
+                ret[i * 8 + j] = m_buffers[i].bytes[j];
         return ret;
     }
 };
@@ -64,8 +77,7 @@ constexpr size_t TCP_HEADER_SIZE = sizeof(TCPHeader);
 enum ConnectionType
 {
     LOGIN_CONNECTION_TYPE,
-    TEXTCHAT_CONNECTION_TYPE,
-    IMAGECHAT_CONNECTION_TYPE,
+    CHAT_SEND_TYPE,
     CHATROOMLIST_INITIAL_TYPE,
     CONTACTLIST_INITIAL_TYPE,
     USER_REGISTER_TYPE,
@@ -95,6 +107,14 @@ enum ContactRelationStatus
     RELATION_FRIEND,
     RELATION_HIDE,
     RELATION_BLOCKED
+};
+
+enum ChatType
+{
+    TEXT_CHAT,
+    IMG_CHAT,
+    VIDEO_CHAT,
+    CHAT_TYPE_CNT
 };
 
 #endif /* HEADER__FILE__NETWORKDEFINITION */
