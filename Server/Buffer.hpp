@@ -38,8 +38,6 @@ class Buffer
 
     auto end() const;
 
-    Buffer &ConvertToNonStringData();
-
     const char *CStr(int st = 0) const;
 
     size_t Size() const;
@@ -55,6 +53,16 @@ class Buffer
     void Append(const std::string &str);
 
     void Append(const Buffer &other);
+
+    template <typename T>
+    void Append(const T &other)
+    {
+        Buffer buf(sizeof(T) + 1, static_cast<std::byte>(0));
+        auto t = static_cast<std::byte *>(static_cast<void *>(&other));
+        for (size_t i = 0; i < buf.Size() - 1; i++)
+            buf.m_buf[i] = *(t++);
+        *this += buf;
+    }
 
     operator std::vector<std::byte>::iterator();
 
@@ -78,6 +86,14 @@ class Buffer
 
     Buffer &operator=(const boost::asio::streambuf &stbuf);
 
+    template <typename T>
+    Buffer &operator=(const T &other)
+    {
+        m_buf.clear();
+        Append<T>(other);
+        return *this;
+    }
+
     Buffer operator+(const Buffer &other) const;
 
     Buffer &operator+=(const Buffer &other);
@@ -93,25 +109,23 @@ class Buffer
     template <typename T>
     Buffer &operator+=(const T &val)
     {
-        Buffer buf(sizeof(T) + 1, static_cast<std::byte>(0));
-        auto t = static_cast<std::byte *>(static_cast<void *>(&a));
-        for (size_t i = 0; i < buf.Size() - 1; i++)
-            buf.m_buf[i] = *(t++);
-        *this += buf;
-
+        Append<T>(val);
         return *this;
     }
 
     template <typename T = const std::byte *>
-    T Data()
+    T Data(bool exclude_null = true)
     {
         if (std::is_same_v<T, const std::byte *>)
+        {
+            if (exclude_null)
+                m_buf.pop_back();
+
             return (m_buf.empty() || m_buf.size() <= st) ? nullptr : &m_buf[0];
+        }
 
         T val;
-        m_buf.pop_back();
         std::memcpy(&val, &m_buf[0], sizeof(T));
-        m_buf.push_back(static_cast<std::byte>(0));
         return val;
     }
 

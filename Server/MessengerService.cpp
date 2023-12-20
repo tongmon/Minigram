@@ -49,9 +49,9 @@ void MessengerService::LoginHandling()
     *m_sql << "select password from user_tb where user_id = :id", soci::into(pw_from_db, ind), soci::use(id);
 
     if (ind == soci::i_ok)
-        m_request = {pw_from_db == pw};
+        m_request = static_cast<std::byte>(pw_from_db == pw);
     else
-        m_request = {false};
+        m_request = static_cast<std::byte>(false);
 
     // 로그인한 사람의 ip, port 정보 갱신
     if (m_request[0])

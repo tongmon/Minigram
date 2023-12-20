@@ -21,10 +21,10 @@ class Session
 
     boost::asio::ip::tcp::socket m_sock;
     boost::asio::ip::tcp::endpoint m_ep;
-    std::string m_request;
+    Buffer m_request;
 
     boost::asio::streambuf m_response_buf;
-    std::string m_response;
+    Buffer m_response;
 
     boost::system::error_code m_ec;
 
@@ -52,7 +52,7 @@ class Session
         return m_ec == boost::system::errc::success;
     }
 
-    std::string GetResponse()
+    Buffer GetResponse()
     {
         return m_response;
     }
@@ -84,9 +84,9 @@ class TCPClient
                     const Buffer &request,
                     std::function<void(std::shared_ptr<Session>)> on_finish_write = {});
 
-    void AsyncWrite(unsigned int request_id,
-                    const std::string &request,
-                    std::function<void(std::shared_ptr<Session>)> on_finish_write = {});
+    // void AsyncWrite(unsigned int request_id,
+    //                 const std::string &request,
+    //                 std::function<void(std::shared_ptr<Session>)> on_finish_write = {});
 
     void AsyncRead(unsigned int request_id,
                    size_t buffer_size,

@@ -51,13 +51,6 @@ auto Buffer::end() const
     return m_buf.end();
 }
 
-Buffer &Buffer::ConvertToNonStringData()
-{
-    if (!m_buf.empty())
-        m_buf.pop_back();
-    return *this;
-}
-
 const char *Buffer::CStr(int st) const
 {
     return (m_buf.empty() || m_buf.size() <= st) ? nullptr : reinterpret_cast<const char *>(&m_buf[st]);
