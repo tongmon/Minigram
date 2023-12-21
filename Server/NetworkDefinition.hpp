@@ -1,7 +1,12 @@
 ﻿#ifndef HEADER__FILE__NETWORKDEFINITION
 #define HEADER__FILE__NETWORKDEFINITION
 
-#include "Buffer.hpp"
+#include <algorithm>
+#include <any>
+#include <array>
+#include <cstdint>
+#include <istream>
+#include <string>
 
 class TCPHeader
 {
@@ -74,8 +79,9 @@ constexpr std::uint64_t SERVER_PORT = 4000;
 
 constexpr size_t TCP_HEADER_SIZE = sizeof(TCPHeader);
 
-enum ConnectionType
+enum ConnectionType : int
 {
+    NONE_TYPE,
     LOGIN_CONNECTION_TYPE,
     CHAT_SEND_TYPE,
     CHATROOMLIST_INITIAL_TYPE,
