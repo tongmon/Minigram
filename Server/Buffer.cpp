@@ -1,10 +1,10 @@
 ﻿#include "Buffer.hpp"
 
-Buffer::Buffer(size_t reserve_num, const std::byte &reserve_data)
-{
-    m_buf.resize(reserve_num + 1, reserve_data);
-    m_buf[reserve_num] = static_cast<std::byte>(0);
-}
+// Buffer::Buffer(size_t reserve_num, std::byte reserve_data)
+// {
+//     m_buf.resize(reserve_num + 1, reserve_data);
+//     m_buf[reserve_num] = static_cast<std::byte>(0);
+// }
 
 Buffer::Buffer(const Buffer &buf)
 {
@@ -14,21 +14,6 @@ Buffer::Buffer(const Buffer &buf)
 Buffer::Buffer(Buffer &&buf)
 {
     m_buf = std::move(buf.m_buf);
-}
-
-Buffer::Buffer(const std::byte &letter)
-{
-    Append(letter);
-}
-
-Buffer::Buffer(const char *str)
-{
-    Append(str);
-}
-
-Buffer::Buffer(const std::string &str)
-{
-    Append(str);
 }
 
 Buffer::Buffer(const boost::asio::streambuf &stbuf)
@@ -49,11 +34,6 @@ auto Buffer::begin() const
 auto Buffer::end() const
 {
     return m_buf.end();
-}
-
-const char *Buffer::CStr(int st) const
-{
-    return (m_buf.empty() || m_buf.size() <= st) ? nullptr : reinterpret_cast<const char *>(&m_buf[st]);
 }
 
 size_t Buffer::Size() const
@@ -92,15 +72,6 @@ void Buffer::Append(const char *str)
     m_buf.push_back(static_cast<std::byte>(0));
 }
 
-void Buffer::Append(const std::byte &letter)
-{
-    if (!m_buf.empty())
-        m_buf.pop_back();
-
-    m_buf.push_back(letter);
-    m_buf.push_back(static_cast<std::byte>(0));
-}
-
 void Buffer::Append(const std::string &str)
 {
     if (!m_buf.empty())
@@ -129,16 +100,6 @@ Buffer::operator std::vector<std::byte>::iterator()
     return m_buf.begin();
 }
 
-Buffer::operator const std::byte *() const
-{
-    return m_buf.empty() ? nullptr : &m_buf[0];
-}
-
-Buffer::operator const char *() const
-{
-    return reinterpret_cast<const char *>(m_buf.empty() ? nullptr : &m_buf[0]);
-}
-
 std::byte &Buffer::operator[](size_t index)
 {
     if (index < 0 || index >= m_buf.size())
@@ -153,36 +114,9 @@ const std::byte &Buffer::operator[](size_t index) const
     return m_buf[index];
 }
 
-Buffer &Buffer::operator=(const Buffer &other)
-{
-    this->m_buf = other.m_buf;
-    return *this;
-}
-
 Buffer &Buffer::operator=(Buffer &&other)
 {
     m_buf = std::move(other.m_buf);
-    return *this;
-}
-
-Buffer &Buffer::operator=(const std::byte &other)
-{
-    m_buf.clear();
-    Append(other);
-    return *this;
-}
-
-Buffer &Buffer::operator=(const char *other)
-{
-    m_buf.clear();
-    Append(other);
-    return *this;
-}
-
-Buffer &Buffer::operator=(const std::string &other)
-{
-    m_buf.clear();
-    Append(other);
     return *this;
 }
 
@@ -209,54 +143,24 @@ Buffer Buffer::operator+(const Buffer &other) const
     return ret;
 }
 
-Buffer &Buffer::operator+=(const Buffer &other)
-{
-    Append(other);
-    return *this;
-}
-
-Buffer &Buffer::operator+=(const std::byte &other)
-{
-    Append(other);
-    return *this;
-}
-
-Buffer &Buffer::operator+=(const unsigned char &other)
-{
-    Append(static_cast<std::byte>(other));
-    return *this;
-}
-
-Buffer &Buffer::operator+=(const char *str)
-{
-    Append(str);
-    return *this;
-}
-
-Buffer &Buffer::operator+=(const std::string &str)
-{
-    Append(str);
-    return *this;
-}
-
-std::vector<Buffer> Buffer::Split(char delim)
-{
-    std::byte delim_byte = static_cast<std::byte>(delim);
-    std::vector<Buffer> ret;
-    Buffer buf;
-    for (size_t i = 0; i < m_buf.size(); i++)
-    {
-        if (m_buf[i] == delim_byte)
-        {
-            ret.push_back(std::move(buf));
-            buf.Clear();
-        }
-        else
-            buf += m_buf[i];
-    }
-
-    if (buf.Size())
-        ret.push_back(std::move(buf));
-
-    return ret;
-}
+// std::vector<Buffer> Buffer::Split(char delim)
+//{
+//     std::byte delim_byte = static_cast<std::byte>(delim);
+//     std::vector<Buffer> ret;
+//     Buffer buf;
+//     for (size_t i = 0; i < m_buf.size(); i++)
+//     {
+//         if (m_buf[i] == delim_byte)
+//         {
+//             ret.push_back(std::move(buf));
+//             buf.Clear();
+//         }
+//         else
+//             buf += m_buf[i];
+//     }
+//
+//     if (buf.Size())
+//         ret.push_back(std::move(buf));
+//
+//     return ret;
+// }

@@ -31,7 +31,7 @@ class TCPHeader
     {
         for (int i = 0; i < BUFFER_CNT; i++)
             for (int j = 0; j < 8; j++)
-                m_buffers[i].bytes[j] = static_cast<std::byte>(data[i * 8 + j]);
+                m_buffers[i].bytes[j] = data[i * 8 + j];
     }
 
     TCPHeader(std::uint64_t connection_type, std::uint64_t data_size)
@@ -50,23 +50,23 @@ class TCPHeader
         return m_buffers[DATA_SIZE].number;
     }
 
-    // std::string GetHeaderBuffer()
-    //{
-    //     std::string ret(BUFFER_CNT * 8, 0);
-    //     for (int i = 0; i < BUFFER_CNT; i++)
-    //         for (int j = 0; j < 8; j++)
-    //             ret[i * 8 + j] = static_cast<char>(m_buffers[i].bytes[j]);
-    //     return ret;
-    // }
-
-    Buffer GetHeaderBuffer()
+    std::string GetHeaderBuffer()
     {
-        Buffer ret(BUFFER_CNT * 8, static_cast<std::byte>(0));
+        std::string ret(BUFFER_CNT * 8, 0);
         for (int i = 0; i < BUFFER_CNT; i++)
             for (int j = 0; j < 8; j++)
-                ret[i * 8 + j] = m_buffers[i].bytes[j];
+                ret[i * 8 + j] = static_cast<char>(m_buffers[i].bytes[j]);
         return ret;
     }
+
+    // Buffer GetHeaderBuffer()
+    //{
+    //     Buffer ret(BUFFER_CNT * 8, static_cast<std::byte>(0));
+    //     for (int i = 0; i < BUFFER_CNT; i++)
+    //         for (int j = 0; j < 8; j++)
+    //             ret[i * 8 + j] = m_buffers[i].bytes[j];
+    //     return ret;
+    // }
 };
 
 constexpr char SERVER_IP[] = "127.0.0.1";

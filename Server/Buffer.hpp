@@ -2,6 +2,7 @@
 #define HEADER__FILE__BUFFER
 
 #include <algorithm>
+#include <any>
 #include <array>
 #include <cstdint>
 #include <istream>
@@ -12,43 +13,66 @@
 class Buffer
 {
     std::vector<std::byte> m_buf;
+    std::vector<size_t> m_size_info;
+    std::vector<size_t> m_index_info;
+
+    template <typename T>
+    friend Buffer operator+(const T &other, const Buffer &buf);
 
   public:
-    Buffer(size_t reserve_num, const std::byte &reserve_data);
+    // Buffer(size_t reserve_num = 0, std::byte reserve_data = static_cast<std::byte>(0));
 
     Buffer(const Buffer &buf);
 
     Buffer(Buffer &&buf);
 
-    Buffer(const std::byte &letter);
-
-    Buffer(const char *str = nullptr);
-
-    Buffer(const std::string &str);
-
     Buffer(const boost::asio::streambuf &stbuf);
 
-    // template <typename T>
-    // Buffer(T &&buf)
-    // {
-    //     m_buf = std::forward<T>(buf.m_buf);
-    // }
+    template <typename T>
+    Buffer(const T &val)
+    {
+        Append(val);
+    }
 
     auto begin() const;
 
     auto end() const;
 
-    const char *CStr(int st = 0) const;
-
     size_t Size() const;
 
     void Clear();
 
+    template <typename T>
+    void Data(const T &val, int index)
+    {
+        if (m_size_info.empty())
+        {
+            size_t cnt = 0, type_size = sizeof(size_t);
+            std::memcpy(&cnt, &m_buf[0], type_size);
+            m_size_info.resize(cnt);
+
+            std::memcpy(&m_size_info[0], &m_buf[type_size], type_size);
+            m_index_info[0] = type_size * (cnt + 1);
+            for (size_t i = 1; i < cnt; i++)
+            {
+                m_index_info[i] = m_index_info[i - 1] + m_size_info[i - 1];
+                std::memcpy(&m_size_info[i], &m_buf[type_size * (i + 1)], type_size);
+            }
+        }
+
+        if (std::is_same_v<T, std::string>)
+        {
+            val.clear();
+            val.resize(size_info[index], 0);
+            std::memcpy(&val[0], &m_buf[index_info[index]], size_info[index]);
+        }
+        else
+            std::memcpy(&val, &m_buf[index_info[index]], size_info[index]);
+    }
+
     std::string Str(int st = 0, int fin = -1) const;
 
     void Append(const char *str);
-
-    void Append(const std::byte &letter);
 
     void Append(const std::string &str);
 
@@ -66,75 +90,68 @@ class Buffer
 
     operator std::vector<std::byte>::iterator();
 
-    operator const std::byte *() const;
-
-    operator const char *() const;
-
     std::byte &operator[](size_t index);
 
     const std::byte &operator[](size_t index) const;
 
-    Buffer &operator=(const Buffer &other);
-
     Buffer &operator=(Buffer &&other);
-
-    Buffer &operator=(const std::byte &other);
-
-    Buffer &operator=(const char *other);
-
-    Buffer &operator=(const std::string &other);
-
-    Buffer &operator=(const boost::asio::streambuf &stbuf);
 
     template <typename T>
     Buffer &operator=(const T &other)
     {
         m_buf.clear();
-        Append<T>(other);
+        Append(other);
         return *this;
     }
 
+    Buffer &operator=(const boost::asio::streambuf &stbuf);
+
     Buffer operator+(const Buffer &other) const;
 
-    Buffer &operator+=(const Buffer &other);
-
-    Buffer &operator+=(const std::byte &other);
-
-    Buffer &operator+=(const unsigned char &other);
-
-    Buffer &operator+=(const char *str);
-
-    Buffer &operator+=(const std::string &str);
+    template <typename T>
+    Buffer operator+(const T &other) const
+    {
+        Buffer ret(*this);
+        ret.Append(other);
+        return ret;
+    }
 
     template <typename T>
     Buffer &operator+=(const T &val)
     {
-        Append<T>(val);
+        Append(val);
         return *this;
     }
 
+    // exclude_null option only works when type is 'const std::byte *'
     template <typename T = const std::byte *>
-    T Data(bool exclude_null = true)
+    T Data() const
     {
         if (std::is_same_v<T, const std::byte *>)
-        {
-            if (exclude_null)
-                m_buf.pop_back();
+            return m_buf.empty() ? nullptr : &m_buf[0];
 
-            return (m_buf.empty() || m_buf.size() <= st) ? nullptr : &m_buf[0];
-        }
+        if (std::is_same_v<T, const char *>)
+            return m_buf.empty() ? nullptr : reinterpret_cast<T>(&m_buf[0]);
 
         T val;
         std::memcpy(&val, &m_buf[0], sizeof(T));
         return val;
     }
 
-    std::vector<Buffer> Split(char delim = '|');
+    // std::vector<Buffer> Split(char delim = '|');
 
     inline auto AsioBuffer()
     {
         return boost::asio::buffer(Data(), Size());
     }
 };
+
+template <typename T>
+Buffer operator+(const T &other, const Buffer &buf)
+{
+    Buffer ret(other);
+    ret.Append(buf);
+    return ret;
+}
 
 #endif /* HEADER__FILE__BUFFER */

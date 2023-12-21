@@ -38,9 +38,11 @@ MessengerService::~MessengerService()
 // Client에 전달하는 버퍼 형식: 로그인 성공 여부
 void MessengerService::LoginHandling()
 {
-    std::vector<std::string> parsed;
-    boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    const std::string &ip = parsed[0], &port = parsed[1], &id = parsed[2], &pw = parsed[3];
+    auto bufs = m_client_request.Split('|');
+    const std::string &ip = bufs[0].Data<const char *>(),
+                      &port = bufs[1].Data<const char *>(),
+                      &id = bufs[2].Data<const char *>(),
+                      &pw = bufs[3].Data<const char *>();
 
     std::cout << "ID: " << id << "  Password: " << pw << "\n";
 
@@ -54,16 +56,16 @@ void MessengerService::LoginHandling()
         m_request = static_cast<std::byte>(false);
 
     // 로그인한 사람의 ip, port 정보 갱신
-    if (m_request[0])
+    if (m_request.Data<bool>())
         *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
             soci::use(ip), soci::use(port), soci::use(id);
 
     // 로그인 완료라고 클라이언트에 알림
-    TCPHeader header(LOGIN_CONNECTION_TYPE, m_request.size());
+    TCPHeader header(LOGIN_CONNECTION_TYPE, m_request.Size());
     m_request = header.GetHeaderBuffer() + m_request;
 
     boost::asio::async_write(*m_sock,
-                             boost::asio::buffer(m_request),
+                             m_request.AsioBuffer(),
                              [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
@@ -78,9 +80,10 @@ void MessengerService::LoginHandling()
 // Client에 전달하는 버퍼 형식: message send date
 void MessengerService::TextMessageHandling()
 {
-    std::vector<std::string> parsed;
-    boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    std::string sender_id = parsed[0], session_id = parsed[1], content = parsed[3];
+    auto bufs = m_client_request.Split('|');
+    const std::string &sender_id = bufs[0].Data<const char *>(),
+                      &session_id = bufs[1].Data<const char *>(),
+                      &content = bufs[2].Data<const char *>();
 
     // session_id에서 정보 뜯어오는 건데 안쓸거 같음
     // parsed.clear();
@@ -106,7 +109,7 @@ void MessengerService::TextMessageHandling()
     if (mongo_cursor.begin() != mongo_cursor.end())
     {
         auto doc = *mongo_cursor.begin();
-        message_id = doc["message_id"].get_int64() + 1;
+        message_id = doc["message_id"].get_int64().value + 1;
     }
 
     mongo_coll.insert_one(basic::make_document(basic::kvp("message_id", message_id),
@@ -139,8 +142,8 @@ void MessengerService::TextMessageHandling()
         auto request_id = m_peer->MakeRequestID();
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
-        std::string request = sender_id + "|" + session_id + "|" + send_date + "|" + content;
-        TCPHeader header(CHAT_SEND_TYPE, request.size());
+        Buffer request(sender_id + "|" + session_id + "|" + send_date + "|" + content);
+        TCPHeader header(CHAT_SEND_TYPE, request.Size());
         request = header.GetHeaderBuffer() + request;
 
         m_peer->AsyncWrite(request_id, request, [peer = m_peer](std::shared_ptr<Session> session) -> void {
@@ -156,7 +159,7 @@ void MessengerService::TextMessageHandling()
 
     // 채팅 송신이 완료되었으면 보낸 사람 클라이언트로 송신 시점을 보냄
     boost::asio::async_write(*m_sock,
-                             boost::asio::buffer(m_request),
+                             m_request.AsioBuffer(),
                              [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
@@ -167,14 +170,15 @@ void MessengerService::TextMessageHandling()
                              });
 }
 
-// Client에서 받는 버퍼 형식: sender id | session id | content_type | content
-// Client에 전달하는 버퍼 형식: message send date | message id
+// Client에서 받는 버퍼 형식: int + sender id | int + session id | content_type (1byte) | int + content
+// Client에 전달하는 버퍼 형식: message send date | message id (8byte)
 void MessengerService::ChatHandling()
 {
-    // boost split 쓰는 부분 대체해야 함
-    std::vector<std::string> parsed;
-    boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    Buffer sender_id = parsed[0], session_id = parsed[1], content_type_buf = parsed[2], content = parsed[3];
+    auto bufs = m_client_request.Split('|');
+    const std::string &sender_id = bufs[0].Data<const char *>(),
+                      &session_id = bufs[1].Data<const char *>(),
+                      &content_type_buf = bufs[2].Data<const char *>(),
+                      &content = bufs[3].Data<const char *>();
 
     // mongodb에 채팅 내용 업로드
     using namespace bsoncxx;
@@ -182,7 +186,7 @@ void MessengerService::ChatHandling()
 
     auto mongo_client = MongoDBPool::Get().acquire();
     auto mongo_db = (*mongo_client)["Minigram"];
-    auto mongo_coll = mongo_db[session_id.CStr()];
+    auto mongo_coll = mongo_db[session_id];
 
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
     std::string send_date = std::format("{0:%F %T}", tp);
@@ -197,7 +201,7 @@ void MessengerService::ChatHandling()
     if (mongo_cursor.begin() != mongo_cursor.end())
     {
         auto doc = *mongo_cursor.begin();
-        message_id = doc["message_id"].get_int64() + 1;
+        message_id = doc["message_id"].get_int64().value + 1;
     }
 
     mongo_coll.insert_one(basic::make_document(basic::kvp("message_id", message_id),
