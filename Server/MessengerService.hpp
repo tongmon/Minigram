@@ -4,13 +4,13 @@
 #include <soci/postgresql/soci-postgresql.h>
 #include <soci/soci.h>
 
-#include "Buffer.hpp"
+#include "NetworkBuffer.hpp"
 #include "Service.hpp"
 
 class MessengerService : public Service
 {
-    Buffer m_request;
-    Buffer m_client_request;
+    NetworkBuffer m_request;
+    NetworkBuffer m_client_request;
     boost::asio::streambuf m_client_request_buf;
 
     std::unique_ptr<soci::session> m_sql;

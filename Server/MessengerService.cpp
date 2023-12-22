@@ -1,6 +1,5 @@
 ﻿#include "MessengerService.hpp"
 #include "MongoDBPool.hpp"
-#include "NetworkDefinition.hpp"
 #include "PostgreDBPool.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
@@ -38,31 +37,44 @@ MessengerService::~MessengerService()
 // Client에 전달하는 버퍼 형식: 로그인 성공 여부
 void MessengerService::LoginHandling()
 {
-    auto bufs = m_client_request.Split('|');
-    const std::string &ip = bufs[0].Data<const char *>(),
-                      &port = bufs[1].Data<const char *>(),
-                      &id = bufs[2].Data<const char *>(),
-                      &pw = bufs[3].Data<const char *>();
+    // auto bufs = m_client_request.Split('|');
+    // const std::string &ip = bufs[0].Data<const char *>(),
+    //                   &port = bufs[1].Data<const char *>(),
+    //                   &id = bufs[2].Data<const char *>(),
+    //                   &pw = bufs[3].Data<const char *>();
+
+    std::string ip, port, id, pw;
+    m_client_request.GetData(ip);
+    m_client_request.GetData(port);
+    m_client_request.GetData(id);
+    m_client_request.GetData(pw);
 
     std::cout << "ID: " << id << "  Password: " << pw << "\n";
 
+    NetworkBuffer net_buf(LOGIN_CONNECTION_TYPE);
+
     soci::indicator ind;
     std::string pw_from_db;
+    bool login_result;
     *m_sql << "select password from user_tb where user_id = :id", soci::into(pw_from_db, ind), soci::use(id);
 
     if (ind == soci::i_ok)
-        m_request = static_cast<std::byte>(pw_from_db == pw);
+        login_result = pw_from_db == pw;
     else
-        m_request = static_cast<std::byte>(false);
+        login_result = false;
+
+    net_buf += static_cast<std::byte>(login_result);
 
     // 로그인한 사람의 ip, port 정보 갱신
-    if (m_request.Data<bool>())
+    if (login_result)
         *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
             soci::use(ip), soci::use(port), soci::use(id);
 
     // 로그인 완료라고 클라이언트에 알림
-    TCPHeader header(LOGIN_CONNECTION_TYPE, m_request.Size());
-    m_request = header.GetHeaderBuffer() + m_request;
+    // TCPHeader header(LOGIN_CONNECTION_TYPE, m_request.Size());
+    // m_request = header.GetHeaderBuffer() + m_request;
+
+    m_request = std::move(net_buf);
 
     boost::asio::async_write(*m_sock,
                              m_request.AsioBuffer(),

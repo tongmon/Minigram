@@ -79,7 +79,7 @@ constexpr std::uint64_t SERVER_PORT = 4000;
 
 constexpr size_t TCP_HEADER_SIZE = sizeof(TCPHeader);
 
-enum ConnectionType : int
+enum ConnectionType : size_t
 {
     NONE_TYPE,
     LOGIN_CONNECTION_TYPE,
