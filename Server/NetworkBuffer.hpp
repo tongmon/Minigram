@@ -13,7 +13,7 @@
 #include <boost/asio.hpp>
 
 // connection_type(size_t) | total buffer size(size_t) | (data_info)
-// data_info -> data_size(size_t) | bytes
+// data_info -> data_size(size_t) | bytes ...
 class NetworkBuffer
 {
     inline static size_t type_size = sizeof(size_t);
@@ -32,15 +32,15 @@ class NetworkBuffer
 
     auto end() const;
 
-    size_t ConnectionType();
+    size_t GetConnectionType();
 
-    size_t DataSize();
+    size_t GetDataSize();
 
     template <typename T>
-    void Data(const T &val)
+    void GetData(T &val)
     {
-        size_t data_size, type_size = sizeof(size_t);
-        std::memcpy(&data_size, &m_buf[m_index], sizeof(size_t));
+        size_t data_size;
+        std::memcpy(&data_size, &m_buf[m_index], type_size);
 
         if (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<std::byte>>)
         {

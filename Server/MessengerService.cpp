@@ -92,10 +92,17 @@ void MessengerService::LoginHandling()
 // Client에 전달하는 버퍼 형식: message send date
 void MessengerService::TextMessageHandling()
 {
-    auto bufs = m_client_request.Split('|');
-    const std::string &sender_id = bufs[0].Data<const char *>(),
-                      &session_id = bufs[1].Data<const char *>(),
-                      &content = bufs[2].Data<const char *>();
+    std::string sender_id, session_id, content;
+    m_client_request.GetData(sender_id);
+    m_client_request.GetData(session_id);
+    m_client_request.GetData(content);
+
+    NetworkBuffer net_buf(CHAT_SEND_TYPE);
+
+    // auto bufs = m_client_request.Split('|');
+    // const std::string &sender_id = bufs[0].Data<const char *>(),
+    //                   &session_id = bufs[1].Data<const char *>(),
+    //                   &content = bufs[2].Data<const char *>();
 
     // session_id에서 정보 뜯어오는 건데 안쓸거 같음
     // parsed.clear();
@@ -112,6 +119,8 @@ void MessengerService::TextMessageHandling()
 
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
     std::string send_date = std::format("{0:%F %T}", tp);
+
+    net_buf += send_date;
 
     auto opts = mongocxx::options::find{};
     opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
@@ -154,11 +163,17 @@ void MessengerService::TextMessageHandling()
         auto request_id = m_peer->MakeRequestID();
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
-        Buffer request(sender_id + "|" + session_id + "|" + send_date + "|" + content);
-        TCPHeader header(CHAT_SEND_TYPE, request.Size());
-        request = header.GetHeaderBuffer() + request;
+        // Buffer request(sender_id + "|" + session_id + "|" + send_date + "|" + content);
+        // TCPHeader header(CHAT_SEND_TYPE, request.Size());
+        // request = header.GetHeaderBuffer() + request;
 
-        m_peer->AsyncWrite(request_id, request, [peer = m_peer](std::shared_ptr<Session> session) -> void {
+        NetworkBuffer request_buf(CHAT_SEND_TYPE);
+        request_buf += sender_id;
+        request_buf += session_id;
+        request_buf += send_date;
+        request_buf += content;
+
+        m_peer->AsyncWrite(request_id, std::move(request_buf), [peer = m_peer](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
@@ -166,8 +181,10 @@ void MessengerService::TextMessageHandling()
         });
     }
 
-    TCPHeader header(CHAT_SEND_TYPE, send_date.size());
-    m_request = header.GetHeaderBuffer() + send_date;
+    // TCPHeader header(CHAT_SEND_TYPE, send_date.size());
+    // m_request = header.GetHeaderBuffer() + send_date;
+
+    m_request = std::move(net_buf);
 
     // 채팅 송신이 완료되었으면 보낸 사람 클라이언트로 송신 시점을 보냄
     boost::asio::async_write(*m_sock,
@@ -182,15 +199,22 @@ void MessengerService::TextMessageHandling()
                              });
 }
 
-// Client에서 받는 버퍼 형식: int + sender id | int + session id | content_type (1byte) | int + content
-// Client에 전달하는 버퍼 형식: message send date | message id (8byte)
+// Client에서 받는 버퍼 형식: sender_id | session_id | content_type | content
+// Client에 전달하는 버퍼 형식: message send date | message id
 void MessengerService::ChatHandling()
 {
-    auto bufs = m_client_request.Split('|');
-    const std::string &sender_id = bufs[0].Data<const char *>(),
-                      &session_id = bufs[1].Data<const char *>(),
-                      &content_type_buf = bufs[2].Data<const char *>(),
-                      &content = bufs[3].Data<const char *>();
+    ConnectionType content_type;
+    std::string sender_id, session_id, content;
+    m_client_request.GetData(sender_id);
+    m_client_request.GetData(session_id);
+    m_client_request.GetData(content_type);
+    m_client_request.GetData(content);
+
+    // auto bufs = m_client_request.Split('|');
+    // const std::string &sender_id = bufs[0].Data<const char *>(),
+    //                   &session_id = bufs[1].Data<const char *>(),
+    //                   &content_type_buf = bufs[2].Data<const char *>(),
+    //                   &content = bufs[3].Data<const char *>();
 
     // mongodb에 채팅 내용 업로드
     using namespace bsoncxx;
@@ -203,7 +227,7 @@ void MessengerService::ChatHandling()
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
     std::string send_date = std::format("{0:%F %T}", tp);
 
-    int content_type = static_cast<int>(content_type_buf[0]); // *((unsigned char *)content_type_buf.ConvertToNonStringData().Data());
+    // int content_type = static_cast<int>(content_type_buf[0]); // *((unsigned char *)content_type_buf.ConvertToNonStringData().Data());
 
     auto opts = mongocxx::options::find{};
     opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
@@ -217,7 +241,7 @@ void MessengerService::ChatHandling()
     }
 
     mongo_coll.insert_one(basic::make_document(basic::kvp("message_id", message_id),
-                                               basic::kvp("sender_id", sender_id.CStr()),
+                                               basic::kvp("sender_id", sender_id),
                                                basic::kvp("send_date", types::b_date{tp}),
                                                basic::kvp("content_type", content_type),
                                                basic::kvp("content", content),
@@ -233,7 +257,7 @@ void MessengerService::ChatHandling()
         int login_port;
 
         // 보낸 사람은 제외
-        if (participant_id == sender_id.CStr())
+        if (participant_id == sender_id)
             continue;
 
         *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
@@ -246,9 +270,22 @@ void MessengerService::ChatHandling()
         auto request_id = m_peer->MakeRequestID();
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
-        Buffer request(sender_id + "|" + session_id + "|" + send_date + "|" + content_type_buf + "|" + content);
-        TCPHeader header(CHAT_SEND_TYPE, request.Size());
-        request = header.GetHeaderBuffer() + request;
+        NetworkBuffer request_buf(CHAT_SEND_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
+        request_buf += sender_id;
+        request_buf += session_id;
+        request_buf += send_date;
+        request_buf += content_type;
+        request_buf += content;
+
+        m_peer->AsyncWrite(request_id, std::move(request_buf), [peer = m_peer](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+            peer->CloseRequest(session->GetID());
+        });
+
+        // Buffer request(sender_id + "|" + session_id + "|" + send_date + "|" + content_type_buf + "|" + content);
+        // TCPHeader header(CHAT_SEND_TYPE, request.Size());
+        // request = header.GetHeaderBuffer() + request;
 
         // std::string request = sender_id + "|" + session_id + "|" + send_date + "|" + content;
         // TCPHeader header(CHAT_SEND_TYPE, request.size());
@@ -263,8 +300,21 @@ void MessengerService::ChatHandling()
         // });
     }
 
-    m_request = send_date + "|";
-    m_request += message_id;
+    NetworkBuffer net_buf(CHAT_SEND_TYPE);
+    net_buf += send_date;
+    net_buf += message_id;
+
+    m_request = std::move(net_buf);
+
+    boost::asio::async_write(*m_sock,
+                             m_request.AsioBuffer(),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+                                 delete this;
+                             });
 
     // TCPHeader header(CHAT_SEND_TYPE, send_date.size() + message_id);
     // m_request = header.GetHeaderBuffer() + send_date;

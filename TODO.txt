@@ -89,5 +89,3 @@ NetworkBuffer는 초기화할 때 항상 connection_type과 넣을 데이터 크
 반대로 데이터를 넣고 보내는 경우 header 정보가 포함됨
 
 networkdefinition 파일 필요 없을 수도...?
-
-

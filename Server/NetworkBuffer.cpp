@@ -18,6 +18,14 @@ NetworkBuffer::NetworkBuffer(NetworkBuffer &&buf)
     m_index = buf.m_index;
 }
 
+NetworkBuffer::NetworkBuffer(ConnectionType connection_type)
+{
+    m_buf.resize(type_size * 2);
+    std::memcpy(&m_buf[0], &connection_type, type_size);
+    std::memset(&m_buf[type_size], 0, type_size);
+    m_index = m_buf.size();
+}
+
 auto NetworkBuffer::begin() const
 {
     return m_buf.begin();
@@ -28,14 +36,14 @@ auto NetworkBuffer::end() const
     return m_buf.end();
 }
 
-size_t NetworkBuffer::ConnectionType()
+size_t NetworkBuffer::GetConnectionType()
 {
     size_t connection_type;
     std::memcpy(&connection_type, &m_buf[0], type_size);
     return connection_type;
 }
 
-size_t NetworkBuffer::DataSize()
+size_t NetworkBuffer::GetDataSize()
 {
     size_t size;
     std::memcpy(&size, &m_buf[type_size], type_size);
