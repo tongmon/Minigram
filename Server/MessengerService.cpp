@@ -333,28 +333,39 @@ void MessengerService::ChatHandling()
     //                          });
 }
 
-// client send 형식
-// user_id | session_id / YYYY-MM-DD hh:mm:ss.ms | session_id / YYYY-MM-DD hh:mm:ss.ms ...
-// session_id / YYYY-MM-DD hh:mm:ss.ms => 채팅방 id / 채팅방 이미지 바뀐 시각
-
-// Client에서 받는 버퍼 형식: current user id | ( session id / session img date ) 배열
+// Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( session id / session img date ) 배열
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::SessionListInitHandling()
 {
     using namespace bsoncxx;
     using namespace bsoncxx::builder;
 
-    std::vector<std::string> parsed;
+    // std::vector<std::string> parsed;
+    // std::unordered_map<std::string, std::string> session_cache;
+
+    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    // const std::string &user_id = parsed[0];
+    //
+    // for (int i = 1; i < parsed.size(); i++)
+    // {
+    //     std::vector<std::string> descendant;
+    //     boost::split(descendant, parsed[i], boost::is_any_of("/"));
+    //     session_cache[descendant[0]] = descendant[1];
+    // }
+
     std::unordered_map<std::string, std::string> session_cache;
+    std::string user_id;
+    size_t session_ary_size;
 
-    boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    const std::string &user_id = parsed[0];
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(session_ary_size);
 
-    for (int i = 1; i < parsed.size(); i++)
+    for (size_t i = 0; i < session_ary_size; i++)
     {
-        std::vector<std::string> descendant;
-        boost::split(descendant, parsed[i], boost::is_any_of("/"));
-        session_cache[descendant[0]] = descendant[1];
+        std::string session_id, session_img_date;
+        m_client_request.GetData(session_id);
+        m_client_request.GetData(session_img_date);
+        session_cache[session_id] = session_img_date;
     }
 
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
@@ -429,13 +440,26 @@ void MessengerService::SessionListInitHandling()
             std::chrono::system_clock::time_point send_date(doc["send_date"].get_date().value);
             descendant["send_date"] = std::format("{0:%F %T}", send_date);
             descendant["message_id"] = doc["message_id"].get_int64().value;
-            descendant["content_type"] = doc["content_type"].get_string().value;
+            descendant["content_type"] = doc["content_type"].get_int64().value;
 
             session_data["unread_count"] = descendant["message_id"].as_int64() - msg_id;
 
             // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
-            // 추후 사진, 동영상, 이모티콘 등으로 나눠야 함
-            descendant["content"] = descendant["content_type"] == "text" ? doc["content"].get_string().value : "Media";
+            switch (descendant["content_type"].as_int64())
+            {
+            case TEXT_CHAT:
+                descendant["content"] = EncodeBase64(doc["content"].get_string().value.data());
+                break;
+            case IMG_CHAT:
+                descendant["content"] = "Image";
+                break;
+            case VIDEO_CHAT:
+                descendant["content"] = "Video";
+                break;
+            default:
+                descendant["content"] = "Undefined!";
+                break;
+            }
         }
 
         session_data["chat_info"] = descendant;
@@ -445,14 +469,19 @@ void MessengerService::SessionListInitHandling()
     boost::json::object chatroom_init_json;
     chatroom_init_json["chatroom_init_data"] = session_array;
 
-    // chatroom_init_json에 담긴 json을 client에 전송함
-    m_request = EncodeBase64(StrToUtf8(boost::json::serialize(chatroom_init_json)));
+    NetworkBuffer net_buf(SESSIONLIST_INITIAL_TYPE);
+    net_buf += boost::json::serialize(chatroom_init_json);
 
-    TCPHeader header(CHATROOMLIST_INITIAL_TYPE, m_request.size());
-    m_request = header.GetHeaderBuffer() + m_request;
+    m_request = std::move(net_buf);
+
+    // chatroom_init_json에 담긴 json을 client에 전송함
+    // m_request = EncodeBase64(StrToUtf8(boost::json::serialize(chatroom_init_json)));
+    //
+    // TCPHeader header(CHATROOMLIST_INITIAL_TYPE, m_request.size());
+    // m_request = header.GetHeaderBuffer() + m_request;
 
     boost::asio::async_write(*m_sock,
-                             boost::asio::buffer(m_request),
+                             m_request.AsioBuffer(),
                              [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
@@ -463,25 +492,39 @@ void MessengerService::SessionListInitHandling()
                              });
 }
 
-// client send 형식
-// user_id | acq_id / YYYY-MM-DD hh:mm:ss.ms | acq_id / YYYY-MM-DD hh:mm:ss.ms ...
-// acq_id / YYYY-MM-DD hh:mm:ss.ms => 지인 user id / user 프로필 이미지 바뀐 시각
+// Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( acq id / acq img date ) 배열
+// Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::ContactListInitHandling()
 {
     using namespace bsoncxx;
     using namespace bsoncxx::builder;
 
-    std::vector<std::string> parsed;
+    // std::vector<std::string> parsed;
+    // std::unordered_map<std::string, std::string> contact_cache;
+    //
+    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    // std::string user_id = parsed[0];
+    //
+    // for (int i = 1; i < parsed.size(); i++)
+    // {
+    //     std::vector<std::string> descendant;
+    //     boost::split(descendant, parsed[i], boost::is_any_of("/"));
+    //     contact_cache[descendant[0]] = descendant[1];
+    // }
+
     std::unordered_map<std::string, std::string> contact_cache;
+    std::string user_id;
+    size_t contact_ary_size;
 
-    boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    std::string user_id = parsed[0];
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(contact_ary_size);
 
-    for (int i = 1; i < parsed.size(); i++)
+    for (size_t i = 0; i < contact_ary_size; i++)
     {
-        std::vector<std::string> descendant;
-        boost::split(descendant, parsed[i], boost::is_any_of("/"));
-        contact_cache[descendant[0]] = descendant[1];
+        std::string acq_id, acq_img_date;
+        m_client_request.GetData(acq_id);
+        m_client_request.GetData(acq_img_date);
+        contact_cache[acq_id] = acq_img_date;
     }
 
     boost::json::array contact_array;
@@ -524,13 +567,13 @@ void MessengerService::ContactListInitHandling()
     contact_init_json["contact_init_data"] = contact_array;
 
     // chatroom_init_json에 담긴 json을 client에 전송함
-    m_request = EncodeBase64(StrToUtf8(boost::json::serialize(contact_init_json)));
+    NetworkBuffer net_buf(CONTACTLIST_INITIAL_TYPE);
+    net_buf += boost::json::serialize(contact_init_json);
 
-    TCPHeader header(CONTACTLIST_INITIAL_TYPE, m_request.size());
-    m_request = header.GetHeaderBuffer() + m_request;
+    m_request = std::move(net_buf);
 
     boost::asio::async_write(*m_sock,
-                             boost::asio::buffer(m_request),
+                             m_request.AsioBuffer(),
                              [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
@@ -545,27 +588,37 @@ void MessengerService::ContactListInitHandling()
 // Client에 전달하는 버퍼 형식: Login Result | Register Date
 void MessengerService::RegisterUserHandling()
 {
-    std::vector<std::string> parsed;
-    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    // std::vector<std::string> parsed;
+    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
+
+    // int cnt = 0;
+    // const std::string &user_id = parsed[0], &user_pw = parsed[1], &user_name = parsed[2], &user_img = parsed[3] == "null" ? "" : parsed[3];
 
     int cnt = 0;
-    const std::string &user_id = parsed[0], &user_pw = parsed[1], &user_name = parsed[2], &user_img = parsed[3] == "null" ? "" : parsed[3];
+    std::string user_id, user_pw, user_name, user_img;
+
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(user_pw);
+    m_client_request.GetData(user_name);
+    m_client_request.GetData(user_img);
 
     *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
         soci::into(cnt), soci::use(user_id);
 
-    // 아이디 중복
+    std::string img_path, cur_date;
+    size_t register_ret;
+
     if (cnt)
-        m_request = {REGISTER_DUPLICATION};
+    {
+        register_ret = REGISTER_DUPLICATION;
+        cur_date = "0000-00-00 00:00:00.000";
+    }
     else
     {
+        register_ret = REGISTER_SUCCESS;
         std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
-        std::string img_path, cur_date = std::format("{0:%F %T}", tp);
+        cur_date = std::format("{0:%F %T}", tp);
 
-        m_request = {REGISTER_SUCCESS};
-        m_request = "|" + cur_date;
-
-        // user profile image 저장
         if (!user_img.empty())
         {
             img_path = boost::dll::program_location().parent_path().string() + "/users/" + user_id + "/profile_img";
@@ -581,11 +634,44 @@ void MessengerService::RegisterUserHandling()
             soci::use(user_id), soci::use(user_name), soci::use("register_date:" + cur_date + "|"), soci::use(user_pw), soci::use(img_path);
     }
 
-    TCPHeader header(USER_REGISTER_TYPE, m_request.size());
-    m_request = header.GetHeaderBuffer() + m_request;
+    NetworkBuffer net_buf(USER_REGISTER_TYPE);
+    net_buf += register_ret;
+    net_buf += cur_date;
+
+    m_request = std::move(net_buf);
+
+    //// 아이디 중복
+    // if (cnt)
+    //     m_request = {REGISTER_DUPLICATION};
+    // else
+    //{
+    //     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
+    //     std::string img_path, cur_date = std::format("{0:%F %T}", tp);
+    //
+    //    m_request = {REGISTER_SUCCESS};
+    //    m_request = "|" + cur_date;
+    //
+    //    // user profile image 저장
+    //    if (!user_img.empty())
+    //    {
+    //        img_path = boost::dll::program_location().parent_path().string() + "/users/" + user_id + "/profile_img";
+    //        boost::filesystem::create_directories(img_path);
+    //
+    //        img_path += ("/" + cur_date + ".txt");
+    //        std::ofstream img_file(img_path);
+    //        if (img_file.is_open())
+    //            img_file.write(user_img.c_str(), user_img.size());
+    //    }
+    //
+    //    *m_sql << "insert into user_tb values(:uid, :unm, :uinfo, :upw, :uimgpath)",
+    //        soci::use(user_id), soci::use(user_name), soci::use("register_date:" + cur_date + "|"), soci::use(user_pw), soci::use(img_path);
+    //}
+    //
+    // TCPHeader header(USER_REGISTER_TYPE, m_request.size());
+    // m_request = header.GetHeaderBuffer() + m_request;
 
     boost::asio::async_write(*m_sock,
-                             boost::asio::buffer(m_request),
+                             m_request.AsioBuffer(),
                              [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {

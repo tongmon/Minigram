@@ -97,7 +97,7 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 	"message_id" : 	(메시지 id, 보낸 순서 big int)
 	"sender_id": 	"보낸 사람 USER_ID",
 	"send_date": 	ISODate("2023-10-19T13:21:40.125"),
-	"content_type": "text",
+	"content_type": 컨텐츠 타입 (size_t),
 	"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4",
 	"read by": [
 		{

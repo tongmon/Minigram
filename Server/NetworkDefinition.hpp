@@ -77,14 +77,14 @@
 constexpr char SERVER_IP[] = "127.0.0.1";
 constexpr std::uint64_t SERVER_PORT = 4000;
 
-constexpr size_t TCP_HEADER_SIZE = sizeof(TCPHeader);
+// constexpr size_t TCP_HEADER_SIZE = sizeof(TCPHeader);
 
 enum ConnectionType : size_t
 {
     NONE_TYPE,
     LOGIN_CONNECTION_TYPE,
     CHAT_SEND_TYPE,
-    CHATROOMLIST_INITIAL_TYPE,
+    SESSIONLIST_INITIAL_TYPE,
     CONTACTLIST_INITIAL_TYPE,
     USER_REGISTER_TYPE,
     SESSION_ADD_TYPE,
@@ -92,7 +92,7 @@ enum ConnectionType : size_t
     CONNECTION_TYPE_CNT
 };
 
-enum AccountRegisterResult
+enum AccountRegisterResult : size_t
 {
     REGISTER_SUCCESS,
     REGISTER_DUPLICATION,
