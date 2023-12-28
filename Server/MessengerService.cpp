@@ -688,15 +688,22 @@ void MessengerService::SessionAddHandling()
 {
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
 
-    std::vector<std::string> parsed;
-    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    // std::vector<std::string> parsed;
+    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
 
-    const std::string &null_str = "",
-                      &user_id = parsed[0],
-                      &session_name = parsed[1],
-                      &session_img = parsed[2],
-                      &cur_date = std::format("{0:%F %T}", tp),
-                      &session_id = user_id + "-" + cur_date;
+    // const std::string &null_str = "",
+    //                   &user_id = parsed[0],
+    //                   &session_name = parsed[1],
+    //                   &session_img = parsed[2],
+    //                   &cur_date = std::format("{0:%F %T}", tp),
+    //                   &session_id = user_id + "-" + cur_date;
+
+    const std::string null_str = "";
+    std::string user_id, session_name, session_img, cur_date = std::format("{0:%F %T}", tp), session_id = user_id + "-" + cur_date;
+
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(session_name);
+    m_client_request.GetData(session_img);
 
     std::string img_path = boost::dll::program_location().parent_path().string() + "/sessions/" + session_id + "/session_img";
 
