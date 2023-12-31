@@ -50,30 +50,18 @@ size_t NetworkBuffer::GetDataSize()
     return size;
 }
 
+size_t NetworkBuffer::GetHeaderSize()
+{
+    static size_t header_size = type_size * 2;
+    return header_size;
+}
+
 void NetworkBuffer::Append(const char *str)
 {
     int len = std::strlen(str);
     m_buf.resize(m_index + type_size + len);
     std::memcpy(&m_buf[m_index], &len, type_size);
     std::memcpy(&m_buf[m_index + type_size], str, len);
-    m_index = m_buf.size();
-}
-
-void NetworkBuffer::Append(const std::string &str)
-{
-    int len = str.size();
-    m_buf.resize(m_index + type_size + len);
-    std::memcpy(&m_buf[m_index], &len, type_size);
-    for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)
-        m_buf[i] = static_cast<std::byte>(str[j++]);
-    m_index = m_buf.size();
-}
-
-void NetworkBuffer::Append(const NetworkBuffer &other)
-{
-    m_buf.reserve(m_buf.size() + other.m_buf.size() - type_size * 2);
-    for (int i = m_index, j = type_size * 2; j < other.m_buf.size(); i++)
-        m_buf[i] = other.m_buf[j++];
     m_index = m_buf.size();
 }
 

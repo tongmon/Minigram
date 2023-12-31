@@ -90,6 +90,7 @@ void MessengerService::LoginHandling()
 
 // Client에서 받는 버퍼 형식: sender id | session id | encoded content
 // Client에 전달하는 버퍼 형식: message send date
+/*
 void MessengerService::TextMessageHandling()
 {
     std::string sender_id, session_id, content;
@@ -198,6 +199,7 @@ void MessengerService::TextMessageHandling()
                                  delete this;
                              });
 }
+*/
 
 // Client에서 받는 버퍼 형식: sender_id | session_id | content_type | content
 // Client에 전달하는 버퍼 형식: message send date | message id
@@ -682,7 +684,7 @@ void MessengerService::RegisterUserHandling()
                              });
 }
 
-// Client에서 받는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(base64) | 세션 참가자 id 배열
+// Client에서 받는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(base64) | 배열 개수 | 세션 참가자 id 배열
 // Client에 전달하는 버퍼 형식: 세션 id
 void MessengerService::SessionAddHandling()
 {
@@ -700,10 +702,12 @@ void MessengerService::SessionAddHandling()
 
     const std::string null_str = "";
     std::string user_id, session_name, session_img, cur_date = std::format("{0:%F %T}", tp), session_id = user_id + "-" + cur_date;
+    size_t participant_ary_size;
 
     m_client_request.GetData(user_id);
     m_client_request.GetData(session_name);
     m_client_request.GetData(session_img);
+    m_client_request.GetData(participant_ary_size);
 
     std::string img_path = boost::dll::program_location().parent_path().string() + "/sessions/" + session_id + "/session_img";
 
@@ -723,10 +727,18 @@ void MessengerService::SessionAddHandling()
     *m_sql << "insert into session_tb values(:sid, :sname, :sinfo, :simgpath)",
         soci::use(session_id), soci::use(session_name), soci::use(null_str), soci::use(img_path);
 
-    for (int i = 3; i < parsed.size(); i++)
+    // for (int i = 3; i < parsed.size(); i++)
+    // {
+    //     *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
+    //         soci::use(session_id), soci::use(parsed[i]), soci::use(-1);
+    // }
+
+    for (size_t i = 0; i < participant_ary_size; i++)
     {
+        std::string participant_id;
+        m_client_request.GetData(participant_id);
         *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-            soci::use(session_id), soci::use(parsed[i]), soci::use(-1);
+            soci::use(session_id), soci::use(participant_id), soci::use(-1);
     }
 
     *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
@@ -737,11 +749,13 @@ void MessengerService::SessionAddHandling()
     auto mongo_db = (*mongo_client)["Minigram"];
     mongo_db.create_collection(session_id + "_log");
 
-    TCPHeader header(USER_REGISTER_TYPE, session_id.size());
-    m_request = header.GetHeaderBuffer() + session_id;
+    NetworkBuffer net_buf(SESSION_ADD_TYPE);
+    net_buf += session_id;
+
+    m_request = std::move(net_buf);
 
     boost::asio::async_write(*m_sock,
-                             boost::asio::buffer(m_request),
+                             m_request.AsioBuffer(),
                              [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
@@ -756,12 +770,17 @@ void MessengerService::SessionAddHandling()
 // Client에 전달하는 버퍼 형식: contact add result | added user name | added user img date | added user base64 img
 void MessengerService::ContactAddHandling()
 {
-    std::vector<std::string> parsed;
-    boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    // std::vector<std::string> parsed;
+    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
+    //
+    // const std::string &user_id = parsed[0], user_id_to_add = parsed[1];
 
-    const std::string &user_id = parsed[0], user_id_to_add = parsed[1];
+    std::string user_id, user_id_to_add;
 
-    m_request = {CONTACTADD_SUCCESS};
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(user_id_to_add);
+
+    size_t contact_add_result = CONTACTADD_SUCCESS;
 
     int cnt = 0;
     *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
@@ -769,7 +788,7 @@ void MessengerService::ContactAddHandling()
 
     // id가 존재하지 않는 경우
     if (!cnt)
-        m_request = {CONTACTADD_ID_NO_EXSIST};
+        contact_add_result = CONTACTADD_ID_NO_EXSIST;
     else
     {
         *m_sql << "count(*) from contact_tb where exist(select 1 from contact_tb where user_id=:uid and acquaintance_id=:acqid)",
@@ -777,13 +796,13 @@ void MessengerService::ContactAddHandling()
 
         // id가 존재하는데 이미 추가요청을 보냈거나 친구인 경우
         if (cnt)
-            m_request = {CONTACTADD_DUPLICATION};
+            contact_add_result = CONTACTADD_DUPLICATION;
     }
 
     std::string user_name, img_path, img_date, img_data;
     user_name = img_date = img_data = "null";
 
-    if (m_request[0] == CONTACTADD_SUCCESS)
+    if (contact_add_result == CONTACTADD_SUCCESS)
     {
         *m_sql << "insert into contact_tb values(:uid, :acqid, :status)",
             soci::use(user_id), soci::use(user_id_to_add), soci::use(static_cast<int>(RELATION_PROCEEDING));
@@ -798,17 +817,20 @@ void MessengerService::ContactAddHandling()
             unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
             std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
             img_date = path.stem().string();
-            img_data = EncodeBase64(img_buffer);
+            img_data = EncodeBase64(img_buffer); // buffer 클래스가 있기에 이진수로 바로 쏴주는게 좋을듯
         }
     }
 
-    m_request += "|" + user_name + "|" + img_date + "|" + img_data;
+    NetworkBuffer net_buf(CONTACT_ADD_TYPE);
+    net_buf += contact_add_result;
+    net_buf += user_name;
+    net_buf += img_date;
+    net_buf += img_data;
 
-    TCPHeader header(CONTACT_ADD_TYPE, m_request.size());
-    m_request = header.GetHeaderBuffer() + m_request;
+    m_request = std::move(net_buf);
 
     boost::asio::async_write(*m_sock,
-                             boost::asio::buffer(m_request),
+                             m_request.AsioBuffer(),
                              [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
@@ -822,7 +844,7 @@ void MessengerService::ContactAddHandling()
 void MessengerService::StartHandling()
 {
     boost::asio::async_read(*m_sock,
-                            m_client_request_buf.prepare(TCP_HEADER_SIZE),
+                            m_client_request_buf.prepare(m_client_request.GetHeaderSize()),
                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                 if (ec != boost::system::errc::success)
                                 {
@@ -832,16 +854,18 @@ void MessengerService::StartHandling()
                                 }
 
                                 m_client_request_buf.commit(bytes_transferred);
-                                std::istream strm(&m_client_request_buf);
-                                std::getline(strm, m_client_request);
+                                m_client_request = m_client_request_buf;
 
-                                TCPHeader header(m_client_request);
-                                auto connection_type = header.GetConnectionType();
-                                auto data_size = header.GetDataSize();
+                                // std::istream strm(&m_client_request_buf);
+                                // std::getline(strm, m_client_request);
+
+                                // TCPHeader header(m_client_request);
+                                // auto connection_type = header.GetConnectionType();
+                                // auto data_size = header.GetDataSize();
 
                                 boost::asio::async_read(*m_sock,
-                                                        m_client_request_buf.prepare(data_size),
-                                                        [this, &connection_type](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                        m_client_request_buf.prepare(m_client_request.GetDataSize()),
+                                                        [this, connection_type = m_client_request.GetConnectionType()](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                                             if (ec != boost::system::errc::success)
                                                             {
                                                                 // 서버 처리가 비정상인 경우
@@ -850,8 +874,9 @@ void MessengerService::StartHandling()
                                                             }
 
                                                             m_client_request_buf.commit(bytes_transferred);
-                                                            std::istream strm(&m_client_request_buf);
-                                                            std::getline(strm, m_client_request);
+
+                                                            // std::istream strm(&m_client_request_buf);
+                                                            // std::getline(strm, m_client_request);
 
                                                             switch (connection_type)
                                                             {
@@ -862,7 +887,7 @@ void MessengerService::StartHandling()
                                                                 // TextMessageHandling();
                                                                 ChatHandling();
                                                                 break;
-                                                            case CHATROOMLIST_INITIAL_TYPE:
+                                                            case SESSIONLIST_INITIAL_TYPE:
                                                                 SessionListInitHandling();
                                                                 break;
                                                             case CONTACTLIST_INITIAL_TYPE:

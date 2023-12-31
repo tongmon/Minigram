@@ -12,11 +12,11 @@
 
 #include <boost/asio.hpp>
 
-// connection_type(size_t) | total buffer size(size_t) | (data_info)
+// connection_type(int64_t) | total buffer size(int64_t) | (data_info)
 // data_info -> data_size(size_t) | bytes ...
 class NetworkBuffer
 {
-    inline static size_t type_size = sizeof(size_t);
+    inline static size_t type_size = sizeof(int64_t);
 
     std::vector<std::byte> m_buf;
     size_t m_index;
@@ -36,29 +36,44 @@ class NetworkBuffer
 
     size_t GetDataSize();
 
+    size_t GetHeaderSize();
+
     template <typename T>
     void GetData(T &val)
     {
         size_t data_size;
         std::memcpy(&data_size, &m_buf[m_index], type_size);
 
-        if (std::is_same_v<T, std::string> || std::is_same_v<T, std::vector<std::byte>>)
-        {
-            val.clear();
-            val.resize(data_size);
-            std::memcpy(&val[0], &m_buf[m_index + type_size], data_size);
-        }
-        else
-            std::memcpy(&val, &m_buf[m_index + type_size], data_size);
+        std::memcpy(&val, &m_buf[m_index + type_size], data_size);
 
         m_index += data_size + type_size;
     }
 
-    void Append(const char *str);
+    template <>
+    void GetData(std::string &val)
+    {
+        size_t data_size;
+        std::memcpy(&data_size, &m_buf[m_index], type_size);
 
-    void Append(const std::string &str);
+        val.clear();
+        val.resize(data_size);
+        std::memcpy(&val[0], &m_buf[m_index + type_size], data_size);
 
-    void Append(const NetworkBuffer &other);
+        m_index += data_size + type_size;
+    }
+
+    template <>
+    void GetData(std::vector<std::byte> &val)
+    {
+        size_t data_size;
+        std::memcpy(&data_size, &m_buf[m_index], type_size);
+
+        val.clear();
+        val.resize(data_size);
+        std::memcpy(&val[0], &m_buf[m_index + type_size], data_size);
+
+        m_index += data_size + type_size;
+    }
 
     template <typename T>
     void Append(const T &other)
@@ -66,9 +81,31 @@ class NetworkBuffer
         size_t buf_len = sizeof(T);
         m_buf.resize(m_index + type_size + buf_len);
         std::memcpy(&m_buf[m_index], &buf_len, type_size);
-        std::memcpy(&m_buf[m_index + type_size], static_cast<void *>(&other), buf_len);
+        std::memcpy(&m_buf[m_index + type_size], &other, buf_len);
         m_index = m_buf.size();
     }
+
+    template <>
+    void Append(const std::string &str)
+    {
+        int len = str.size();
+        m_buf.resize(m_index + type_size + len);
+        std::memcpy(&m_buf[m_index], &len, type_size);
+        for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)
+            m_buf[i] = static_cast<std::byte>(str[j++]);
+        m_index = m_buf.size();
+    }
+
+    template <>
+    void Append(const NetworkBuffer &other)
+    {
+        m_buf.reserve(m_buf.size() + other.m_buf.size() - type_size * 2);
+        for (int i = m_index, j = GetHeaderSize(); j < other.m_buf.size(); i++)
+            m_buf[i] = other.m_buf[j++];
+        m_index = m_buf.size();
+    }
+
+    void Append(const char *str);
 
     operator std::vector<std::byte>::iterator();
 
@@ -101,7 +138,7 @@ class NetworkBuffer
 
     inline auto AsioBuffer()
     {
-        size_t data_size = m_buf.size() - type_size * 2;
+        size_t data_size = m_buf.size() - GetHeaderSize();
         std::memcpy(&m_buf[type_size], &data_size, type_size);
         return boost::asio::buffer(&m_buf[0], m_buf.size());
     }

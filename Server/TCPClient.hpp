@@ -37,7 +37,6 @@ class Session
     Session(boost::asio::io_service &ios,
             const std::string &raw_ip_address,
             unsigned short port_num,
-            const std::string &request,
             unsigned int id)
         : m_sock(ios),
           m_ep(boost::asio::ip::address::from_string(raw_ip_address), port_num),
