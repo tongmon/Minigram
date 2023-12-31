@@ -1,12 +1,7 @@
 ﻿#ifndef HEADER__FILE__NETWORKDEFINITION
 #define HEADER__FILE__NETWORKDEFINITION
 
-#include <algorithm>
-#include <any>
-#include <array>
 #include <cstdint>
-#include <istream>
-#include <string>
 
 constexpr char SERVER_IP[] = "127.0.0.1";
 constexpr std::uint64_t SERVER_PORT = 4000;

@@ -2,7 +2,7 @@
 #include "ChatModel.hpp"
 #include "ChatSessionModel.hpp"
 #include "ContactModel.hpp"
-#include "NetworkDefinition.hpp"
+#include "NetworkBuffer.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
 #include "WinQuickWindow.hpp"
@@ -37,7 +37,7 @@ MainContext::~MainContext()
 {
 }
 
-void MainContext::RecieveChat(const Buffer &server_response)
+void MainContext::RecieveChat(const NetworkBuffer &server_response)
 {
 }
 
@@ -52,20 +52,26 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
     m_user_id = id, m_user_pw = pw;
 
-    Buffer request(m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
-                   m_user_id.toStdString() + "|" + m_user_pw.toStdString());
+    // Buffer request(m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
+    //                m_user_id.toStdString() + "|" + m_user_pw.toStdString());
+    //
+    //// std::string request = m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
+    ////                       m_user_id.toStdString() + "|" + m_user_pw.toStdString();
+    //
+    // TCPHeader header(LOGIN_CONNECTION_TYPE, request.Size());
+    // request = header.GetHeaderBuffer() + request;
 
-    // std::string request = m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
-    //                       m_user_id.toStdString() + "|" + m_user_pw.toStdString();
+    NetworkBuffer net_buf(LOGIN_CONNECTION_TYPE);
+    net_buf += m_window.GetIPAddress();
+    net_buf += m_window.GetPortNumber();
+    net_buf += m_user_id;
+    net_buf += m_user_pw;
 
-    TCPHeader header(LOGIN_CONNECTION_TYPE, request.Size());
-    request = header.GetHeaderBuffer() + request;
-
-    central_server.AsyncWrite(request_id, request, [&central_server, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 

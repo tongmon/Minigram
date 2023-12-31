@@ -1,6 +1,5 @@
 ﻿#include "Service.hpp"
 #include "MainContext.hpp"
-#include "NetworkDefinition.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
 #include "WinQuickWindow.hpp"
@@ -24,7 +23,7 @@ Service::Service(WinQuickWindow &window, std::shared_ptr<boost::asio::ip::tcp::s
 void Service::StartHandling()
 {
     boost::asio::async_read(*m_sock,
-                            m_server_request_buf.prepare(TCP_HEADER_SIZE),
+                            m_server_request_buf.prepare(m_server_request.GetHeaderSize()),
                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                 if (ec != boost::system::errc::success)
                                 {
@@ -39,13 +38,13 @@ void Service::StartHandling()
                                 // std::istream strm(&m_server_request_buf);
                                 // std::getline(strm, m_server_request);
 
-                                TCPHeader header(m_server_request);
-                                auto connection_type = header.GetConnectionType();
-                                auto data_size = header.GetDataSize();
+                                // TCPHeader header(m_server_request);
+                                // auto connection_type = header.GetConnectionType();
+                                // auto data_size = header.GetDataSize();
 
                                 boost::asio::async_read(*m_sock,
-                                                        m_server_request_buf.prepare(data_size),
-                                                        [this, &connection_type](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                        m_server_request_buf.prepare(m_server_request.GetDataSize()),
+                                                        [this, connection_type = m_server_request.GetConnectionType()](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                                             if (ec != boost::system::errc::success)
                                                             {
                                                                 // 서버 처리가 비정상인 경우
@@ -66,7 +65,7 @@ void Service::StartHandling()
                                                             case CHAT_SEND_TYPE:
                                                                 m_window.GetMainContext().RecieveChat(m_server_request);
                                                                 break;
-                                                            case CHATROOMLIST_INITIAL_TYPE:
+                                                            case SESSIONLIST_INITIAL_TYPE:
                                                                 break;
                                                             default:
                                                                 break;

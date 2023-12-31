@@ -4,7 +4,7 @@
 // Boost.Asio Windows 7 이상을 타겟으로 설정
 // #define _WIN32_WINNT _WIN32_WINNT_WIN7
 
-#include "Buffer.hpp"
+#include "NetworkBuffer.hpp"
 
 #include <boost/asio.hpp>
 #include <memory>
@@ -17,8 +17,8 @@ class Service
     std::shared_ptr<boost::asio::ip::tcp::socket> m_sock;
     WinQuickWindow &m_window;
 
-    Buffer m_request;
-    Buffer m_server_request;
+    NetworkBuffer m_request;
+    NetworkBuffer m_server_request;
     boost::asio::streambuf m_server_request_buf;
 
   public:
