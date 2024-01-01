@@ -50,7 +50,7 @@ class Session
         return m_ec == boost::system::errc::success;
     }
 
-    const NetworkBuffer &GetResponse()
+    NetworkBuffer &GetResponse()
     {
         return m_response;
     }

@@ -36,21 +36,21 @@ auto NetworkBuffer::end() const
     return m_buf.end();
 }
 
-size_t NetworkBuffer::GetConnectionType()
+size_t NetworkBuffer::GetConnectionType() const
 {
     size_t connection_type;
     std::memcpy(&connection_type, &m_buf[0], type_size);
     return connection_type;
 }
 
-size_t NetworkBuffer::GetDataSize()
+size_t NetworkBuffer::GetDataSize() const
 {
     size_t size;
     std::memcpy(&size, &m_buf[type_size], type_size);
     return size;
 }
 
-size_t NetworkBuffer::GetHeaderSize()
+size_t NetworkBuffer::GetHeaderSize() const
 {
     static size_t header_size = type_size * 2;
     return header_size;

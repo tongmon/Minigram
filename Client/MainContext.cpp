@@ -75,12 +75,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
             if (!session.get() || !session->IsValid())
                 return;
 
-            TCPHeader header(session->GetResponse());
-
-            auto connection_type = header.GetConnectionType();
-            auto data_size = header.GetDataSize();
-
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
@@ -94,8 +89,9 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
     });
 }
 
+/*
 // Server에 전달하는 버퍼 형식: sender id | session id | encoded content
-// Server에서 받는 버퍼 형식: message send date
+// Server에서 받는 버퍼 형식: message send date | message id
 void MainContext::trySendTextChat(const QString &session_id, const QString &content)
 {
     auto &central_server = m_window.GetServerHandle();
@@ -103,52 +99,56 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    Buffer request(m_user_id.toStdString() + "|" +
-                   session_id.toStdString() + "|" +
-                   EncodeBase64(StrToUtf8(content.toStdString())));
+    NetworkBuffer net_buf(CHAT_SEND_TYPE);
+    net_buf +=
 
-    TCPHeader header(CHAT_SEND_TYPE, request.Size());
-    request = header.GetHeaderBuffer() + request;
+        // Buffer request(m_user_id.toStdString() + "|" +
+        //                session_id.toStdString() + "|" +
+        //                EncodeBase64(StrToUtf8(content.toStdString())));
+        //
+        // TCPHeader header(CHAT_SEND_TYPE, request.Size());
+        // request = header.GetHeaderBuffer() + request;
 
-    central_server.AsyncWrite(request_id, request, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
-        if (!session.get() || !session->IsValid())
-            return;
-
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(request_id, request, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            TCPHeader header(session->GetResponse());
-
-            auto connection_type = header.GetConnectionType();
-            auto data_size = header.GetDataSize();
-
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
-                QVariantMap qvm;
-                qvm.insert("sessionID", session_id);
-                qvm.insert("userID", m_user_id);
-                qvm.insert("userName", m_user_name);
-                qvm.insert("userImage", m_user_img);
-                qvm.insert("chatContent", content);
-                qvm.insert("chatDate", session->GetResponse().CStr());
-                qvm.insert("isOpponent", false);
+                TCPHeader header(session->GetResponse());
 
-                // 챗 버블 실제로 추가하는 로직
-                QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
-                                          "addChatBubbleText",
-                                          Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                auto connection_type = header.GetConnectionType();
+                auto data_size = header.GetDataSize();
 
-                central_server.CloseRequest(session->GetID());
+                central_server.AsyncRead(session->GetID(), data_size, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                        return;
+
+                    // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
+                    QVariantMap qvm;
+                    qvm.insert("sessionID", session_id);
+                    qvm.insert("userID", m_user_id);
+                    qvm.insert("userName", m_user_name);
+                    qvm.insert("userImage", m_user_img);
+                    qvm.insert("chatContent", content);
+                    qvm.insert("chatDate", session->GetResponse().CStr());
+                    qvm.insert("isOpponent", false);
+
+                    // 챗 버블 실제로 추가하는 로직
+                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
+                                              "addChatBubbleText",
+                                              Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                    central_server.CloseRequest(session->GetID());
+                });
             });
         });
-    });
 
     return;
 }
+*/
 
 // Server에 전달하는 버퍼 형식: sender id | session id | content_type | content
 // Server에서 받는 버퍼 형식: message send date | message id
@@ -165,45 +165,63 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
     qvm->insert("contentType", content_type);
     qvm->insert("isOpponent", false);
 
-    Buffer request(m_user_id.toStdString() + "|" +
-                   session_id.toStdString() + "|");
-    request += content_type;
-    request += '|';
+    NetworkBuffer net_buf(CHAT_SEND_TYPE);
+    net_buf += m_user_id;
+    net_buf += session_id;
+    net_buf += content_type;
 
     switch (content_type)
     {
     case TEXT_CHAT:
-        request += EncodeBase64(StrToUtf8(content.toStdString()));
+        net_buf += content;
         qvm->insert("content", content);
         break;
     default:
-        request += 26;
+        net_buf += 26;
         break;
     }
 
-    TCPHeader header(CHAT_SEND_TYPE, request.Size());
-    request = header.GetHeaderBuffer() + request;
+    // Buffer request(m_user_id.toStdString() + "|" +
+    //                session_id.toStdString() + "|");
+    // request += content_type;
+    // request += '|';
+    //
+    // switch (content_type)
+    //{
+    // case TEXT_CHAT:
+    //    request += EncodeBase64(StrToUtf8(content.toStdString()));
+    //    qvm->insert("content", content);
+    //    break;
+    // default:
+    //    request += 26;
+    //    break;
+    //}
+    //
+    // TCPHeader header(CHAT_SEND_TYPE, request.Size());
+    // request = header.GetHeaderBuffer() + request;
 
-    central_server.AsyncWrite(request_id, request, [qvm, this](std::shared_ptr<Session> session) mutable -> void {
+    central_server.AsyncWrite(request_id, std::move(net_buf), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [qvm, this](std::shared_ptr<Session> session) mutable -> void {
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            TCPHeader header(session->GetResponse());
-
-            auto connection_type = header.GetConnectionType();
-            auto data_size = header.GetDataSize();
-
-            central_server.AsyncRead(session->GetID(), data_size, [qvm, this](std::shared_ptr<Session> session) mutable -> void {
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
+                int64_t message_id;
+                QString send_date;
+                auto response = session->GetResponse();
+
+                response.GetData(send_date);
+                response.GetData(message_id);
+
                 // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
-                qvm->insert("messageId", 1111);
-                qvm->insert("sendDate", "some date");
+                qvm->insert("sendDate", send_date);
+                qvm->insert("messageId", message_id);
 
                 // 챗 버블 실제로 추가하는 로직
                 QMetaObject::invokeMethod(m_main_page,
@@ -221,7 +239,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
 // 채팅방 초기화 로직
 // 처음 로그인이 성공할 때만 트리거 됨.
 // 해당 함수에서 각 세션의 리스트를 채우진 않고 각종 세션 정보를 초기화하고 해당 세션에서 읽지 않은 메시지 개수, 가장 최근 메시지 등을 가져옴
-// Server에 전달하는 버퍼 형식: current user id | ( session id / session img date ) 배열
+// Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryInitSessionList()
 {
@@ -230,8 +248,11 @@ void MainContext::tryInitSessionList()
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    Buffer request(m_user_id.toStdString());
+    NetworkBuffer net_buf(SESSIONLIST_INITIAL_TYPE);
+    net_buf += m_user_id;
+
     std::string file_path = boost::dll::program_location().parent_path().string() + "/cache/sessions";
+    std::vector<std::pair<std::string, std::string>> session_data;
 
     // 세션 이미지가 저장되어 있는지 캐시 파일을 찾아봄
     boost::filesystem::directory_iterator root{file_path};
@@ -254,30 +275,30 @@ void MainContext::tryInitSessionList()
             }
         }
 
-        request += "|" + dir.path().filename().string() + "/" + img_update_date;
+        session_data.push_back({dir.path().filename().string(), img_update_date});
     }
 
-    TCPHeader header(CHATROOMLIST_INITIAL_TYPE, request.Size());
-    request = header.GetHeaderBuffer() + request;
+    net_buf += session_data.size();
+    for (const auto &data : session_data)
+    {
+        net_buf += data.first;
+        net_buf += data.second;
+    }
 
-    central_server.AsyncWrite(request_id, request, [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            TCPHeader header(session->GetResponse());
-
-            auto connection_type = header.GetConnectionType();
-            auto data_size = header.GetDataSize();
-
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse().CStr()));
+                std::string json_txt; // = Utf8ToStr(DecodeBase64(session->GetResponse().CStr()));
+                session->GetResponse().GetData(json_txt);
 
                 boost::json::error_code ec;
                 boost::json::value json_data = boost::json::parse(json_txt, ec);
@@ -312,6 +333,7 @@ void MainContext::tryInitSessionList()
                         qvm.insert("sessionImg", "");
                     }
                     // 서버에서 새로운 세션 이미지를 떨궈주면 로컬 캐시 파일 생성
+                    // 나중에 base64말고 순수 이진 파일로 바꿔서 전송하도록 변경해야 됨
                     else if (!session_data["session_img"].as_string().empty())
                     {
                         std::string_view base64_img = session_data["session_img"].as_string().c_str();
@@ -346,7 +368,7 @@ void MainContext::tryInitSessionList()
                     {
                         qvm.insert("recentSendDate", "");
                         qvm.insert("recentSenderId", "");
-                        qvm.insert("recentContentType", "");
+                        qvm.insert("recentContentType", UNDEFINED_TYPE);
                         qvm.insert("recentContent", "");
                         qvm.insert("recentMessageId", 0);
                     }
@@ -355,12 +377,24 @@ void MainContext::tryInitSessionList()
                         auto chat_info = session_data["chat_info"].as_object();
                         qvm.insert("recentSendDate", chat_info["send_date"].as_string().c_str());
                         qvm.insert("recentSenderId", chat_info["sender_id"].as_string().c_str());
-                        qvm.insert("recentContentType", chat_info["content_type"].as_string().c_str());
+                        qvm.insert("recentContentType", chat_info["content_type"].as_int64());
 
-                        if (chat_info["send_date"].as_string() != "text")
-                            qvm.insert("recentContent", chat_info["content"].as_string().c_str());
-                        else
+                        switch (chat_info["content_type"].as_int64())
+                        {
+                        case TEXT_CHAT:
                             qvm.insert("recentContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
+                            break;
+                        case IMG_CHAT:
+                            qvm.insert("recentContent", chat_info["content"].as_string().c_str());
+                            break;
+                        default:
+                            break;
+                        }
+
+                        // if (chat_info["send_date"].as_string() != "text")
+                        //     qvm.insert("recentContent", chat_info["content"].as_string().c_str());
+                        // else
+                        //     qvm.insert("recentContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
 
                         qvm.insert("recentMessageId", chat_info["message_id"].as_int64());
                     }

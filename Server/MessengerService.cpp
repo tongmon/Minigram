@@ -335,7 +335,7 @@ void MessengerService::ChatHandling()
     //                          });
 }
 
-// Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( session id / session img date ) 배열
+// Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::SessionListInitHandling()
 {

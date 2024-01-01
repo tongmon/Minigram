@@ -32,11 +32,11 @@ class NetworkBuffer
 
     auto end() const;
 
-    size_t GetConnectionType();
+    size_t GetConnectionType() const;
 
-    size_t GetDataSize();
+    size_t GetDataSize() const;
 
-    size_t GetHeaderSize();
+    size_t GetHeaderSize() const;
 
     template <typename T>
     void GetData(T &val)

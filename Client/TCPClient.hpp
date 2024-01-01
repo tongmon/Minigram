@@ -50,7 +50,7 @@ class Session
         return m_ec == boost::system::errc::success;
     }
 
-    const NetworkBuffer &GetResponse()
+    NetworkBuffer &GetResponse()
     {
         return m_response;
     }
@@ -60,9 +60,14 @@ class Session
         return m_id;
     }
 
-    auto GetHeaderSize()
+    auto GetHeaderSize() const
     {
         return m_request.GetHeaderSize();
+    }
+
+    auto GetDataSize() const
+    {
+        return m_request.GetDataSize();
     }
 };
 
