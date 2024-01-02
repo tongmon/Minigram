@@ -438,6 +438,8 @@ void MainContext::tryFetchMoreMessage(int session_index)
 {
 }
 
+// Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ acq id / acq img date ] 배열 )
+// Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryGetContactList()
 {
     auto &central_server = m_window.GetServerHandle();
@@ -445,8 +447,9 @@ void MainContext::tryGetContactList()
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    std::string request = m_user_id.toStdString(),
-                file_path = boost::dll::program_location().parent_path().string() + "/cache/contact";
+    // std::string request = m_user_id.toStdString(),
+    std::string file_path = boost::dll::program_location().parent_path().string() + "/cache/contact";
+    std::vector<std::pair<std::string, std::string>> acq_data;
 
     boost::filesystem::directory_iterator root{file_path};
     while (root != boost::filesystem::directory_iterator{})
@@ -467,30 +470,32 @@ void MainContext::tryGetContactList()
             }
         }
 
-        request += "|" + dir.path().filename().string() + "/" + img_update_date;
+        acq_data.push_back({dir.path().filename().string(), img_update_date});
     }
 
-    TCPHeader header(CONTACTLIST_INITIAL_TYPE, request.size());
-    request = header.GetHeaderBuffer() + request;
+    NetworkBuffer net_buf(CONTACTLIST_INITIAL_TYPE);
+    net_buf += m_user_id;
+    net_buf += acq_data.size();
+    for (const auto &data : acq_data)
+    {
+        net_buf += data.first;
+        net_buf += data.second;
+    }
 
-    central_server.AsyncWrite(request_id, request, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            TCPHeader header(session->GetResponse());
-
-            auto connection_type = header.GetConnectionType();
-            auto data_size = header.GetDataSize();
-
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                std::string json_txt = Utf8ToStr(DecodeBase64(session->GetResponse().CStr()));
+                std::string json_txt; // = Utf8ToStr(DecodeBase64(session->GetResponse().CStr()));
+                session->GetResponse().GetData(json_txt);
 
                 boost::json::error_code ec;
                 boost::json::value json_data = boost::json::parse(json_txt, ec);
@@ -512,7 +517,7 @@ void MainContext::tryGetContactList()
                         boost::filesystem::create_directories(acquaintance_dir);
                     }
 
-                    if (acquaintance_data["user_img_date"].as_string() == "absence")
+                    if (acquaintance_data["user_img_date"].as_string() == "null")
                     {
                         qsl.push_back("");
                     }
@@ -572,43 +577,39 @@ void MainContext::tryAddContact(const QString &user_id)
     }
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    Buffer request(m_user_id.toStdString() + "|" + user_id.toStdString());
+    NetworkBuffer net_buf(CONTACT_ADD_TYPE);
+    net_buf += m_user_id;
+    net_buf += user_id;
 
-    TCPHeader header(CONTACT_ADD_TYPE, request.Size());
-    request = header.GetHeaderBuffer() + request;
-
-    central_server.AsyncWrite(request_id, request, [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             request_id = -1;
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 request_id = -1;
                 return;
             }
 
-            TCPHeader header(session->GetResponse());
-
-            auto connection_type = header.GetConnectionType();
-            auto data_size = header.GetDataSize();
-
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     request_id = -1;
                     return;
                 }
 
-                std::vector<std::string> parsed;
-                boost::split(parsed, session->GetResponse().CStr(2), boost::is_any_of("|"));
-                std::string_view user_name = parsed[0],
-                                 img_date = parsed[1],
-                                 img_data = parsed[2];
-                int result = static_cast<int>(session->GetResponse()[0]);
+                auto response = session->GetResponse();
+                int64_t result;
+                std::string user_name, img_date, img_data;
+
+                response.GetData(result);
+                response.GetData(user_name);
+                response.GetData(img_date);
+                response.GetData(img_data);
 
                 QVariantMap qvm;
                 qvm["userId"] = qvm["userName"] = qvm["userImg"] = "";
@@ -637,7 +638,7 @@ void MainContext::tryAddContact(const QString &user_id)
 
                 QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("contactButton"),
                                           "processAddContact",
-                                          Q_ARG(int, result),
+                                          Q_ARG(int64_t, result),
                                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
 
                 central_server.CloseRequest(session->GetID());
@@ -656,7 +657,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    Buffer request((qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString());
+    // Buffer request((qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString());
     std::string img_base64 = "null";
 
     if (!qvm["img_path"].toString().isEmpty())
@@ -668,12 +669,18 @@ void MainContext::trySignUp(const QVariantMap &qvm)
         img_base64 = buf.data().toBase64().toStdString();
     }
 
-    request += ("|" + img_base64);
+    NetworkBuffer net_buf(USER_REGISTER_TYPE);
+    net_buf += qvm["id"].toString();
+    net_buf += qvm["pw"].toString();
+    net_buf += qvm["name"].toString();
+    net_buf += img_base64;
 
-    TCPHeader header(USER_REGISTER_TYPE, request.Size());
-    request = header.GetHeaderBuffer() + request;
+    // request += ("|" + img_base64);
+    //
+    // TCPHeader header(USER_REGISTER_TYPE, request.Size());
+    // request = header.GetHeaderBuffer() + request;
 
-    central_server.AsyncWrite(request_id, request, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
@@ -682,7 +689,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
@@ -691,12 +698,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                 return;
             }
 
-            TCPHeader header(session->GetResponse());
-
-            auto connection_type = header.GetConnectionType();
-            auto data_size = header.GetDataSize();
-
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
@@ -705,9 +707,16 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     return;
                 }
 
-                std::vector<std::string> parsed;
-                boost::split(parsed, session->GetResponse().CStr(), boost::is_any_of("|"));
-                int result = parsed[0][0];
+                // std::vector<std::string> parsed;
+                // boost::split(parsed, session->GetResponse().CStr(), boost::is_any_of("|"));
+                // int result = parsed[0][0];
+
+                auto response = session->GetResponse();
+                int64_t result;
+                std::string register_date;
+
+                response.GetData(result);
+                response.GetData(register_date);
 
                 // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
                 if (result == REGISTER_SUCCESS)
@@ -717,7 +726,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
                     if (img_base64 != "null")
                     {
-                        img_base64 = parsed[1] + "|" + img_base64;
+                        img_base64 = register_date + "|" + img_base64;
                         std::ofstream img_file(user_cache_path + "/user_img_info.bck");
                         if (img_file.is_open())
                             img_file.write(img_base64.c_str(), img_base64.size());
@@ -734,19 +743,21 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     });
 }
 
-// Server에 전달하는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(base64) | 세션 참가자 id 배열
+// Server에 전달하는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(base64) | 배열 개수 | 세션 참가자 id 배열
 // Server에서 받는 버퍼 형식: 세션 id
 void MainContext::tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids)
 {
-    static QQmlComponent component(&m_window.GetEngine(), QUrl("qrc:/qml/ChatListView.qml"));
-
     auto &central_server = m_window.GetServerHandle();
 
     int request_id = central_server.MakeRequestID();
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    Buffer request(m_user_id + "|" + session_name + "|");
+    // Buffer request(m_user_id + "|" + session_name + "|");
+    NetworkBuffer net_buf(SESSION_ADD_TYPE);
     std::string img_base64 = "null";
+
+    net_buf += m_user_id;
+    net_buf += session_name;
 
     if (!img_path.isEmpty())
     {
@@ -755,16 +766,15 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
         QImage img(img_path);
         img.save(&buf, "PNG");
         img_base64 = buf.data().toBase64().toStdString();
-        request += (img_base64 + "|");
+        net_buf += img_base64;
     }
 
-    for (int i = 0; i < participant_ids.size() - 1; i++)
-        request += (participant_ids[i] + "|");
-    if (!participant_ids.empty())
-        request += participant_ids.back();
+    net_buf += participant_ids.size();
+    for (size_t i = 0; i < participant_ids.size(); i++)
+        net_buf += participant_ids[i];
 
-    TCPHeader header(SESSION_ADD_TYPE, request.Size());
-    request = header.GetHeaderBuffer() + request;
+    // TCPHeader header(SESSION_ADD_TYPE, request.Size());
+    // request = header.GetHeaderBuffer() + request;
 
     std::shared_ptr<QVariantMap> qvm(new QVariantMap);
 
@@ -773,33 +783,30 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
     (*qvm)["recentSenderId"] = (*qvm)["recentSendDate"] = (*qvm)["recentContentType"] = (*qvm)["recentContent"] = "";
     (*qvm)["recentMessageId"] = (*qvm)["unreadCnt"] = 0;
 
-    central_server.AsyncWrite(request_id, request, [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            TCPHeader header(session->GetResponse());
-
-            auto connection_type = header.GetConnectionType();
-            auto data_size = header.GetDataSize();
-
-            central_server.AsyncRead(session->GetID(), data_size, [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                const std::string &response = session->GetResponse().CStr();
+                std::string session_id;
+                session->GetResponse().GetData(session_id);
+
                 std::string img_base64 = (*qvm)["sessionImg"].toString().toStdString();
 
-                std::string session_cache_path = boost::dll::program_location().parent_path().string() + "/sessions/" + response;
+                std::string session_cache_path = boost::dll::program_location().parent_path().string() + "/sessions/" + session_id;
                 boost::filesystem::create_directories(session_cache_path);
 
                 if (img_base64 != "null")
                 {
                     std::smatch match;
-                    std::regex_search(response, match, std::regex("_"));
+                    std::regex_search(session_id, match, std::regex("_"));
                     img_base64 = match.suffix().str() + "|" + img_base64;
 
                     std::ofstream img_file(session_cache_path + "/session_img_info.bck");
@@ -807,7 +814,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                         img_file.write(img_base64.c_str(), img_base64.size());
                 }
 
-                (*qvm)["sessionId"] = response.c_str();
+                (*qvm)["sessionId"] = session_id.c_str();
 
                 // 여기에 invokeMethod
 

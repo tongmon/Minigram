@@ -494,7 +494,7 @@ void MessengerService::SessionListInitHandling()
                              });
 }
 
-// Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( acq id / acq img date ) 배열
+// Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( [ acq id / acq img date ] 배열 )
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::ContactListInitHandling()
 {
@@ -553,13 +553,13 @@ void MessengerService::ContactListInitHandling()
             int width, height, channels;
             unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
             std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
-            acquaintance_data["user_img"] = EncodeBase64(img_buffer);
+            acquaintance_data["user_img"] = EncodeBase64(img_buffer); // 추후에 raw binary 보내는 로직으로 변경
             acquaintance_data["user_img_date"] = path.stem().string();
         }
         else
         {
             acquaintance_data["user_img"] = "";
-            acquaintance_data["user_img_date"] = img_path.empty() ? "absence" : "";
+            acquaintance_data["user_img_date"] = img_path.empty() ? "null" : "";
         }
 
         contact_array.push_back(acquaintance_data);
