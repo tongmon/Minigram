@@ -414,11 +414,13 @@ void MainContext::tryInitSessionList()
     return;
 }
 
-// Server에 전달하는 버퍼 형식: login user id | session_id
+// Server에 전달하는 버퍼 형식: session_id |
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
 {
-    if (!m_chat_session_model->data(session_id, ChatSessionModel::UNREAD_CNT_ROLE).toInt())
+    auto unread_cnt = m_chat_session_model->data(session_id, ChatSessionModel::UNREAD_CNT_ROLE).toInt();
+
+    if (!unread_cnt)
         return;
 
     auto &central_server = m_window.GetServerHandle();
@@ -432,6 +434,21 @@ void MainContext::tryRefreshSession(const QString &session_id)
         return;
     }
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+
+    NetworkBuffer net_buf(SESSION_REFRESH_TYPE);
+    net_buf += session_id;
+
+    // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 가장 최신 100개 채팅만 가져옴
+    if ()
+    {
+    }
+    // 읽지 않은 메시지가 500개 이하면 그 내역을 서버에서 모두 가져옴
+    else if (unread_cnt < 500)
+        net_buf += m_chat_session_model->data(session_id, ChatSessionModel::RECENT_MESSAGEID_ROLE).toInt();
+    // 500개가 넘으면 해당 세션의 채팅 기록 초기화 후 가장 최신 100개 채팅만 서버에서 가져와서 채움
+    else
+    {
+    }
 }
 
 void MainContext::tryFetchMoreMessage(int session_index)
