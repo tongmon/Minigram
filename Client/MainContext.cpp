@@ -414,7 +414,7 @@ void MainContext::tryInitSessionList()
     return;
 }
 
-// Server에 전달하는 버퍼 형식: session_id |
+// Server에 전달하는 버퍼 형식: user_id | session_id | 읽어올 메시지 수
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
 {
@@ -436,19 +436,90 @@ void MainContext::tryRefreshSession(const QString &session_id)
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
     NetworkBuffer net_buf(SESSION_REFRESH_TYPE);
+    net_buf += m_user_id;
     net_buf += session_id;
 
-    // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 가장 최신 100개 채팅만 가져옴
-    if ()
-    {
-    }
+    int chat_cnt, recent_message_id = m_chat_session_model->data(session_id, ChatSessionModel::RECENT_MESSAGEID_ROLE).toInt();
+    QMetaObject::invokeMethod(m_main_page,
+                              "getSessionChatCount",
+                              Q_RETURN_ARG(int, chat_cnt),
+                              Q_ARG(QString, session_id));
+
+    // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 최대 100개 채팅만 가져옴
+    // 메신저 사용자가 해당 세션을 처음 입장하는 경우 최대 100개 채팅만 가져옴
+    if (!chat_cnt || recent_message_id < 0)
+        net_buf += 100;
     // 읽지 않은 메시지가 500개 이하면 그 내역을 서버에서 모두 가져옴
     else if (unread_cnt < 500)
-        net_buf += m_chat_session_model->data(session_id, ChatSessionModel::RECENT_MESSAGEID_ROLE).toInt();
-    // 500개가 넘으면 해당 세션의 채팅 기록 초기화 후 가장 최신 100개 채팅만 서버에서 가져와서 채움
+        net_buf += -1;
+    // 500개가 넘으면 해당 세션의 채팅 기록 초기화 후 최대 100개 채팅만 서버에서 가져와서 채움
     else
     {
+        QMetaObject::invokeMethod(m_main_page, "clearSpecificSession", Q_ARG(QString, session_id));
+        net_buf += 100;
     }
+
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            request_id = -1;
+            return;
+        }
+
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                request_id = -1;
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    request_id = -1;
+                    return;
+                }
+
+                std::string json_txt;
+                session->GetResponse().GetData(json_txt);
+
+                boost::json::error_code ec;
+                boost::json::value json_data = boost::json::parse(json_txt, ec);
+                auto fetch_list = json_data.as_object()["fetched_chat_list"].as_array();
+
+                for (size_t i = 0; i < fetch_list.size(); i++)
+                {
+                    auto chat_info = fetch_list[i].as_object();
+
+                    QVariantMap qvm;
+                    qvm.insert("messageId", chat_info["message_id"].as_int64());
+                    qvm.insert("sessionId", session_id);
+                    qvm.insert("senderId", chat_info["sender_id"].as_string().c_str());
+                    qvm.insert("sendDate", chat_info["send_date"].as_string().c_str());
+                    qvm.insert("contentType", chat_info["content_type"].as_int64());
+
+                    switch (chat_info["content_type"].as_int64())
+                    {
+                    case TEXT_CHAT: {
+                        std::string decoded = Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str()));
+                        qvm.insert("content", decoded.c_str());
+                        break;
+                    }
+                    default:
+                        break;
+                    }
+
+                    qvm.insert("isOpponent", m_user_id == chat_info["sender_id"].as_string().c_str() ? false : true);
+
+                    QMetaObject::invokeMethod(m_main_page,
+                                              "addChat",
+                                              Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                }
+
+                central_server.CloseRequest(session->GetID());
+            });
+        });
+    });
 }
 
 void MainContext::tryFetchMoreMessage(int session_index)

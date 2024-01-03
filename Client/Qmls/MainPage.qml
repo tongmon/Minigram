@@ -24,6 +24,16 @@ Rectangle {
         chatListViewMap[sessionInfo["sessionId"]] = chatListViewComponent.createObject(chatView)
     }
 
+    function clearSpecificSession(sessionId)
+    {
+        chatListViewMap[sessionId].children[0].model.clear()
+    }
+
+    function getSessionChatCount(sessionId)
+    {
+        return chatListViewMap[sessionId].children[0].model.count
+    }
+
     function addChat(chatInfo)
     {
         chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
