@@ -414,7 +414,7 @@ void MainContext::tryInitSessionList()
     return;
 }
 
-// Server에 전달하는 버퍼 형식: user_id | session_id | 읽어올 메시지 수
+// Server에 전달하는 버퍼 형식: user_id | session_id | message_id | 읽어올 메시지 수
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
 {
@@ -444,6 +444,8 @@ void MainContext::tryRefreshSession(const QString &session_id)
                               "getSessionChatCount",
                               Q_RETURN_ARG(int, chat_cnt),
                               Q_ARG(QString, session_id));
+
+    net_buf += recent_message_id;
 
     // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 최대 100개 채팅만 가져옴
     // 메신저 사용자가 해당 세션을 처음 입장하는 경우 최대 100개 채팅만 가져옴
@@ -522,8 +524,21 @@ void MainContext::tryRefreshSession(const QString &session_id)
     });
 }
 
-void MainContext::tryFetchMoreMessage(int session_index)
+// Server에 전달하는 버퍼 형식:
+// Server에서 받는 버퍼 형식:
+void MainContext::tryFetchMoreMessage(const QString &session_id)
 {
+    auto &central_server = m_window.GetServerHandle();
+
+    static int request_id = -1;
+    if (request_id < 0)
+        request_id = central_server.MakeRequestID();
+    else
+    {
+        // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
+        return;
+    }
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 }
 
 // Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ acq id / acq img date ] 배열 )

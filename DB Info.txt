@@ -107,7 +107,6 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 	],
 }
 
-
 ## Client - Server 통신 규격
 
 ### Server -> Client

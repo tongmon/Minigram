@@ -335,6 +335,100 @@ void MessengerService::ChatHandling()
     //                          });
 }
 
+// Client에서 받는 버퍼 형식: user_id | session_id | message_id | 읽어올 메시지 수
+// Client에 전달하는 버퍼 형식: DB Info.txt 참고
+void MessengerService::RefreshSessionHandling()
+{
+    using namespace bsoncxx;
+    using namespace bsoncxx::builder;
+
+    std::string user_id, session_id;
+    int64_t message_id, fetch_cnt;
+
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(session_id);
+    m_client_request.GetData(message_id);
+    m_client_request.GetData(fetch_cnt);
+
+    auto mongo_client = MongoDBPool::Get().acquire();
+    auto mongo_db = (*mongo_client)["Minigram"];
+    auto mongo_coll = mongo_db[session_id + "_log"];
+
+    std::unique_ptr<mongocxx::cursor> mongo_cursor;
+    boost::json::array chat_ary;
+
+    // 밑 로직으로 읽은 사람에 user_id 추가해줘야 됨
+    // auto update_many_result =
+    //     collection.update_many(make_document(kvp("i", make_document(kvp("$gt", 0)))),
+    //                            make_document(kvp("$set", make_document(kvp("foo", "buzz")))));
+
+    // 주어진 메시지 id보다 큰 채팅은 모두 땡겨옴
+    if (fetch_cnt < 0)
+    {
+        auto opts = mongocxx::options::find{};
+        opts.sort(basic::make_document(basic::kvp("message_id", -1)).view());
+
+        mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find(basic::make_document(basic::kvp("message_id",
+                                                                                                          basic::make_document(basic::kvp("$gt",
+                                                                                                                                          message_id)))),
+                                                                          opts));
+    }
+    // 최신 fetch_cnt 개의 채팅만 땡겨옴
+    else
+    {
+        auto opts = mongocxx::options::find{};
+        opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(fetch_cnt);
+
+        mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find({}, opts));
+    }
+
+    for (auto &&doc : *mongo_cursor)
+    {
+        boost::json::object chat_info;
+        std::chrono::system_clock::time_point send_date(doc["send_date"].get_date().value);
+        chat_info["send_date"] = std::format("{0:%F %T}", send_date);
+        chat_info["message_id"] = doc["message_id"].get_string().value;
+        chat_info["sender_id"] = doc["sender_id"].get_string().value;
+        chat_info["content_type"] = doc["content_type"].get_int64().value;
+
+        // 가장 최신 message_id로 설정
+        message_id = chat_info["message_id"].as_int64();
+
+        switch (chat_info["content_type"].as_int64())
+        {
+        case TEXT_CHAT:
+            chat_info["content"] = EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
+            break;
+        case IMG_CHAT:
+            chat_info["content"] = EncodeBase64(doc["content"].get_string().value.data());
+            break;
+        default:
+            break;
+        }
+        chat_ary.push_back(std::move(chat_info));
+    }
+
+    *m_sql << "update participant_tb set message_id=:mid", soci::use(message_id);
+
+    boost::json::object fetched_chat_json;
+    fetched_chat_json["fetched_chat_list"] = chat_ary;
+
+    NetworkBuffer net_buf(SESSION_REFRESH_TYPE);
+    net_buf += boost::json::serialize(fetched_chat_json);
+
+    m_request = std::move(net_buf);
+
+    boost::asio::async_write(*m_sock,
+                             m_request.AsioBuffer(),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+                                 delete this;
+                             });
+}
+
 // Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::SessionListInitHandling()
