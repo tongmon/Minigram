@@ -524,9 +524,9 @@ void MainContext::tryRefreshSession(const QString &session_id)
     });
 }
 
-// Server에 전달하는 버퍼 형식:
-// Server에서 받는 버퍼 형식:
-void MainContext::tryFetchMoreMessage(const QString &session_id)
+// Server에 전달하는 버퍼 형식: session_id | message_id | fetch_cnt
+// Server에서 받는 버퍼 형식: DB Info.txt 참고
+void MainContext::tryFetchMoreMessage(const QString &session_id, int message_id)
 {
     auto &central_server = m_window.GetServerHandle();
 
@@ -539,6 +539,74 @@ void MainContext::tryFetchMoreMessage(const QString &session_id)
         return;
     }
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+
+    NetworkBuffer net_buf(FETCH_MORE_CHAT_TYPE);
+    net_buf += session_id;
+    net_buf += message_id;
+    net_buf += 100;
+
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            request_id = -1;
+            return;
+        }
+
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                request_id = -1;
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    request_id = -1;
+                    return;
+                }
+
+                std::string json_txt;
+                session->GetResponse().GetData(json_txt);
+
+                boost::json::error_code ec;
+                boost::json::value json_data = boost::json::parse(json_txt, ec);
+                auto fetch_list = json_data.as_object()["fetched_chat_list"].as_array();
+
+                for (size_t i = 0; i < fetch_list.size(); i++)
+                {
+                    auto chat_info = fetch_list[i].as_object();
+
+                    QVariantMap qvm;
+                    qvm.insert("messageId", chat_info["message_id"].as_int64());
+                    qvm.insert("sessionId", session_id);
+                    qvm.insert("senderId", chat_info["sender_id"].as_string().c_str());
+                    qvm.insert("sendDate", chat_info["send_date"].as_string().c_str());
+                    qvm.insert("contentType", chat_info["content_type"].as_int64());
+
+                    switch (chat_info["content_type"].as_int64())
+                    {
+                    case TEXT_CHAT: {
+                        std::string decoded = Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str()));
+                        qvm.insert("content", decoded.c_str());
+                        break;
+                    }
+                    default:
+                        break;
+                    }
+
+                    qvm.insert("isOpponent", m_user_id == chat_info["sender_id"].as_string().c_str() ? false : true);
+
+                    // 앞에서부터 채워넣어야 하기에 새로운 함수가 필요함
+                    // QMetaObject::invokeMethod(m_main_page,
+                    //                           "addChat",
+                    //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                }
+
+                central_server.CloseRequest(session->GetID());
+            });
+        });
+    });
 }
 
 // Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ acq id / acq img date ] 배열 )

@@ -247,7 +247,7 @@ void MessengerService::ChatHandling()
                                                basic::kvp("send_date", types::b_date{tp}),
                                                basic::kvp("content_type", content_type),
                                                basic::kvp("content", content),
-                                               basic::kvp("read_by", basic::make_array(basic::make_document(basic::kvp("reader_id", sender_id))))));
+                                               basic::kvp("reader_id", basic::make_array(sender_id))));
 
     // 채팅 내용 다른 사람에게 전송
     soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
@@ -357,10 +357,13 @@ void MessengerService::RefreshSessionHandling()
     std::unique_ptr<mongocxx::cursor> mongo_cursor;
     boost::json::array chat_ary;
 
-    // 밑 로직으로 읽은 사람에 user_id 추가해줘야 됨
-    // auto update_many_result =
-    //     collection.update_many(make_document(kvp("i", make_document(kvp("$gt", 0)))),
-    //                            make_document(kvp("$set", make_document(kvp("foo", "buzz")))));
+    // 해당 유저 메시지 읽음 처리
+    auto update_result = mongo_coll.update_many(basic::make_document(basic::kvp("message_id",
+                                                                                basic::make_document(basic::kvp("$gt",
+                                                                                                                message_id)))),
+                                                basic::make_document(basic::kvp("$push",
+                                                                                basic::make_document(basic::kvp("reader_id",
+                                                                                                                user_id)))));
 
     // 주어진 메시지 id보다 큰 채팅은 모두 땡겨옴
     if (fetch_cnt < 0)

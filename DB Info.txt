@@ -99,12 +99,7 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 	"send_date": 	ISODate("2023-10-19T13:21:40.125"),
 	"content_type": 컨텐츠 타입 (size_t),
 	"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4",
-	"read by": [
-		{
-			"reader_id": "읽은 사람 USER_ID"
-		},
-		...
-	],
+	"reader_id" : [ "tongstar", "yellowjam" ... ]
 }
 
 ## Client - Server 통신 규격
@@ -160,6 +155,10 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 		...
 	]
 }
+
+#### Fetch More Message
+클라이언트 채팅방에서 스크롤을 계속 위로 올리면 발생하게 되는 과거 채팅 이력 서버에서 가져오는 경우
+Session Refresh 통신과 동일하다.
 
 #### Contact Init
 연락처 목록 초기화시 서버에서 클라로 던져주는 json 데이터
