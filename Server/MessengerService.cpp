@@ -432,6 +432,75 @@ void MessengerService::RefreshSessionHandling()
                              });
 }
 
+// Client에서 받는 버퍼 형식: session_id | message_id | fetch_cnt
+// Client에 전달하는 버퍼 형식: DB Info.txt 참고
+void MessengerService::FetchMoreMessageHandling()
+{
+    using namespace bsoncxx;
+    using namespace bsoncxx::builder;
+
+    std::string session_id;
+    int64_t message_id, fetch_cnt;
+
+    m_client_request.GetData(session_id);
+    m_client_request.GetData(message_id);
+    m_client_request.GetData(fetch_cnt);
+
+    auto mongo_client = MongoDBPool::Get().acquire();
+    auto mongo_db = (*mongo_client)["Minigram"];
+    auto mongo_coll = mongo_db[session_id + "_log"];
+
+    auto opts = mongocxx::options::find{};
+    opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(fetch_cnt);
+    auto mongo_cursor = mongo_coll.find(basic::make_document(basic::kvp("message_id",
+                                                                        basic::make_document(basic::kvp("$lt",
+                                                                                                        message_id)))),
+                                        opts);
+
+    boost::json::array chat_ary;
+
+    for (auto &&doc : mongo_cursor)
+    {
+        boost::json::object chat_info;
+        std::chrono::system_clock::time_point send_date(doc["send_date"].get_date().value);
+        chat_info["send_date"] = std::format("{0:%F %T}", send_date);
+        chat_info["message_id"] = doc["message_id"].get_string().value;
+        chat_info["sender_id"] = doc["sender_id"].get_string().value;
+        chat_info["content_type"] = doc["content_type"].get_int64().value;
+
+        switch (chat_info["content_type"].as_int64())
+        {
+        case TEXT_CHAT:
+            chat_info["content"] = EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
+            break;
+        case IMG_CHAT:
+            chat_info["content"] = EncodeBase64(doc["content"].get_string().value.data());
+            break;
+        default:
+            break;
+        }
+        chat_ary.push_back(std::move(chat_info));
+    }
+
+    boost::json::object fetched_chat_json;
+    fetched_chat_json["fetched_chat_list"] = chat_ary;
+
+    NetworkBuffer net_buf(FETCH_MORE_MESSAGE_TYPE);
+    net_buf += boost::json::serialize(fetched_chat_json);
+
+    m_request = std::move(net_buf);
+
+    boost::asio::async_write(*m_sock,
+                             m_request.AsioBuffer(),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+                                 delete this;
+                             });
+}
+
 // Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::SessionListInitHandling()
@@ -998,6 +1067,9 @@ void MessengerService::StartHandling()
                                                                 break;
                                                             case CONTACT_ADD_TYPE:
                                                                 ContactAddHandling();
+                                                                break;
+                                                            case FETCH_MORE_MESSAGE_TYPE:
+                                                                FetchMoreMessageHandling();
                                                                 break;
                                                             default:
                                                                 break;

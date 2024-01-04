@@ -540,10 +540,10 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int message_id)
     }
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
 
-    NetworkBuffer net_buf(FETCH_MORE_CHAT_TYPE);
+    NetworkBuffer net_buf(FETCH_MORE_MESSAGE_TYPE);
     net_buf += session_id;
-    net_buf += message_id;
-    net_buf += 100;
+    net_buf += static_cast<int64_t>(message_id);
+    net_buf += static_cast<int64_t>(100);
 
     central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
