@@ -62,7 +62,7 @@ void Service::StartHandling()
                                                             {
                                                             case LOGIN_CONNECTION_TYPE:
                                                                 break;
-                                                            case CHAT_SEND_TYPE:
+                                                            case CHAT_RECIEVE_TYPE:
                                                                 m_window.GetMainContext().RecieveChat(m_server_request);
                                                                 break;
                                                             case SESSIONLIST_INITIAL_TYPE:

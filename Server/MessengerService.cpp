@@ -205,6 +205,9 @@ void MessengerService::TextMessageHandling()
 // Client에 전달하는 버퍼 형식: message send date | message id
 void MessengerService::ChatHandling()
 {
+    static int remaining_participant_cnt = 0;
+    static std::vector<std::string> reader_ids;
+
     ConnectionType content_type;
     std::string sender_id, session_id, content;
     m_client_request.GetData(sender_id);
@@ -253,10 +256,19 @@ void MessengerService::ChatHandling()
     soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
                                   soci::use(session_id, "sid"));
 
+    int participant_cnt;
+    *m_sql << "select count(participant_id) from participant_tb where session_id=:sid",
+        soci::into(participant_cnt), soci::use(session_id);
+
+    remaining_participant_cnt = participant_cnt;
+    reader_ids.clear();
+
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         std::string participant_id = it->get<std::string>(0), login_ip;
         int login_port;
+
+        remaining_participant_cnt--;
 
         // 보낸 사람은 제외
         if (participant_id == sender_id)
@@ -272,7 +284,7 @@ void MessengerService::ChatHandling()
         auto request_id = m_peer->MakeRequestID();
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
-        NetworkBuffer request_buf(CHAT_SEND_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
+        NetworkBuffer request_buf(CHAT_RECIEVE_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
         request_buf += sender_id;
         request_buf += session_id;
         request_buf += send_date;
@@ -282,7 +294,25 @@ void MessengerService::ChatHandling()
         m_peer->AsyncWrite(request_id, std::move(request_buf), [peer = m_peer](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
-            peer->CloseRequest(session->GetID());
+
+            peer->AsyncRead(session->GetID(), session->GetHeaderSize(), [peer](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                peer->AsyncRead(session->GetID(), session->GetDataSize(), [peer](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                        return;
+
+                    // 클라이언트에서 메시지 읽음 유무를 reader_ids에 저장, mutex 써야할 듯...?
+
+                    // 특정 메시지 읽은 사람 개수 변동을 따져 클라이언트에 전달해야 됨
+                    if (!remaining_participant_cnt)
+                    {
+                    }
+
+                    peer->CloseRequest(session->GetID());
+                });
+            });
         });
 
         // Buffer request(sender_id + "|" + session_id + "|" + send_date + "|" + content_type_buf + "|" + content);
@@ -1040,6 +1070,7 @@ void MessengerService::StartHandling()
                                                             }
 
                                                             m_client_request_buf.commit(bytes_transferred);
+                                                            m_client_request = m_client_request_buf;
 
                                                             // std::istream strm(&m_client_request_buf);
                                                             // std::getline(strm, m_client_request);
