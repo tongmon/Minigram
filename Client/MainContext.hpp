@@ -9,6 +9,7 @@ class WinQuickWindow;
 class ChatModel;
 class ContactModel;
 class ChatSessionModel;
+class Service;
 
 class MainContext : public QObject
 {
@@ -33,7 +34,7 @@ class MainContext : public QObject
     ~MainContext();
 
     // 서버에서 클라로 전송할 때 대응하는 함수들
-    void RecieveChat(NetworkBuffer &server_response);
+    void RecieveChat(Service *service);
 
     // 클라에서 서버로 전송하기 위한 함수들
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);

@@ -202,11 +202,13 @@ void MessengerService::TextMessageHandling()
 */
 
 // Client에서 받는 버퍼 형식: sender_id | session_id | content_type | content
-// Client에 전달하는 버퍼 형식: message send date | message id
+// Client에 전달하는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MessengerService::ChatHandling()
 {
+    static std::mutex mut;
     static int remaining_participant_cnt = 0;
     static std::vector<std::string> reader_ids;
+    static std::vector<unsigned int> req_ids;
 
     ConnectionType content_type;
     std::string sender_id, session_id, content;
@@ -214,12 +216,6 @@ void MessengerService::ChatHandling()
     m_client_request.GetData(session_id);
     m_client_request.GetData(content_type);
     m_client_request.GetData(content);
-
-    // auto bufs = m_client_request.Split('|');
-    // const std::string &sender_id = bufs[0].Data<const char *>(),
-    //                   &session_id = bufs[1].Data<const char *>(),
-    //                   &content_type_buf = bufs[2].Data<const char *>(),
-    //                   &content = bufs[3].Data<const char *>();
 
     // mongodb에 채팅 내용 업로드
     using namespace bsoncxx;
@@ -231,8 +227,6 @@ void MessengerService::ChatHandling()
 
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
     std::string send_date = std::format("{0:%F %T}", tp);
-
-    // int content_type = static_cast<int>(content_type_buf[0]); // *((unsigned char *)content_type_buf.ConvertToNonStringData().Data());
 
     auto opts = mongocxx::options::find{};
     opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
@@ -261,7 +255,8 @@ void MessengerService::ChatHandling()
         soci::into(participant_cnt), soci::use(session_id);
 
     remaining_participant_cnt = participant_cnt;
-    reader_ids.clear();
+    reader_ids = {sender_id};
+    req_ids.clear();
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
@@ -282,6 +277,8 @@ void MessengerService::ChatHandling()
             continue;
 
         auto request_id = m_peer->MakeRequestID();
+        req_ids.push_back(request_id);
+
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
         NetworkBuffer request_buf(CHAT_RECIEVE_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
@@ -291,78 +288,76 @@ void MessengerService::ChatHandling()
         request_buf += content_type;
         request_buf += content;
 
-        m_peer->AsyncWrite(request_id, std::move(request_buf), [peer = m_peer](std::shared_ptr<Session> session) -> void {
+        m_peer->AsyncWrite(request_id, std::move(request_buf), [peer = m_peer, send_date, message_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            peer->AsyncRead(session->GetID(), session->GetHeaderSize(), [peer](std::shared_ptr<Session> session) -> void {
+            peer->AsyncRead(session->GetID(), session->GetHeaderSize(), [peer, send_date, message_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                peer->AsyncRead(session->GetID(), session->GetDataSize(), [peer](std::shared_ptr<Session> session) -> void {
+                peer->AsyncRead(session->GetID(), session->GetDataSize(), [peer, send_date, message_id, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                         return;
 
-                    // 클라이언트에서 메시지 읽음 유무를 reader_ids에 저장, mutex 써야할 듯...?
-
                     // 특정 메시지 읽은 사람 개수 변동을 따져 클라이언트에 전달해야 됨
+                    mut.lock();
                     if (!remaining_participant_cnt)
                     {
-                    }
+                        remaining_participant_cnt = -1;
+                        mut.unlock();
 
-                    peer->CloseRequest(session->GetID());
+                        std::string participant_id;
+                        session->GetResponse().GetData(participant_id);
+
+                        if (participant_id != "<null>")
+                            reader_ids.push_back(participant_id);
+
+                        for (const auto &req_id : req_ids)
+                        {
+                            NetworkBuffer buf(CHAT_RECIEVE_TYPE);
+                            buf += reader_ids.size();
+                            for (const auto &reader_id : reader_ids)
+                                buf += reader_id;
+
+                            peer->AsyncWrite(req_id, std::move(buf), [peer](std::shared_ptr<Session> session) -> void {
+                                peer->CloseRequest(session->GetID());
+                            });
+                        }
+
+                        NetworkBuffer buf(CHAT_SEND_TYPE);
+                        buf += send_date;
+                        buf += message_id;
+                        buf += reader_ids.size();
+                        for (const auto &reader_id : reader_ids)
+                            buf += reader_id;
+
+                        m_request = std::move(buf);
+
+                        boost::asio::async_write(*m_sock,
+                                                 m_request.AsioBuffer(),
+                                                 [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                     if (ec != boost::system::errc::success)
+                                                     {
+                                                         // write에 이상이 있는 경우
+                                                     }
+                                                     delete this;
+                                                 });
+                    }
+                    else
+                    {
+                        std::string participant_id;
+                        session->GetResponse().GetData(participant_id);
+
+                        if (participant_id != "<null>")
+                            reader_ids.push_back(participant_id);
+
+                        mut.unlock();
+                    }
                 });
             });
         });
-
-        // Buffer request(sender_id + "|" + session_id + "|" + send_date + "|" + content_type_buf + "|" + content);
-        // TCPHeader header(CHAT_SEND_TYPE, request.Size());
-        // request = header.GetHeaderBuffer() + request;
-
-        // std::string request = sender_id + "|" + session_id + "|" + send_date + "|" + content;
-        // TCPHeader header(CHAT_SEND_TYPE, request.size());
-        // request = header.GetHeaderBuffer() + request;
-
-        // 밑 내용 Buffer 사용하는 AsyncWrite로 바꿔야함
-        // m_peer->AsyncWrite(request_id, request, [peer = m_peer](std::shared_ptr<Session> session) -> void {
-        //     if (!session.get() || !session->IsValid())
-        //         return;
-        //
-        //    peer->CloseRequest(session->GetID());
-        // });
     }
-
-    NetworkBuffer net_buf(CHAT_SEND_TYPE);
-    net_buf += send_date;
-    net_buf += message_id;
-
-    m_request = std::move(net_buf);
-
-    boost::asio::async_write(*m_sock,
-                             m_request.AsioBuffer(),
-                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
-                                 if (ec != boost::system::errc::success)
-                                 {
-                                     // write에 이상이 있는 경우
-                                 }
-                                 delete this;
-                             });
-
-    // TCPHeader header(CHAT_SEND_TYPE, send_date.size() + message_id);
-    // m_request = header.GetHeaderBuffer() + send_date;
-
-    // 밑 내용 Buffer 사용하는 AsyncWrite로 바꿔야함
-    // 채팅 송신이 완료되었으면 보낸 사람 클라이언트로 송신 시점을 보냄
-    // boost::asio::async_write(*m_sock,
-    //                          boost::asio::buffer(m_request),
-    //                          [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
-    //                              if (ec != boost::system::errc::success)
-    //                              {
-    //                                  // write에 이상이 있는 경우
-    //                              }
-    //
-    //                              delete this;
-    //                          });
 }
 
 // Client에서 받는 버퍼 형식: user_id | session_id | message_id | 읽어올 메시지 수

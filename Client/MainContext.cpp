@@ -3,6 +3,7 @@
 #include "ChatSessionModel.hpp"
 #include "ContactModel.hpp"
 #include "NetworkBuffer.hpp"
+#include "Service.hpp"
 #include "TCPClient.hpp"
 #include "Utility.hpp"
 #include "WinQuickWindow.hpp"
@@ -37,8 +38,77 @@ MainContext::~MainContext()
 {
 }
 
-void MainContext::RecieveChat(const NetworkBuffer &server_response)
+// Server에서 받는 버퍼 형식: DB Info.txt 참고
+void MainContext::RecieveChat(Service *service)
 {
+    static QStringList reader_ids;
+    QString sender_id, session_id, send_date, content;
+    int64_t content_type;
+
+    service->server_response.GetData(sender_id);
+    service->server_response.GetData(session_id);
+    service->server_response.GetData(send_date);
+    service->server_response.GetData(content_type);
+    service->server_response.GetData(content);
+
+    NetworkBuffer net_buf(CHAT_RECIEVE_TYPE);
+
+    // top window고 current session이 여기 도착한 session_id와 같으면 읽음 처리
+    if (GetForegroundWindow() == m_window.GetHandle() && m_main_page->property("currentRoomID").toString() == session_id) // currentRoomID 추후에 currentSessionID로 변경해라
+        net_buf += m_user_id;
+    else
+        net_buf += "<null>"; // id 생성할 때 <, > 이런 문자 못넣게 해야됨
+
+    boost::asio::async_write(*service->sock,
+                             net_buf.AsioBuffer(),
+                             [service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     delete service;
+                                     return;
+                                 }
+
+                                 boost::asio::async_read(*service->sock,
+                                                         service->server_response_buf.prepare(service->server_response.GetHeaderSize()),
+                                                         [service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                             if (ec != boost::system::errc::success)
+                                                             {
+                                                                 delete service;
+                                                                 return;
+                                                             }
+
+                                                             service->server_response_buf.commit(bytes_transferred);
+                                                             service->server_response = service->server_response_buf;
+
+                                                             boost::asio::async_read(*service->sock,
+                                                                                     service->server_response_buf.prepare(service->server_response.GetDataSize()),
+                                                                                     [service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                                                         if (ec != boost::system::errc::success)
+                                                                                         {
+                                                                                             delete service;
+                                                                                             return;
+                                                                                         }
+
+                                                                                         service->server_response_buf.commit(bytes_transferred);
+                                                                                         service->server_response = service->server_response_buf;
+
+                                                                                         reader_ids.clear();
+                                                                                         size_t reader_cnt;
+
+                                                                                         service->server_response.GetData(reader_cnt);
+                                                                                         while (reader_cnt--)
+                                                                                         {
+                                                                                             QString reader_id;
+                                                                                             service->server_response.GetData(reader_id);
+                                                                                             reader_ids.push_back(reader_id);
+                                                                                         }
+
+                                                                                         // 이 곳에 qml 채팅추가하는 로직
+
+                                                                                         delete service;
+                                                                                     });
+                                                         });
+                             });
 }
 
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
@@ -151,7 +221,7 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
 */
 
 // Server에 전달하는 버퍼 형식: sender id | session id | content_type | content
-// Server에서 받는 버퍼 형식: message send date | message id
+// Server에서 받는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MainContext::trySendChat(const QString &session_id, unsigned char content_type, const QString &content)
 {
     static TCPClient &central_server = m_window.GetServerHandle();
@@ -212,18 +282,26 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
                 if (!session.get() || !session->IsValid())
                     return;
 
-                int64_t message_id;
+                int64_t message_id, reader_cnt;
                 QString send_date;
+                QStringList reader_ids;
                 auto response = session->GetResponse();
 
                 response.GetData(send_date);
                 response.GetData(message_id);
+                response.GetData(reader_cnt);
+                while (reader_cnt--)
+                {
+                    QString reader_id;
+                    response.GetData(reader_id);
+                    reader_id.push_back(reader_id); // move로 속도 증가 가능할 듯 한데...
+                }
 
                 // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
                 qvm->insert("sendDate", send_date);
                 qvm->insert("messageId", message_id);
 
-                // 챗 버블 실제로 추가하는 로직
+                // 챗 버블 실제로 추가하는 로직, 추후에 읽은 사람 목록 고려하는 함수 새로 만들어야 됨
                 QMetaObject::invokeMethod(m_main_page,
                                           "addChat",
                                           Q_ARG(QVariant, QVariant::fromValue(*qvm)));

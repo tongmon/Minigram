@@ -14,14 +14,13 @@ class WinQuickWindow;
 
 class Service
 {
-    std::shared_ptr<boost::asio::ip::tcp::socket> m_sock;
-    WinQuickWindow &m_window;
-
-    NetworkBuffer m_request;
-    NetworkBuffer m_server_request;
-    boost::asio::streambuf m_server_request_buf;
-
   public:
+    std::shared_ptr<boost::asio::ip::tcp::socket> sock;
+    WinQuickWindow &window;
+
+    boost::asio::streambuf server_response_buf;
+    NetworkBuffer server_response;
+
     Service(WinQuickWindow &window, std::shared_ptr<boost::asio::ip::tcp::socket> sock);
 
     void StartHandling();

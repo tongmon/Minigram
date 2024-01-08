@@ -16,14 +16,14 @@
 #include <sstream>
 
 Service::Service(WinQuickWindow &window, std::shared_ptr<boost::asio::ip::tcp::socket> sock)
-    : m_window{window}, m_sock{sock}
+    : window{window}, sock{sock}
 {
 }
 
 void Service::StartHandling()
 {
-    boost::asio::async_read(*m_sock,
-                            m_server_request_buf.prepare(m_server_request.GetHeaderSize()),
+    boost::asio::async_read(*sock,
+                            server_response_buf.prepare(server_response.GetHeaderSize()),
                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                 if (ec != boost::system::errc::success)
                                 {
@@ -32,8 +32,8 @@ void Service::StartHandling()
                                     return;
                                 }
 
-                                m_server_request_buf.commit(bytes_transferred);
-                                m_server_request = m_server_request_buf;
+                                server_response_buf.commit(bytes_transferred);
+                                server_response = server_response_buf;
 
                                 // std::istream strm(&m_server_request_buf);
                                 // std::getline(strm, m_server_request);
@@ -42,9 +42,9 @@ void Service::StartHandling()
                                 // auto connection_type = header.GetConnectionType();
                                 // auto data_size = header.GetDataSize();
 
-                                boost::asio::async_read(*m_sock,
-                                                        m_server_request_buf.prepare(m_server_request.GetDataSize()),
-                                                        [this, connection_type = m_server_request.GetConnectionType()](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                boost::asio::async_read(*sock,
+                                                        server_response_buf.prepare(server_response.GetDataSize()),
+                                                        [this, connection_type = server_response.GetConnectionType()](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                                             if (ec != boost::system::errc::success)
                                                             {
                                                                 // 서버 처리가 비정상인 경우
@@ -52,8 +52,8 @@ void Service::StartHandling()
                                                                 return;
                                                             }
 
-                                                            m_server_request_buf.commit(bytes_transferred);
-                                                            m_server_request = m_server_request_buf;
+                                                            server_response_buf.commit(bytes_transferred);
+                                                            server_response = server_response_buf;
 
                                                             // std::istream strm(&m_server_request_buf);
                                                             // std::getline(strm, m_server_request);
@@ -63,7 +63,7 @@ void Service::StartHandling()
                                                             case LOGIN_CONNECTION_TYPE:
                                                                 break;
                                                             case CHAT_RECIEVE_TYPE:
-                                                                m_window.GetMainContext().RecieveChat(m_server_request);
+                                                                window.GetMainContext().RecieveChat(this);
                                                                 break;
                                                             case SESSIONLIST_INITIAL_TYPE:
                                                                 break;
