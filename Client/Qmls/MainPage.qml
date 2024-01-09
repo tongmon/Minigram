@@ -612,6 +612,7 @@ Rectangle {
                                     "messageId": 0,
                                     "sessionId": currentRoomID,
                                     "senderId": "tongstar",
+                                    "readerIds": ["tongstar", "yellowjam"],
                                     "sendDate": chatTime,
                                     "contentType": 0,
                                     "content": text,

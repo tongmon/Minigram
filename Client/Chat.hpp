@@ -17,6 +17,7 @@ class Chat : public QObject
     Q_PROPERTY(QString sendDate MEMBER send_date NOTIFY sendDateChanged)
     Q_PROPERTY(unsigned char contentType MEMBER content_type NOTIFY contentTypeChanged)
     Q_PROPERTY(QString content MEMBER content NOTIFY contentChanged)
+    Q_PROPERTY(QStringList readerIds MEMBER reader_ids NOTIFY readerIdsChanged)
     Q_PROPERTY(QString qmlSource MEMBER qml_source NOTIFY qmlSourceChanged)
     Q_PROPERTY(bool isOpponent MEMBER is_oppoent NOTIFY isOpponentChanged)
 
@@ -30,11 +31,13 @@ class Chat : public QObject
     unsigned char content_type;
     QString content;
     QString qml_source;
+    QStringList reader_ids;
     bool is_oppoent;
 
     Chat(const int64_t &message_id = 0,
          const QString &session_id = "",
          const QString &sender_id = "",
+         const QStringList &reader_ids = {},
          const QString &date = "",
          unsigned char content_type = TEXT_CHAT,
          const QString &content = "",
@@ -50,6 +53,7 @@ class Chat : public QObject
     void sendDateChanged();
     void contentTypeChanged();
     void contentChanged();
+    void readerIdsChanged();
     void qmlSourceChanged();
     void isOpponentChanged();
 };

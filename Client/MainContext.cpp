@@ -111,6 +111,10 @@ void MainContext::RecieveChat(Service *service)
                              });
 }
 
+void MainContext::RefreshReaderIds(Service *service)
+{
+}
+
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
 // Server에서 받는 버퍼 형식: 로그인 성공 여부
 void MainContext::tryLogin(const QString &id, const QString &pw)
@@ -300,6 +304,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
                 // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
                 qvm->insert("sendDate", send_date);
                 qvm->insert("messageId", message_id);
+                qvm->insert("readerIds", reader_ids);
 
                 // 챗 버블 실제로 추가하는 로직, 추후에 읽은 사람 목록 고려하는 함수 새로 만들어야 됨
                 QMetaObject::invokeMethod(m_main_page,
@@ -528,15 +533,15 @@ void MainContext::tryRefreshSession(const QString &session_id)
     // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 최대 100개 채팅만 가져옴
     // 메신저 사용자가 해당 세션을 처음 입장하는 경우 최대 100개 채팅만 가져옴
     if (!chat_cnt || recent_message_id < 0)
-        net_buf += 100;
+        net_buf += static_cast<int64_t>(100);
     // 읽지 않은 메시지가 500개 이하면 그 내역을 서버에서 모두 가져옴
     else if (unread_cnt < 500)
-        net_buf += -1;
+        net_buf += static_cast<int64_t>(-1);
     // 500개가 넘으면 해당 세션의 채팅 기록 초기화 후 최대 100개 채팅만 서버에서 가져와서 채움
     else
     {
         QMetaObject::invokeMethod(m_main_page, "clearSpecificSession", Q_ARG(QString, session_id));
-        net_buf += 100;
+        net_buf += static_cast<int64_t>(100);
     }
 
     central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {

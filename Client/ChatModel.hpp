@@ -20,6 +20,7 @@ class ChatModel : public QAbstractListModel
         MESSAGE_ID_ROLE = Qt::UserRole + 1,
         SESSION_ID_ROLE,
         SENDER_ID_ROLE,
+        READER_IDS_ROLE,
         SEND_DATE_ROLE,
         CONTENT_TYPE_ROLE,
         CONTENT_ROLE,

@@ -36,6 +36,8 @@ QVariant ChatModel::data(const QModelIndex &index, int role) const
         return chat->session_id;
     case SENDER_ID_ROLE:
         return chat->sender_id;
+    case READER_IDS_ROLE:
+        return chat->reader_ids;
     case SEND_DATE_ROLE:
         return chat->send_date;
     case CONTENT_TYPE_ROLE:
@@ -57,6 +59,7 @@ QHash<int, QByteArray> ChatModel::roleNames() const
     roles[MESSAGE_ID_ROLE] = "messageId";
     roles[SESSION_ID_ROLE] = "sessionId";
     roles[SENDER_ID_ROLE] = "senderId";
+    roles[READER_IDS_ROLE] = "readerIds";
     roles[SEND_DATE_ROLE] = "sendDate";
     roles[CONTENT_TYPE_ROLE] = "contentType";
     roles[CONTENT_ROLE] = "content";
@@ -70,6 +73,7 @@ void ChatModel::append(const QVariantMap &qvm)
     Chat *chat = new Chat(qvm["messageId"].toInt(),
                           qvm["sessionId"].toString(),
                           qvm["senderId"].toString(),
+                          qvm["readerIds"].toStringList(),
                           qvm["sendDate"].toString(),
                           qvm["contentType"].toInt(),
                           qvm["content"].toString(),

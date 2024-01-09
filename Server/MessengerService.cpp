@@ -311,7 +311,10 @@ void MessengerService::ChatHandling()
                         session->GetResponse().GetData(participant_id);
 
                         if (participant_id != "<null>")
+                        {
                             reader_ids.push_back(participant_id);
+                            *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(message_id), soci::use(participant_id);
+                        }
 
                         for (const auto &req_id : req_ids)
                         {
@@ -350,7 +353,10 @@ void MessengerService::ChatHandling()
                         session->GetResponse().GetData(participant_id);
 
                         if (participant_id != "<null>")
+                        {
                             reader_ids.push_back(participant_id);
+                            *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(message_id), soci::use(participant_id);
+                        }
 
                         mut.unlock();
                     }
@@ -436,7 +442,7 @@ void MessengerService::RefreshSessionHandling()
         chat_ary.push_back(std::move(chat_info));
     }
 
-    *m_sql << "update participant_tb set message_id=:mid", soci::use(message_id);
+    *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(message_id), soci::use(user_id);
 
     boost::json::object fetched_chat_json;
     fetched_chat_json["fetched_chat_list"] = chat_ary;
