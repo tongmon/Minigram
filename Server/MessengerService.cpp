@@ -205,6 +205,7 @@ void MessengerService::TextMessageHandling()
 // Client에 전달하는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MessengerService::ChatHandling()
 {
+    // static 변수를 공유 포인터로 바꾸셈
     static std::mutex mut;
     static int remaining_participant_cnt = 0;
     static std::vector<std::string> reader_ids;
