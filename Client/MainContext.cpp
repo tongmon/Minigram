@@ -497,7 +497,7 @@ void MainContext::tryInitSessionList()
     return;
 }
 
-// Server에 전달하는 버퍼 형식: user_id | session_id | message_id | 읽어올 메시지 수
+// Server에 전달하는 버퍼 형식: user_id | session_id | 읽어올 메시지 수
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
 {
@@ -527,8 +527,6 @@ void MainContext::tryRefreshSession(const QString &session_id)
                               "getSessionChatCount",
                               Q_RETURN_ARG(int, chat_cnt),
                               Q_ARG(QString, session_id));
-
-    net_buf += recent_message_id;
 
     // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 최대 100개 채팅만 가져옴
     // 메신저 사용자가 해당 세션을 처음 입장하는 경우 최대 100개 채팅만 가져옴

@@ -205,12 +205,6 @@ void MessengerService::TextMessageHandling()
 // Client에 전달하는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MessengerService::ChatHandling()
 {
-    // static 변수를 공유 포인터로 바꾸셈
-    static std::mutex mut;
-    static int remaining_participant_cnt = 0;
-    static std::vector<std::string> reader_ids;
-    static std::vector<unsigned int> req_ids;
-
     ConnectionType content_type;
     std::string sender_id, session_id, content;
     m_client_request.GetData(sender_id);
@@ -255,16 +249,15 @@ void MessengerService::ChatHandling()
     *m_sql << "select count(participant_id) from participant_tb where session_id=:sid",
         soci::into(participant_cnt), soci::use(session_id);
 
-    remaining_participant_cnt = participant_cnt;
-    reader_ids = {sender_id};
-    req_ids.clear();
+    std::shared_ptr<std::mutex> mut(new std::mutex);
+    std::shared_ptr<int> remaining_participant_cnt(new int{participant_cnt});
+    std::shared_ptr<std::vector<std::string>> reader_ids(new std::vector<std::string>{sender_id});
+    std::shared_ptr<std::vector<unsigned int>> req_ids(new std::vector<unsigned int>());
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         std::string participant_id = it->get<std::string>(0), login_ip;
         int login_port;
-
-        remaining_participant_cnt--;
 
         // 보낸 사람은 제외
         if (participant_id == sender_id)
@@ -278,50 +271,53 @@ void MessengerService::ChatHandling()
             continue;
 
         auto request_id = m_peer->MakeRequestID();
-        req_ids.push_back(request_id);
+        req_ids->push_back(request_id);
 
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
-        NetworkBuffer request_buf(CHAT_RECIEVE_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
+        NetworkBuffer request_buf(CHAT_RECIEVE_TYPE), send_buf(CHAT_SEND_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
         request_buf += sender_id;
         request_buf += session_id;
         request_buf += send_date;
         request_buf += content_type;
         request_buf += content;
 
-        m_peer->AsyncWrite(request_id, std::move(request_buf), [peer = m_peer, send_date, message_id, this](std::shared_ptr<Session> session) -> void {
+        send_buf += send_date;
+        send_buf += message_id;
+
+        m_peer->AsyncWrite(request_id, std::move(request_buf), [peer = m_peer, send_buf = std::move(send_buf), mut, remaining_participant_cnt, reader_ids, req_ids, message_id, this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            peer->AsyncRead(session->GetID(), session->GetHeaderSize(), [peer, send_date, message_id, this](std::shared_ptr<Session> session) -> void {
+            peer->AsyncRead(session->GetID(), session->GetHeaderSize(), [peer, send_buf = std::move(send_buf), mut, remaining_participant_cnt, reader_ids, req_ids, message_id, this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                peer->AsyncRead(session->GetID(), session->GetDataSize(), [peer, send_date, message_id, this](std::shared_ptr<Session> session) -> void {
+                peer->AsyncRead(session->GetID(), session->GetDataSize(), [peer, send_buf = std::move(send_buf), mut, remaining_participant_cnt, reader_ids, req_ids, message_id, this](std::shared_ptr<Session> session) mutable -> void {
                     if (!session.get() || !session->IsValid())
                         return;
 
-                    // 특정 메시지 읽은 사람 개수 변동을 따져 클라이언트에 전달해야 됨
-                    mut.lock();
-                    if (!remaining_participant_cnt)
+                    std::string participant_id;
+                    session->GetResponse().GetData(participant_id);
+
+                    mut->lock();
+                    if (participant_id != "<null>")
                     {
-                        remaining_participant_cnt = -1;
-                        mut.unlock();
+                        reader_ids->push_back(participant_id);
+                        *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(message_id), soci::use(participant_id);
+                    }
+                    (*remaining_participant_cnt)--;
+                    bool is_all_participant_done = !remaining_participant_cnt ? true : false;
+                    mut->unlock();
 
-                        std::string participant_id;
-                        session->GetResponse().GetData(participant_id);
-
-                        if (participant_id != "<null>")
-                        {
-                            reader_ids.push_back(participant_id);
-                            *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(message_id), soci::use(participant_id);
-                        }
-
-                        for (const auto &req_id : req_ids)
+                    // 특정 메시지 읽은 사람 개수 변동을 따져 클라이언트에 전달해야 됨
+                    if (is_all_participant_done)
+                    {
+                        for (const auto &req_id : *req_ids)
                         {
                             NetworkBuffer buf(CHAT_RECIEVE_TYPE);
-                            buf += reader_ids.size();
-                            for (const auto &reader_id : reader_ids)
+                            buf += reader_ids->size();
+                            for (const auto &reader_id : *reader_ids)
                                 buf += reader_id;
 
                             peer->AsyncWrite(req_id, std::move(buf), [peer](std::shared_ptr<Session> session) -> void {
@@ -329,14 +325,11 @@ void MessengerService::ChatHandling()
                             });
                         }
 
-                        NetworkBuffer buf(CHAT_SEND_TYPE);
-                        buf += send_date;
-                        buf += message_id;
-                        buf += reader_ids.size();
-                        for (const auto &reader_id : reader_ids)
-                            buf += reader_id;
+                        send_buf += reader_ids->size();
+                        for (const auto &reader_id : *reader_ids)
+                            send_buf += reader_id;
 
-                        m_request = std::move(buf);
+                        m_request = std::move(send_buf);
 
                         boost::asio::async_write(*m_sock,
                                                  m_request.AsioBuffer(),
@@ -348,26 +341,13 @@ void MessengerService::ChatHandling()
                                                      delete this;
                                                  });
                     }
-                    else
-                    {
-                        std::string participant_id;
-                        session->GetResponse().GetData(participant_id);
-
-                        if (participant_id != "<null>")
-                        {
-                            reader_ids.push_back(participant_id);
-                            *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(message_id), soci::use(participant_id);
-                        }
-
-                        mut.unlock();
-                    }
                 });
             });
         });
     }
 }
 
-// Client에서 받는 버퍼 형식: user_id | session_id | message_id | 읽어올 메시지 수
+// Client에서 받는 버퍼 형식: user_id | session_id | 읽어올 메시지 수
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::RefreshSessionHandling()
 {
@@ -375,16 +355,18 @@ void MessengerService::RefreshSessionHandling()
     using namespace bsoncxx::builder;
 
     std::string user_id, session_id;
-    int64_t message_id, fetch_cnt;
+    int64_t past_recent_message_id, recent_message_id, fetch_cnt;
 
     m_client_request.GetData(user_id);
     m_client_request.GetData(session_id);
-    m_client_request.GetData(message_id);
     m_client_request.GetData(fetch_cnt);
 
     auto mongo_client = MongoDBPool::Get().acquire();
     auto mongo_db = (*mongo_client)["Minigram"];
     auto mongo_coll = mongo_db[session_id + "_log"];
+
+    *m_sql << "select message_id from participant_tb where participant_id=:pid, sessioin_id=:sid",
+        soci::into(past_recent_message_id), soci::use(user_id), soci::use(session_id);
 
     std::unique_ptr<mongocxx::cursor> mongo_cursor;
     boost::json::array chat_ary;
@@ -392,7 +374,7 @@ void MessengerService::RefreshSessionHandling()
     // 해당 유저 메시지 읽음 처리
     auto update_result = mongo_coll.update_many(basic::make_document(basic::kvp("message_id",
                                                                                 basic::make_document(basic::kvp("$gt",
-                                                                                                                message_id)))),
+                                                                                                                past_recent_message_id)))),
                                                 basic::make_document(basic::kvp("$push",
                                                                                 basic::make_document(basic::kvp("reader_id",
                                                                                                                 user_id)))));
@@ -405,7 +387,7 @@ void MessengerService::RefreshSessionHandling()
 
         mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find(basic::make_document(basic::kvp("message_id",
                                                                                                           basic::make_document(basic::kvp("$gt",
-                                                                                                                                          message_id)))),
+                                                                                                                                          past_recent_message_id)))),
                                                                           opts));
     }
     // 최신 fetch_cnt 개의 채팅만 땡겨옴
@@ -427,7 +409,7 @@ void MessengerService::RefreshSessionHandling()
         chat_info["content_type"] = doc["content_type"].get_int64().value;
 
         // 가장 최신 message_id로 설정
-        message_id = chat_info["message_id"].as_int64();
+        recent_message_id = chat_info["message_id"].as_int64();
 
         switch (chat_info["content_type"].as_int64())
         {
@@ -440,10 +422,49 @@ void MessengerService::RefreshSessionHandling()
         default:
             break;
         }
+
+        boost::json::array readers;
+        auto ary_view = doc["content_type"].get_array().value;
+        for (auto &&sub_doc : ary_view)
+            readers.push_back(sub_doc.get_string().value.data());
+        chat_info["reader_id"] = readers;
+
         chat_ary.push_back(std::move(chat_info));
     }
 
-    *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(message_id), soci::use(user_id);
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
+                                  soci::use(session_id, "sid"));
+
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        std::string participant_id = it->get<std::string>(0), login_ip;
+        int login_port;
+
+        if (participant_id == user_id)
+            continue;
+
+        *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
+            soci::into(login_ip), soci::into(login_port), soci::use(participant_id);
+
+        if (login_ip.empty())
+            continue;
+
+        // 다른 클라이언트에 리더 업데이트 소식 알림
+        NetworkBuffer buf(MESSAGE_READER_UPDATE_TYPE);
+        buf += user_id;
+        buf += past_recent_message_id;
+
+        auto request_id = m_peer->MakeRequestID();
+
+        m_peer->AsyncWrite(request_id, std::move(buf), [peer = m_peer, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            peer->CloseRequest(session->GetID());
+        });
+    }
+
+    *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(recent_message_id), soci::use(user_id);
 
     boost::json::object fetched_chat_json;
     fetched_chat_json["fetched_chat_list"] = chat_ary;

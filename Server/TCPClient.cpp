@@ -231,8 +231,10 @@ void TCPClient::Close()
 
 unsigned int TCPClient::MakeRequestID()
 {
+    static std::mutex request_id_mut;
     static unsigned int request_id = 0;
 
+    std::lock_guard<std::mutex> lg(request_id_mut);
     request_id = request_id++ % USHRT_MAX;
     return request_id;
 }
