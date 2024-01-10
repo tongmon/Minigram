@@ -111,8 +111,19 @@ void MainContext::RecieveChat(Service *service)
                              });
 }
 
+// Server에서 받는 버퍼 형식: reader_id | message_id
 void MainContext::RefreshReaderIds(Service *service)
 {
+    int64_t message_id;
+    std::string reader_id;
+
+    service->server_response.GetData(reader_id);
+    service->server_response.GetData(message_id);
+
+    // 메시지 읽은 사람의 id와 메시지 읽은 사람의 읽기 전 최신 message_id가 필요함
+    // 해당 세션에 참가 중인 각 클라이언트에 해당 옵션을 넘기고 각 클라이언트는 최신 mesaage_id보다 큰 메시지들의 reader_id에 읽은 사람의 id를 추가함
+
+    delete service;
 }
 
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW

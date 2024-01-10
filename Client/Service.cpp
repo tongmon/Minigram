@@ -67,6 +67,9 @@ void Service::StartHandling()
                                                                 break;
                                                             case SESSIONLIST_INITIAL_TYPE:
                                                                 break;
+                                                            case MESSAGE_READER_UPDATE_TYPE:
+                                                                window.GetMainContext().RefreshReaderIds(this);
+                                                                break;
                                                             default:
                                                                 break;
                                                             }
