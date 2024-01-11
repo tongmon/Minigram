@@ -276,8 +276,9 @@ void MessengerService::ChatHandling()
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
         NetworkBuffer request_buf(CHAT_RECIEVE_TYPE), send_buf(CHAT_SEND_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
-        request_buf += sender_id;
+        request_buf += message_id;
         request_buf += session_id;
+        request_buf += sender_id;
         request_buf += send_date;
         request_buf += content_type;
         request_buf += content;
@@ -341,6 +342,8 @@ void MessengerService::ChatHandling()
                                                      delete this;
                                                  });
                     }
+
+                    peer->CloseRequest(session->GetID());
                 });
             });
         });
@@ -449,12 +452,14 @@ void MessengerService::RefreshSessionHandling()
         if (login_ip.empty())
             continue;
 
-        // 다른 클라이언트에 리더 업데이트 소식 알림
+        // 다른 클라이언트에 reader 업데이트 소식 알림
         NetworkBuffer buf(MESSAGE_READER_UPDATE_TYPE);
+        buf += session_id;
         buf += user_id;
-        buf += past_recent_message_id;
+        buf += (past_recent_message_id + 1);
 
         auto request_id = m_peer->MakeRequestID();
+        m_peer->AsyncConnect(login_ip, login_port, request_id);
 
         m_peer->AsyncWrite(request_id, std::move(buf), [peer = m_peer, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())

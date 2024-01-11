@@ -11,7 +11,6 @@ class ChatModel : public QAbstractListModel
 {
     Q_OBJECT
 
-    QHash<int64_t, size_t> m_id_index_map;
     QList<Chat *> m_chats;
 
   public:
@@ -38,6 +37,7 @@ class ChatModel : public QAbstractListModel
 
     Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void clear();
+    Q_INVOKABLE void refreshReaderIds(const QString &reader_id, int message_id);
 };
 
 #endif /* HEADER__FILE__CHATMODEL */

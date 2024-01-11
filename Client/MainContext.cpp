@@ -38,30 +38,34 @@ MainContext::~MainContext()
 {
 }
 
-// Server에서 받는 버퍼 형식: DB Info.txt 참고
+// Server에서 받는 버퍼 형식:
 void MainContext::RecieveChat(Service *service)
 {
-    static QStringList reader_ids;
     QString sender_id, session_id, send_date, content;
     int64_t content_type;
 
-    service->server_response.GetData(sender_id);
-    service->server_response.GetData(session_id);
-    service->server_response.GetData(send_date);
-    service->server_response.GetData(content_type);
-    service->server_response.GetData(content);
+    std::shared_ptr<Chat> chat_info(new Chat());
 
-    NetworkBuffer net_buf(CHAT_RECIEVE_TYPE);
+    service->server_response.GetData(chat_info->message_id);
+    service->server_response.GetData(chat_info->session_id);
+    service->server_response.GetData(chat_info->sender_id);
+    service->server_response.GetData(chat_info->send_date);
+    service->server_response.GetData(chat_info->content_type);
+    service->server_response.GetData(chat_info->content);
+
+    std::shared_ptr<NetworkBuffer> net_buf(new NetworkBuffer(CHAT_RECIEVE_TYPE));
 
     // top window고 current session이 여기 도착한 session_id와 같으면 읽음 처리
-    if (GetForegroundWindow() == m_window.GetHandle() && m_main_page->property("currentRoomID").toString() == session_id) // currentRoomID 추후에 currentSessionID로 변경해라
-        net_buf += m_user_id;
+    bool is_instant_readed_message = GetForegroundWindow() == m_window.GetHandle() && m_main_page->property("currentRoomID").toString() == session_id; // currentRoomID 추후에 currentSessionID로 변경해라
+
+    if (is_instant_readed_message)
+        *net_buf += m_user_id;
     else
-        net_buf += "<null>"; // id 생성할 때 <, > 이런 문자 못넣게 해야됨
+        *net_buf += "<null>"; // id 생성할 때 <, > 이런 문자 못넣게 해야됨
 
     boost::asio::async_write(*service->sock,
-                             net_buf.AsioBuffer(),
-                             [service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                             net_buf->AsioBuffer(),
+                             [this, chat_info, is_instant_readed_message, service, net_buf](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                  if (ec != boost::system::errc::success)
                                  {
                                      delete service;
@@ -70,7 +74,7 @@ void MainContext::RecieveChat(Service *service)
 
                                  boost::asio::async_read(*service->sock,
                                                          service->server_response_buf.prepare(service->server_response.GetHeaderSize()),
-                                                         [service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                         [this, chat_info, is_instant_readed_message, service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                                              if (ec != boost::system::errc::success)
                                                              {
                                                                  delete service;
@@ -82,7 +86,7 @@ void MainContext::RecieveChat(Service *service)
 
                                                              boost::asio::async_read(*service->sock,
                                                                                      service->server_response_buf.prepare(service->server_response.GetDataSize()),
-                                                                                     [service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                                                     [this, chat_info, is_instant_readed_message, service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                                                                          if (ec != boost::system::errc::success)
                                                                                          {
                                                                                              delete service;
@@ -92,18 +96,23 @@ void MainContext::RecieveChat(Service *service)
                                                                                          service->server_response_buf.commit(bytes_transferred);
                                                                                          service->server_response = service->server_response_buf;
 
-                                                                                         reader_ids.clear();
                                                                                          size_t reader_cnt;
-
                                                                                          service->server_response.GetData(reader_cnt);
                                                                                          while (reader_cnt--)
                                                                                          {
                                                                                              QString reader_id;
                                                                                              service->server_response.GetData(reader_id);
-                                                                                             reader_ids.push_back(reader_id);
+                                                                                             chat_info->reader_ids.push_back(reader_id);
                                                                                          }
 
-                                                                                         // 이 곳에 qml 채팅추가하는 로직
+                                                                                         // 바로 읽은 메시지이기에 채팅방에 채팅 바로 추가
+                                                                                         if (is_instant_readed_message)
+                                                                                         {
+                                                                                         }
+                                                                                         // 밖에서 읽은 메시지는 세션 목록에서 추가
+                                                                                         else
+                                                                                         {
+                                                                                         }
 
                                                                                          delete service;
                                                                                      });
@@ -111,17 +120,21 @@ void MainContext::RecieveChat(Service *service)
                              });
 }
 
-// Server에서 받는 버퍼 형식: reader_id | message_id
+// Server에서 받는 버퍼 형식: session_id | reader_id | message_id
 void MainContext::RefreshReaderIds(Service *service)
 {
     int64_t message_id;
-    std::string reader_id;
+    QString session_id, reader_id;
 
+    service->server_response.GetData(session_id);
     service->server_response.GetData(reader_id);
     service->server_response.GetData(message_id);
 
-    // 메시지 읽은 사람의 id와 메시지 읽은 사람의 읽기 전 최신 message_id가 필요함
-    // 해당 세션에 참가 중인 각 클라이언트에 해당 옵션을 넘기고 각 클라이언트는 최신 mesaage_id보다 큰 메시지들의 reader_id에 읽은 사람의 id를 추가함
+    QMetaObject::invokeMethod(m_main_page,
+                              "refreshReaderIds",
+                              Q_ARG(QString, session_id),
+                              Q_ARG(QString, reader_id),
+                              Q_ARG(int, static_cast<int>(message_id)));
 
     delete service;
 }
@@ -609,6 +622,28 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                               "addChat",
                                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
                 }
+
+                QVariantMap recent_qvm;
+                auto recent_chat_info = fetch_list.back().as_object();
+                recent_qvm.insert("unreadCnt", 0);
+                recent_qvm.insert("recentSenderId", recent_chat_info["sender_id"].as_string().c_str());
+                recent_qvm.insert("recentSendDate", recent_chat_info["send_date"].as_string().c_str());
+                recent_qvm.insert("recentContentType", recent_chat_info["content_type"].as_int64());
+                recent_qvm.insert("recentMessageId", recent_chat_info["message_id"].as_int64());
+
+                switch (recent_chat_info["content_type"].as_int64())
+                {
+                case TEXT_CHAT: {
+                    std::string decoded = Utf8ToStr(DecodeBase64(recent_chat_info["content"].as_string().c_str()));
+                    recent_qvm.insert("recentContent", decoded.c_str());
+                    break;
+                }
+                default:
+                    break;
+                }
+
+                // 세션도 갱신해줘야 하기에 refreshRecentChat 함수 호출해야됨
+                m_chat_session_model->refreshRecentChat(session_id, recent_qvm);
 
                 central_server.CloseRequest(session->GetID());
             });

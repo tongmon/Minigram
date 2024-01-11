@@ -78,6 +78,7 @@ class TCPClient
     std::mutex m_active_sessions_guard;
     std::unique_ptr<boost::asio::io_service::work> m_work;
     std::list<std::unique_ptr<std::thread>> m_threads;
+    unsigned int m_request_id;
 
   public:
     TCPClient(unsigned char num_of_threads);

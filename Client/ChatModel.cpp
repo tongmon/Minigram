@@ -80,8 +80,23 @@ void ChatModel::append(const QVariantMap &qvm)
                           qvm["isOpponent"].toBool());
 
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
-    m_id_index_map[chat->message_id] = m_chats.size();
-    m_chats.append(chat);
+
+    if (m_chats.empty())
+        m_chats.append(chat);
+    else
+    {
+        int64_t mid, st = 0, fin = m_chats.size();
+        while (st < fin)
+        {
+            mid = (st + fin) / 2;
+            if (chat->message_id >= m_chats[mid]->message_id)
+                st = mid + 1;
+            else
+                fin = mid;
+        }
+        m_chats.insert(m_chats.begin() + fin, chat);
+    }
+
     endInsertRows();
 }
 
@@ -91,5 +106,13 @@ void ChatModel::clear()
     endRemoveRows();
     qDeleteAll(m_chats);
     m_chats.clear();
-    m_id_index_map.clear();
+}
+
+void ChatModel::refreshReaderIds(const QString &reader_id, int message_id)
+{
+    if (m_chats.empty())
+        return;
+
+    for (size_t i = message_id - m_chats[0]->message_id; i < m_chats.size(); i++)
+        m_chats[i]->reader_ids.push_back(reader_id);
 }

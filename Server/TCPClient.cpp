@@ -1,6 +1,7 @@
 ﻿#include "TCPClient.hpp"
 
 TCPClient::TCPClient(unsigned char num_of_threads)
+    : m_request_id{0}
 {
     m_work.reset(new boost::asio::io_service::work(m_ios));
 
@@ -231,10 +232,11 @@ void TCPClient::Close()
 
 unsigned int TCPClient::MakeRequestID()
 {
-    static std::mutex request_id_mut;
-    static unsigned int request_id = 0;
+    std::lock_guard<std::mutex> lg(m_active_sessions_guard);
+    do
+    {
+        m_request_id = m_request_id++ % USHRT_MAX;
+    } while (m_active_sessions.find(m_request_id) != m_active_sessions.end());
 
-    std::lock_guard<std::mutex> lg(request_id_mut);
-    request_id = request_id++ % USHRT_MAX;
-    return request_id;
+    return m_request_id;
 }

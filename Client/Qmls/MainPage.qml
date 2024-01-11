@@ -39,6 +39,11 @@ Rectangle {
         chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
     }
 
+    function refreshReaderIds(sessionId, readerId, messageId)
+    {
+        chatListViewMap[sessionId].children[0].model.refreshReaderIds(readerId, messageId)
+    }
+
     //function addSession(obj)
     //{
     //    chatRoomListModel.append({
