@@ -6,6 +6,115 @@ import QtGraphicalEffects 1.15
 
 Rectangle {
     id: mainPage
+    objectName: "mainPage"
+    color: "#28343f"
+
+    Column {
+        anchors.fill: parent
+
+        TitleBar {
+            id: titleBar
+            anchors {
+                top: parent.top
+                left: parent.left
+                right: parent.right
+            }
+            height: 35
+            color: "#364450"
+        }
+
+        Row {
+            anchors {
+                left: parent.left
+                right: parent.right
+                top: titleBar.bottom
+                bottom: parent.bottom
+            }
+
+            Rectangle {
+                id: sideBar
+                anchors {
+                    left: parent.left
+                    top: parent.top
+                    bottom: parent.bottom
+                }
+                width: 45
+                color: "#191f24"
+
+                Row {
+                    anchors.fill: parent
+
+                    CustomImageButton {
+                        id: sessionListButton
+                        anchors {
+                            horizontalCenter : parent.horizontalCenter
+                            top: parent.top
+                            topMargin: 5
+                        }
+                        width: 35
+                        height: width
+                        rounded: true
+                        source: "qrc:/icon/UserID.png"
+
+                        onClicked: {
+                            sideBarLoader.width = !sideBarLoader.width ? 220 : 0
+                        }
+                    }
+
+                    CustomImageButton {
+                        id: contactButton
+                        anchors {
+                            horizontalCenter : parent.horizontalCenter
+                            top: sessionListButton.bottom
+                            topMargin: 5
+                        }
+                        width: 35
+                        height: width
+                        rounded: true
+                        source: "qrc:/icon/UserID.png"
+                    }
+
+                    CustomImageButton {
+                        id: settingButton
+                        anchors {
+                            horizontalCenter : parent.horizontalCenter
+                            top: contactButton.bottom
+                            topMargin: 5
+                        }
+                        width: 35
+                        height: width
+                        rounded: true
+                        source: "qrc:/icon/UserID.png"
+                    }
+                }
+            }
+
+            Loader {
+                id: sideBarLoader
+                anchors {
+                    left: sideBar.right
+                    top: parent.top
+                    bottom: parent.bottom
+                }
+                width: 0
+            }
+
+            Loader {
+                id: sessionLoader
+                anchors {
+                    left: sideBarLoader.right
+                    right: parent.right
+                    top: parent.top
+                    bottom: parent.bottom
+                }
+            }
+        }
+    }
+}
+
+/*
+Rectangle {
+    id: mainPage
     color: "#280a3d"
     objectName: "mainPage"
 
@@ -732,3 +841,4 @@ Rectangle {
         
     }
 }
+*/

@@ -5,6 +5,8 @@
 #include <QObject>
 #include <QQmlComponent>
 
+#include "NetworkDefinition.hpp"
+
 class ChatSession : public QObject
 {
     Q_OBJECT

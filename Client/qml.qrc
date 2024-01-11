@@ -27,5 +27,6 @@
         <file alias="SessionAddButton.qml">Qmls/SessionAddButton.qml</file>
         <file alias="CustomImageButton.qml">Qmls/CustomImageButton.qml</file>
         <file alias="CustomTextField.qml">Qmls/CustomTextField.qml</file>
+        <file alias="SessionListView.qml">Qmls/SessionListView.qml</file>
     </qresource>
 </RCC>
