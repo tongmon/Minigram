@@ -9,10 +9,10 @@ ApplicationWindow {
     id: applicationWindow
     objectName: "applicationWindow"
     visible: true
-    width: 1024
-    height: 768
-    minimumWidth: 400
-    minimumHeight: 300
+    width: 1400
+    height: 900
+    minimumWidth: 600
+    minimumHeight: 400
     title: qsTr("Messenger")
     flags: Qt.Window
     

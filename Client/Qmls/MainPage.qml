@@ -57,7 +57,8 @@ Rectangle {
                         source: "qrc:/icon/UserID.png"
 
                         onClicked: {
-                            sideBarLoader.width = !sideBarLoader.width ? 220 : 0
+                            sideBarLoader.source = "qrc:/qml/SessionListView.qml"
+                            sideBarLoader.width = !sideBarLoader.width ? 400 : 0
                         }
                     }
 
@@ -97,17 +98,38 @@ Rectangle {
                     bottom: parent.bottom
                 }
                 width: 0
+                
+                // 로드 빠르게 하기 위해 각 뷰를 미리 한 바퀴돈다.
+                Component.onCompleted: {
+                    source = "qrc:/qml/SessionListView.qml"
+                }
             }
 
-            Loader {
-                id: sessionLoader
+            Rectangle {
+                color: "#2B578C"
                 anchors {
                     left: sideBarLoader.right
                     right: parent.right
                     top: parent.top
                     bottom: parent.bottom
+                }  
+
+                StackView {
+                    id: mainView
+                    objectName: "mainView"
+                    anchors.fill: parent
                 }
             }
+
+            // Loader {
+            //     id: sessionLoader
+            //     anchors {
+            //         left: sideBarLoader.right
+            //         right: parent.right
+            //         top: parent.top
+            //         bottom: parent.bottom
+            //     }
+            // }
         }
     }
 }

@@ -158,3 +158,8 @@ Q_INVOKABLE void ChatSessionModel::refreshRecentChat(const QString &session_id, 
     chat_session->recent_content = qvm["recentContent"].toString();
     chat_session->recent_message_id = qvm["recentMessageId"].toInt();
 }
+
+QString ChatSessionModel::getNameById(const QString &session_id)
+{
+    return data(session_id, NAME_ROLE).toString();
+}

@@ -42,6 +42,7 @@ class ChatSessionModel : public QAbstractListModel
     Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void clear();
     Q_INVOKABLE void refreshRecentChat(const QString &session_id, const QVariantMap &qvm);
+    Q_INVOKABLE QString getNameById(const QString &session_id);
 };
 
 #endif /* HEADER__FILE__CHATSESSIONMODEL */
