@@ -7,6 +7,14 @@ import minigram.chat.component 1.0
 Column {
     anchors.fill: parent
 
+    property string sessionId: ""
+    property string sessionName: ""
+
+    function addChat(chatInfo)
+    {
+        chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
+    }
+
     Rectangle {
         id: sessionHeaderRect
         anchors {
@@ -29,7 +37,7 @@ Column {
                     bold: true
                     pointSize: 15
                 }
-                text: chatSessionModel.getNamebyId(sessionId)
+                text: sessionName
             }
 
             CustomImageButton {
@@ -83,17 +91,119 @@ Column {
                                 checkable : true
                                 source: "qrc:/icon/UserID.png"
                                 overlayColor: notifyToggleButton.down ? "#666666" : (notifyToggleButton.checked ? "#000000" : "#cccccc")                    
+                            
+                                onClicked: {
+                                                
+                                }
                             }
+
+                            CustomImageButton {
+                                id: sessionFavoriteButton
+                                height: etcMenuItem.implicitHeight - 5
+                                width: height
+                                anchors {
+                                    left: notifyToggleButton.right
+                                    verticalCenter: parent.verticalCenter
+                                }
+                                checkable : true
+                                overlayColor: sessionFavoriteButton.down ? "#666666" : (sessionFavoriteButton.checked ? "#000000" : "#cccccc")                    
+                            }
+
+                            CustomImageButton {
+                                id: sessionLeaveButton
+                                height: etcMenuItem.implicitHeight - 5
+                                width: height
+                                anchors {
+                                    right: parent.right
+                                    rightMargin: 5
+                                    verticalCenter: parent.verticalCenter
+                                }
+                                source: "qrc:/icon/UserID.png"
+                                overlayColor: sessionLeaveButton.hovered ? "#666666" : "transparent"
+                                
+                                onClicked: {
+                                    
+                                }
+                            }
+                        }
+
+                        background: Rectangle {
+                            anchors.fill: parent
+                            // opacity: etcMenuItem.highlighted ? 0.7 : 1.0
+                            color: "blue"
                         }
                     }
                 }
+
+                onClicked: {
+                    sessionMenu.open()
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: chatSearchBarRect
+        visible: false
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: sessionHeaderRect.bottom
+        }
+        height: 40
+        color: "#cccccc"
+
+        Rectangle {
+            id: chatSearchBar
+            anchors {
+                left: parent.left
+                right: searchBarCloseButton.left
+                top: parent.top
+                bottom: parent.bottom
+                margins: 5
+            }
+            radius: 5
+
+            TextField {
+                anchors.fill: parent
+                selectByMouse: true
+                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
+                background: Rectangle {
+                    color: "transparent"
+                }
+
+                Keys.onReturnPressed: {
+                    color: "transparent"
+                }
+            }
+        }
+
+        CustomImageButton {
+            id: searchBarCloseButton
+            height: chatSearchBarRect.height - 5
+            width: height
+            anchors {
+                right: parent.right
+                rightMargin: 5
+                verticalCenter: parent.verticalCenter
+            }
+            overlayColor: searchBarCloseButton.down ? Qt.rgba(1.0, 1.0, 1.0, 0.4) : (searchBarCloseButton.hovered ? "#cccccc" : "transparent")
+            source: "qrc:/icon/UserID.png"
+
+            onClicked: {
+                chatSearchBarRect.visible ^= true
             }
         }
     }
 
     ListView {
         id: sessionView
-        anchors.fill: parent
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: chatSearchBarRect.bottom
+            bottom: chatInputArea.top
+        }
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
@@ -147,5 +257,76 @@ Column {
         //     var currentItem = itemAt(1, contentY)
         //     console.log(currentItem.objectName)
         // }
+    }
+
+    Rectangle {
+        id: chatInputArea
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: sessionFooterRect.top
+        }
+        height: 100
+        color: "#cccccc"
+
+        Flickable {
+            id: chatInputAreaFlickable
+            anchors.fill: parent
+            contentWidth: width
+            contentHeight: parent.height
+
+            TextArea.flickable: TextArea {
+                id: chatInput
+                width: chatInputAreaFlickable.width
+                height: chatInputAreaFlickable.height
+                font.pointSize: 10
+                selectByMouse: true
+                wrapMode: TextEdit.Wrap
+
+                Keys.onReturnPressed: {
+                    if(event.modifiers & Qt.ShiftModifier) {
+                        insert(cursorPosition, "\n")
+                        return
+                    }
+                    
+                    if(!text.length)
+                        return
+
+                    // mainContext.trySendChat(sessionId, text)
+
+                    // 테스트용
+                    addChat({
+                        "messageId": 0,
+                        "sessionId": currentRoomID,
+                        "senderId": "tongstar",
+                        "readerIds": ["tongstar", "yellowjam"],
+                        "sendDate": chatTime,
+                        "contentType": 0,
+                        "content": text,
+                        "isOpponent": false
+                    })
+
+                    text = "" 
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        id: sessionFooterRect
+        height: 50
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+        }
+
+        Row {
+            anchors.fill: parent
+        }
+    }
+
+    Component.onCompleted: {
+        
     }
 }

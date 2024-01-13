@@ -8,17 +8,19 @@ Rectangle {
     color: "#19314F"
 
     // chat list view 템플릿
-    property var chatListViewComponent: Qt.createComponent("qrc:/qml/SessionView.qml")
+    property var sessionViewComponent: Qt.createComponent("qrc:/qml/SessionView.qml")
 
     // chat list view 템플릿이 찍어낸 객체
-    property var chatListViewMap: ({})
+    property var sessionViewMap: ({})
 
     property string currentSessionId: ""
 
     function addSession(sessionInfo)
     {
         chatSessionModel.append(sessionInfo)
-        // chatListViewMap[sessionInfo["sessionId"]] = chatListViewComponent.createObject(mainView)
+        sessionViewMap[sessionInfo["sessionId"]] = sessionViewComponent.createObject(null)
+        sessionViewMap[sessionInfo["sessionId"]].sessionId = sessionInfo["sessionId"]
+        sessionViewMap[sessionInfo["sessionId"]].sessionName = chatSessionModel.getNameById(sessionInfo["sessionId"])
     }
 
     ListView {
@@ -161,12 +163,12 @@ Rectangle {
                 }
 
                 onClicked: {
-                    //currentSessionId = sessionInfo.objectName
-//
-                    //if(mainView.empty)
-                    //    chatView.push(chatListViewMap[currentSessionId], StackView.Immediate)
-                    //else
-                    //    chatView.replace(null, chatListViewMap[currentSessionId], StackView.Immediate)
+                    currentSessionId = sessionInfo.objectName
+
+                    if(mainView.empty)
+                        mainView.push(sessionViewMap[currentSessionId], StackView.Immediate)
+                    else
+                        mainView.replace(null, sessionViewMap[currentSessionId], StackView.Immediate)
                 }
             }
         }
@@ -174,7 +176,7 @@ Rectangle {
         Component.onCompleted: {
             for(let i=0;i<20;i++) {
                 addSession({
-                    "sessionId": "tongstar-20231023 11:21:06.0532",
+                    "sessionId": "tongstar-20231023 11:21:06.053" + i,
                     "sessionName": "안양팸",
                     "sessionImg": "",
                     "recentSenderId": "tongstar",
