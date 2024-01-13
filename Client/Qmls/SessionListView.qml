@@ -6,6 +6,7 @@ import QtQuick.Layouts 1.12
 Rectangle {
     id: sessionListBck
     color: "#19314F"
+    anchors.fill: parent
 
     // chat list view 템플릿
     property var sessionViewComponent: Qt.createComponent("qrc:/qml/SessionView.qml")
@@ -21,6 +22,11 @@ Rectangle {
         sessionViewMap[sessionInfo["sessionId"]] = sessionViewComponent.createObject(null)
         sessionViewMap[sessionInfo["sessionId"]].sessionId = sessionInfo["sessionId"]
         sessionViewMap[sessionInfo["sessionId"]].sessionName = chatSessionModel.getNameById(sessionInfo["sessionId"])
+    }
+
+    function addChat(chatInfo)
+    {
+        sessionViewMap[chatInfo["sessionId"]].children[2].model.append(chatInfo)
     }
 
     ListView {
@@ -40,20 +46,18 @@ Rectangle {
 
             id: sessionInfo
             objectName: sessionId
-            width: parent.width
             height: 98
+            width: sessionListView.width
             color: "#274E7D"
 
             Row {
                 anchors.fill: parent
+                leftPadding: 5
+                rightPadding: 5
 
                 CustomImageButton {
                     id: sessionImageButton
-                    anchors {
-                        left: parent.left
-                        leftMargin: 5
-                        verticalCenter: parent.verticalCenter
-                    }
+                    anchors.verticalCenter: parent.verticalCenter
                     height: parent.height - 20
                     width: height
                     rounded: true
@@ -61,27 +65,16 @@ Rectangle {
                 }
 
                 Column {
-                    anchors {
-                        left: sessionImageButton.right
-                        right: parent.right
-                        top: parent.top
-                        bottom: parent.bottom
-                    }
+                    width: parent.width - sessionImageButton.width
+                    height: parent.height
 
-                    Item {
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            top: parent.top
-                        }
+                    Row {
+                        width: parent.width
                         height: parent.height / 2
 
                         Text {
                             id: sessionNameText
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                left: parent.left
-                            }
+                            anchors.verticalCenter: parent.verticalCenter
                             font {
                                 bold: true
                                 pointSize: 15
@@ -93,46 +86,32 @@ Rectangle {
 
                         Text {
                             id: sessionDateText
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                right: parent.right
-                                rightMargin: 5
-                            }
+                            anchors.verticalCenter: parent.verticalCenter
                             width: parent.width / 2
                             clip: true
                             text: recentSendDate
                         }                  
                     }
 
-                    Item {
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            bottom: parent.bottom
-                        }
+                    Row {
+                        width: parent.width
                         height: parent.height / 2        
 
                         Text {
                             id: recentMessageText
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                left: parent.left
-                            }
+                            anchors.verticalCenter: parent.verticalCenter
                             font {
                                 pointSize: 12
                             }
-                            width: parent.width * 0.7
+                            width: parent.width - unreadCntRect.width - 10
                             clip: true
                             text: recentContent
                         }     
 
                         Rectangle {
+                            id: unreadCntRect
                             color: "red"
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                right: parent.right
-                                rightMargin: 5
-                            } 
+                            anchors.verticalCenter: parent.verticalCenter
                             width: childrenRect.width + 4
                             height: childrenRect.height + 4
                             radius: 5
@@ -140,7 +119,7 @@ Rectangle {
                             Text {
                                 font {
                                     pointSize: 12
-                                }  
+                                }
                                 clip: true
                                 text: unreadCnt
                                 color: "white"

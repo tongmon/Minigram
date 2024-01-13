@@ -8,7 +8,93 @@ Rectangle {
     id: mainPage
     objectName: "mainPage"
     color: "#28343f"
+    anchors.fill: parent
 
+    Column {
+        anchors.fill: parent
+
+        TitleBar {
+            id: titleBar
+            width: parent.width
+            height: 35
+            color: "#364450"
+        }
+
+        Row {
+            width: parent.width
+            height: parent.height - titleBar.height
+
+            Rectangle {
+                id: sideBar
+                height: parent.height
+                width: 45
+                color: "#191f24"
+
+                Column {
+                    width: parent.width
+                    height: parent.height
+                    topPadding: 5
+
+                    CustomImageButton {
+                        id: sessionListButton
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 35
+                        height: width
+                        rounded: true
+                        source: "qrc:/icon/UserID.png"
+
+                        onClicked: {
+                            sideBarLoader.source = "qrc:/qml/SessionListView.qml"
+                            sideBarLoader.width = !sideBarLoader.width ? 400 : 0
+                        }
+                    }
+
+                    CustomImageButton {
+                        id: contactButton
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 35
+                        height: width
+                        rounded: true
+                        source: "qrc:/icon/UserID.png"
+                    }
+
+                    CustomImageButton {
+                        id: settingButton
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 35
+                        height: width
+                        rounded: true
+                        source: "qrc:/icon/UserID.png"
+                    }
+                }
+            }
+
+            Loader {
+                id: sideBarLoader
+                height: parent.height
+                width: 0
+
+                // 로드 빠르게 하기 위해 각 뷰를 미리 한 바퀴돈다.
+                Component.onCompleted: {
+                    // source = "qrc:/qml/SessionListView.qml"
+                }
+            }
+
+            Rectangle {
+                color: "#28343f"
+                width: parent.width - sideBar.width - sideBarLoader.width
+                height: parent.height
+
+                StackView {
+                    id: mainView
+                    objectName: "mainView"
+                    anchors.fill: parent
+                }
+            }
+        }
+    }
+
+    /*
     Column {
         anchors.fill: parent
 
@@ -101,7 +187,7 @@ Rectangle {
                 
                 // 로드 빠르게 하기 위해 각 뷰를 미리 한 바퀴돈다.
                 Component.onCompleted: {
-                    source = "qrc:/qml/SessionListView.qml"
+                    // source = "qrc:/qml/SessionListView.qml"
                 }
             }
 
@@ -132,6 +218,7 @@ Rectangle {
             // }
         }
     }
+    */
 }
 
 /*

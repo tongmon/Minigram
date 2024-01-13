@@ -10,43 +10,39 @@ Column {
     property string sessionId: ""
     property string sessionName: ""
 
-    function addChat(chatInfo)
-    {
-        chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
-    }
+    // function addChat(chatInfo)
+    // {
+    //     // chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
+    //     sessionView.model.append(chatInfo)
+    // }
 
     Rectangle {
         id: sessionHeaderRect
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: parent.top
-        }
         color: "white"
+        width: parent.width
         height: 60
 
         Row {
             anchors.fill: parent
+            leftPadding: 5
 
             Text {
-                anchors {
-                    verticalCenter: parent.verticalCenter
-                    left: parent.left
-                }
+                anchors.verticalCenter: parent.verticalCenter 
                 font {
                     bold: true
                     pointSize: 15
                 }
+                // height: parent.height
+                width: parent.width - searchBarToggleButton.width - sessionMenuButton.width
                 text: sessionName
             }
 
             CustomImageButton {
                 id: searchBarToggleButton
-                anchors {
-                    verticalCenter: parent.verticalCenter
-                    right: sessionMenuButton.left
-                    rightMargin: 5
-                }
+                anchors.verticalCenter: parent.verticalCenter 
+                width: height
+                height: parent.height - 10
+                source: "qrc:/icon/UserID.png"
 
                 onClicked: {
 
@@ -55,11 +51,10 @@ Column {
 
             CustomImageButton {
                 id: sessionMenuButton
-                anchors {
-                    verticalCenter: parent.verticalCenter
-                    right: parent.right
-                    rightMargin: 5
-                }
+                anchors.verticalCenter: parent.verticalCenter 
+                width: height
+                height: parent.height - 10
+                source: "qrc:/icon/UserID.png"
 
                 Menu {
                     id: sessionMenu
@@ -295,7 +290,7 @@ Column {
                     // mainContext.trySendChat(sessionId, text)
 
                     // 테스트용
-                    addChat({
+                    sessionViewModel.append({
                         "messageId": 0,
                         "sessionId": currentRoomID,
                         "senderId": "tongstar",
