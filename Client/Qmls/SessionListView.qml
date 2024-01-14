@@ -50,84 +50,110 @@ Rectangle {
             width: sessionListView.width
             color: "#274E7D"
 
-            Row {
-                anchors.fill: parent
-                leftPadding: 5
-                rightPadding: 5
+            CustomImageButton {
+                id: sessionImageButton
+                anchors {
+                    verticalCenter: parent.verticalCenter
+                    left: parent.left
+                }
+                height: parent.height - 20
+                width: height
+                rounded: true
+                source: "qrc:/icon/UserID.png" // sessionImg
+            }            
 
-                CustomImageButton {
-                    id: sessionImageButton
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: parent.height - 20
-                    width: height
-                    rounded: true
-                    source: "qrc:/icon/UserID.png" // sessionImg
+            Item {
+                anchors {
+                    left: sessionImageButton.right
+                    right: parent.right
+                    top: parent.top
+                    bottom: parent.bottom
                 }
 
-                Column {
-                    width: parent.width - sessionImageButton.width
-                    height: parent.height
-
-                    Row {
-                        width: parent.width
-                        height: parent.height / 2
-
-                        Text {
-                            id: sessionNameText
-                            anchors.verticalCenter: parent.verticalCenter
-                            font {
-                                bold: true
-                                pointSize: 15
-                            }
-                            width: parent.width / 2
-                            clip: true
-                            text: sessionName
-                        } 
-
-                        Text {
-                            id: sessionDateText
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width / 2
-                            clip: true
-                            text: recentSendDate
-                        }                  
+                Item {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: parent.top
+                        topMargin: 7
                     }
+                    height: parent.height / 2
 
-                    Row {
-                        width: parent.width
-                        height: parent.height / 2        
+                    Text {
+                        id: sessionNameText
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            left: parent.left
+                        }
+                        width: parent.width / 2
+                        font {
+                            bold: true
+                            pointSize: 15
+                        }
+                        clip: true
+                        text: sessionName
+                    } 
 
+                    Text {
+                        id: sessionDateText
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            right: parent.right
+                            rightMargin: 5
+                        }
+                        width: parent.width / 2
+                        clip: true
+                        horizontalAlignment: Text.AlignRight
+                        text: recentSendDate
+                    } 
+                }
+
+                Item {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                        bottomMargin: 7
+                    }
+                    height: parent.height / 2
+
+                    Text {
+                        id: recentMessageText
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            left: parent.left
+                            right: unreadCntRect.left
+                        }
+                        font {
+                            pointSize: 12
+                        }
+                        clip: true
+                        text: recentContent
+                    }     
+
+                    Rectangle {
+                        id: unreadCntRect
+                        color: "red"
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            right: parent.right
+                            rightMargin: 5
+                        }
+                        width: childrenRect.width + 4
+                        height: childrenRect.height + 4
+                        radius: 5
+                        
                         Text {
-                            id: recentMessageText
-                            anchors.verticalCenter: parent.verticalCenter
                             font {
                                 pointSize: 12
                             }
-                            width: parent.width - unreadCntRect.width - 10
                             clip: true
-                            text: recentContent
-                        }     
-
-                        Rectangle {
-                            id: unreadCntRect
-                            color: "red"
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: childrenRect.width + 4
-                            height: childrenRect.height + 4
-                            radius: 5
-                            
-                            Text {
-                                font {
-                                    pointSize: 12
-                                }
-                                clip: true
-                                text: unreadCnt
-                                color: "white"
-                            }
-                        }                                                       
-                    }
+                            text: unreadCnt
+                            color: "white"
+                        }
+                    } 
                 }
-            }
+            }         
 
             MouseArea {
                 anchors.fill: parent

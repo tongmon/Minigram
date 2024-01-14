@@ -10,86 +10,106 @@ Rectangle {
     color: "#28343f"
     anchors.fill: parent
 
-    Column {
-        anchors.fill: parent
+    TitleBar {
+        id: titleBar
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+        }
+        height: 35
+        color: "#364450"
+    }
 
-        TitleBar {
-            id: titleBar
-            width: parent.width
-            height: 35
-            color: "#364450"
+    Item {
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: titleBar.bottom
+            bottom: parent.bottom
         }
 
-        Row {
-            width: parent.width
-            height: parent.height - titleBar.height
+        Rectangle {
+            id: sideBar
+            anchors {
+                left: parent.left
+                top: parent.top
+                bottom: parent.bottom
+            }
+            width: 45
+            color: "#191f24"
 
-            Rectangle {
-                id: sideBar
-                height: parent.height
-                width: 45
-                color: "#191f24"
+            CustomImageButton {
+                id: sessionListButton
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: parent.top
+                    topMargin: 5
+                }
+                width: parent.width - 10
+                height: width
+                //rounded: true
+                source: "qrc:/icon/UserID.png"
 
-                Column {
-                    width: parent.width
-                    height: parent.height
-                    topPadding: 5
-
-                    CustomImageButton {
-                        id: sessionListButton
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 35
-                        height: width
-                        rounded: true
-                        source: "qrc:/icon/UserID.png"
-
-                        onClicked: {
-                            sideBarLoader.source = "qrc:/qml/SessionListView.qml"
-                            sideBarLoader.width = sideBarLoader.width ? 0 : 400
-                        }
-                    }
-
-                    CustomImageButton {
-                        id: contactButton
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 35
-                        height: width
-                        rounded: true
-                        source: "qrc:/icon/UserID.png"
-                    }
-
-                    CustomImageButton {
-                        id: settingButton
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: 35
-                        height: width
-                        rounded: true
-                        source: "qrc:/icon/UserID.png"
-                    }
+                onClicked: {
+                    sideBarLoader.source = "qrc:/qml/SessionListView.qml"
+                    sideBarLoader.width = sideBarLoader.width ? 0 : 400
                 }
             }
 
-            Loader {
-                id: sideBarLoader
-                height: parent.height
-                width: 0
-
-                // 로드 빠르게 하기 위해 각 뷰를 미리 한 바퀴돈다.
-                Component.onCompleted: {
-                    source = "qrc:/qml/SessionListView.qml"
+            CustomImageButton {
+                id: contactButton
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: sessionListButton.bottom
                 }
+                width: parent.width - 10
+                height: width
+                //rounded: true
+                source: "qrc:/icon/UserID.png"
             }
 
-            Rectangle {
-                color: "#28343f"
-                width: parent.width - sideBar.width - sideBarLoader.width
-                height: parent.height
-
-                StackView {
-                    id: mainView
-                    objectName: "mainView"
-                    anchors.fill: parent
+            CustomImageButton {
+                id: settingButton
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: contactButton.bottom
                 }
+                width: parent.width - 10
+                height: width
+                // rounded: true
+                source: "qrc:/icon/UserID.png"
+            }
+        }
+
+        Loader {
+            id: sideBarLoader
+            anchors {
+                left: sideBar.right
+                top: parent.top
+                bottom: parent.bottom
+            }
+            width: 0
+
+            // 로드 빠르게 하기 위해 각 뷰를 미리 한 바퀴돈다.
+            Component.onCompleted: {
+                // source = "qrc:/qml/SessionListView.qml"
+            }
+        }
+
+        Rectangle {
+            color: "#28343f"
+            anchors {
+                left: sideBarLoader.right
+                right: parent.right
+                top: parent.top
+                bottom: parent.bottom
+            }
+
+            StackView {
+                id: mainView
+                objectName: "mainView"
+                anchors.fill: parent
             }
         }
     }
