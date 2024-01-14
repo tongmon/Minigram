@@ -24,6 +24,7 @@
         <file alias="ChatListView.qml">Qmls/ChatListView.qml</file>
         <file alias="SettingButton.qml">Qmls/SettingButton.qml</file>
         <file alias="ContactButton.qml">Qmls/ContactButton.qml</file>
+        <file alias="ContactView.qml">Qmls/ContactView.qml</file>
         <file alias="SessionAddButton.qml">Qmls/SessionAddButton.qml</file>
         <file alias="CustomImageButton.qml">Qmls/CustomImageButton.qml</file>
         <file alias="CustomTextField.qml">Qmls/CustomTextField.qml</file>

@@ -303,20 +303,42 @@ Column {
         width: parent.width
         height: 50
 
-        Row {
-            anchors.fill: parent
-            leftPadding: 5
-            rightPadding: 5
+        CustomImageButton {
+            id: imojiButton
+            width: height
+            height: parent.height - 10
+            anchors {
+                verticalCenter: parent.verticalCenter
+                left: parent.left
+                leftMargin: 5
+            }
+            source: "qrc:/icon/UserID.png"
+            overlayColor: imojiButton.hovered ? "#cccccc" : "transparent"
+        }
 
-            CustomImageButton {
-                id: imojiButton
-                width: height
-                height: parent.height - 10
-                anchors {
-                    verticalCenter: parent.verticalCenter
-                }
-                source: "qrc:/icon/UserID.png"
-                overlayColor: imojiButton.hovered ? "#cccccc" : "transparent"
+        CustomImageButton {
+            id: attachmentButton
+            width: height
+            height: parent.height - 10
+            anchors {
+                verticalCenter: parent.verticalCenter
+                left: imojiButton.right
+            }
+            source: "qrc:/icon/UserID.png"
+            overlayColor: attachmentButton.hovered ? "#cccccc" : "transparent"
+        }
+
+        Button {
+            anchors {
+                verticalCenter: parent.verticalCenter
+                right: parent.right
+                rightMargin: 5
+            }
+            height: parent.height - 10
+            text: "Send"
+            background: Rectangle {
+                color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                radius: 5
             }
         }
     }

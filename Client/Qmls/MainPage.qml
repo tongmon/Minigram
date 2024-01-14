@@ -76,7 +76,7 @@ Rectangle {
 
                 // 로드 빠르게 하기 위해 각 뷰를 미리 한 바퀴돈다.
                 Component.onCompleted: {
-                    // source = "qrc:/qml/SessionListView.qml"
+                    source = "qrc:/qml/SessionListView.qml"
                 }
             }
 
