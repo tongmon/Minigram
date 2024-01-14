@@ -50,7 +50,13 @@ class MainContext : public QObject
     Q_INVOKABLE void tryAddContact(const QString &user_id);
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);
     Q_INVOKABLE void tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids);
+
+    // 유틸 함수
     Q_INVOKABLE QStringList executeFileDialog(const QVariantMap &qvm) const;
+    Q_INVOKABLE QString getUserImgById(const QString &user_id);
+    Q_INVOKABLE QString getUserNameById(const QString &user_id);
+    Q_INVOKABLE QString getSessionImgById(const QString &session_id);
+    Q_INVOKABLE QString getSessionNameById(const QString &session_id);
 };
 
 #endif /* HEADER__FILE__MAINCONTEXT */

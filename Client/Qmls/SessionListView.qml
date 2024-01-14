@@ -21,7 +21,7 @@ Rectangle {
         chatSessionModel.append(sessionInfo)
         sessionViewMap[sessionInfo["sessionId"]] = sessionViewComponent.createObject(null)
         sessionViewMap[sessionInfo["sessionId"]].sessionId = sessionInfo["sessionId"]
-        sessionViewMap[sessionInfo["sessionId"]].sessionName = chatSessionModel.getNameById(sessionInfo["sessionId"])
+        sessionViewMap[sessionInfo["sessionId"]].sessionName = mainContext.getSessionNameById(sessionInfo["sessionId"])
     }
 
     function addChat(chatInfo)

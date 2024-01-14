@@ -18,7 +18,7 @@ int ContactModel::rowCount(const QModelIndex &parent) const
 
 QVariant ContactModel::data(const QString &user_id, int role) const
 {
-    return data(index(m_id_index_map[user_id]), role);
+    return m_id_index_map.find(user_id) == m_id_index_map.end() ? QVariant() : data(index(m_id_index_map[user_id]), role);
 }
 
 QVariant ContactModel::data(const QModelIndex &index, int role) const

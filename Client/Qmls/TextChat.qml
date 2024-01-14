@@ -18,7 +18,7 @@ Item {
         }
 
         Image {
-            source: "data:image/png;base64," + senderImage
+            source: "file:///" + mainContext.getUserImgById(senderId)  // "data:image/png;base64," + senderImg
             visible: isOpponent
             Layout.alignment: Qt.AlignTop
             Layout.preferredWidth: 50
@@ -31,7 +31,7 @@ Item {
 
             Text {
                 id: chatSenderText
-                text: senderName
+                text: mainContext.getUserNameById(senderId) // senderName
                 font.pixelSize: 15
                 visible: isOpponent
                 Layout.leftMargin: chatBubbleStemSize.width
@@ -116,6 +116,6 @@ Item {
     }
 
     Component.onCompleted: { 
-        console.log("Chatbubble created! width: " + width + " height: " + height)
+        
     }
 }

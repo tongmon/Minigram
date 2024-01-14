@@ -45,7 +45,7 @@ Rectangle {
 
                         onClicked: {
                             sideBarLoader.source = "qrc:/qml/SessionListView.qml"
-                            sideBarLoader.width = !sideBarLoader.width ? 400 : 0
+                            sideBarLoader.width = sideBarLoader.width ? 0 : 400
                         }
                     }
 
@@ -93,132 +93,6 @@ Rectangle {
             }
         }
     }
-
-    /*
-    Column {
-        anchors.fill: parent
-
-        TitleBar {
-            id: titleBar
-            anchors {
-                top: parent.top
-                left: parent.left
-                right: parent.right
-            }
-            height: 35
-            color: "#364450"
-        }
-
-        Row {
-            anchors {
-                left: parent.left
-                right: parent.right
-                top: titleBar.bottom
-                bottom: parent.bottom
-            }
-
-            Rectangle {
-                id: sideBar
-                anchors {
-                    left: parent.left
-                    top: parent.top
-                    bottom: parent.bottom
-                }
-                width: 45
-                color: "#191f24"
-
-                Row {
-                    anchors.fill: parent
-
-                    CustomImageButton {
-                        id: sessionListButton
-                        anchors {
-                            horizontalCenter : parent.horizontalCenter
-                            top: parent.top
-                            topMargin: 5
-                        }
-                        width: 35
-                        height: width
-                        rounded: true
-                        source: "qrc:/icon/UserID.png"
-
-                        onClicked: {
-                            sideBarLoader.source = "qrc:/qml/SessionListView.qml"
-                            sideBarLoader.width = !sideBarLoader.width ? 400 : 0
-                        }
-                    }
-
-                    CustomImageButton {
-                        id: contactButton
-                        anchors {
-                            horizontalCenter : parent.horizontalCenter
-                            top: sessionListButton.bottom
-                            topMargin: 5
-                        }
-                        width: 35
-                        height: width
-                        rounded: true
-                        source: "qrc:/icon/UserID.png"
-                    }
-
-                    CustomImageButton {
-                        id: settingButton
-                        anchors {
-                            horizontalCenter : parent.horizontalCenter
-                            top: contactButton.bottom
-                            topMargin: 5
-                        }
-                        width: 35
-                        height: width
-                        rounded: true
-                        source: "qrc:/icon/UserID.png"
-                    }
-                }
-            }
-
-            Loader {
-                id: sideBarLoader
-                anchors {
-                    left: sideBar.right
-                    top: parent.top
-                    bottom: parent.bottom
-                }
-                width: 0
-                
-                // 로드 빠르게 하기 위해 각 뷰를 미리 한 바퀴돈다.
-                Component.onCompleted: {
-                    // source = "qrc:/qml/SessionListView.qml"
-                }
-            }
-
-            Rectangle {
-                color: "#2B578C"
-                anchors {
-                    left: sideBarLoader.right
-                    right: parent.right
-                    top: parent.top
-                    bottom: parent.bottom
-                }  
-
-                StackView {
-                    id: mainView
-                    objectName: "mainView"
-                    anchors.fill: parent
-                }
-            }
-
-            // Loader {
-            //     id: sessionLoader
-            //     anchors {
-            //         left: sideBarLoader.right
-            //         right: parent.right
-            //         top: parent.top
-            //         bottom: parent.bottom
-            //     }
-            // }
-        }
-    }
-    */
 }
 
 /*

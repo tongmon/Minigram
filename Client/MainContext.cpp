@@ -1166,3 +1166,23 @@ QStringList MainContext::executeFileDialog(const QVariantMap &qvm) const
 
     return ret;
 }
+
+QString MainContext::getUserImgById(const QString &user_id)
+{
+    return m_contact_model->data(user_id, ContactModel::IMG_ROLE).toString();
+}
+
+QString MainContext::getUserNameById(const QString &user_id)
+{
+    return m_contact_model->data(user_id, ContactModel::NAME_ROLE).toString();
+}
+
+QString MainContext::getSessionImgById(const QString &session_id)
+{
+    return m_chat_session_model->data(session_id, ChatSessionModel::IMG_ROLE).toString();
+}
+
+QString MainContext::getSessionNameById(const QString &session_id)
+{
+    return m_chat_session_model->data(session_id, ChatSessionModel::NAME_ROLE).toString();
+}

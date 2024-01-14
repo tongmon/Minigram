@@ -26,7 +26,7 @@ int ChatSessionModel::rowCount(const QModelIndex &parent) const
 
 QVariant ChatSessionModel::data(const QString &session_id, int role) const
 {
-    return data(index(m_id_index_map[session_id]), role);
+    return m_id_index_map.find(session_id) == m_id_index_map.end() ? QVariant() : data(index(m_id_index_map[session_id]), role);
 }
 
 QVariant ChatSessionModel::data(const QModelIndex &index, int role) const
@@ -157,9 +157,4 @@ Q_INVOKABLE void ChatSessionModel::refreshRecentChat(const QString &session_id, 
     chat_session->recent_content_type = qvm["recentContentType"].toInt();
     chat_session->recent_content = qvm["recentContent"].toString();
     chat_session->recent_message_id = qvm["recentMessageId"].toInt();
-}
-
-QString ChatSessionModel::getNameById(const QString &session_id)
-{
-    return data(session_id, NAME_ROLE).toString();
 }

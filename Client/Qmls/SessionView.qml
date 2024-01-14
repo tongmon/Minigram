@@ -25,6 +25,7 @@ Column {
         Row {
             anchors.fill: parent
             leftPadding: 5
+            rightPadding: 5
 
             Text {
                 anchors.verticalCenter: parent.verticalCenter 
@@ -45,7 +46,8 @@ Column {
                 source: "qrc:/icon/UserID.png"
 
                 onClicked: {
-
+                    // chatSearchBarRect.visible ^= true
+                    chatSearchBarRect.height = chatSearchBarRect.height ? 0 : 40
                 }
             }
 
@@ -83,7 +85,7 @@ Column {
                                     leftMargin: 5
                                     verticalCenter: parent.verticalCenter
                                 }
-                                checkable : true
+                                checkable: true
                                 source: "qrc:/icon/UserID.png"
                                 overlayColor: notifyToggleButton.down ? "#666666" : (notifyToggleButton.checked ? "#000000" : "#cccccc")                    
                             
@@ -100,7 +102,8 @@ Column {
                                     left: notifyToggleButton.right
                                     verticalCenter: parent.verticalCenter
                                 }
-                                checkable : true
+                                checkable: true
+                                source: "qrc:/icon/UserID.png"
                                 overlayColor: sessionFavoriteButton.down ? "#666666" : (sessionFavoriteButton.checked ? "#000000" : "#cccccc")                    
                             }
 
@@ -125,7 +128,7 @@ Column {
                         background: Rectangle {
                             anchors.fill: parent
                             // opacity: etcMenuItem.highlighted ? 0.7 : 1.0
-                            color: "blue"
+                            color: "#cccccc"
                         }
                     }
                 }
@@ -139,13 +142,9 @@ Column {
 
     Rectangle {
         id: chatSearchBarRect
-        visible: false
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: sessionHeaderRect.bottom
-        }
-        height: 40
+        // visible: false
+        width: parent.width
+        height: 0
         color: "#cccccc"
 
         Rectangle {
@@ -186,19 +185,16 @@ Column {
             source: "qrc:/icon/UserID.png"
 
             onClicked: {
-                chatSearchBarRect.visible ^= true
+                // chatSearchBarRect.visible ^= true
+                chatSearchBarRect.height = chatSearchBarRect.height ? 0 : 40
             }
         }
     }
 
     ListView {
         id: sessionView
-        anchors {
-            left: parent.left
-            right: parent.right
-            top: chatSearchBarRect.bottom
-            bottom: chatInputArea.top
-        }
+        width: parent.width
+        height: parent.height - sessionHeaderRect.height - chatSearchBarRect.height - chatInputArea.height - sessionFooterRect.height
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
@@ -236,7 +232,6 @@ Column {
             }
 
             Component.onCompleted: {
-
             }
         }
 
@@ -256,11 +251,7 @@ Column {
 
     Rectangle {
         id: chatInputArea
-        anchors {
-            left: parent.left
-            right: parent.right
-            bottom: sessionFooterRect.top
-        }
+        width: parent.width
         height: 100
         color: "#cccccc"
 
@@ -292,11 +283,11 @@ Column {
                     // 테스트용
                     sessionViewModel.append({
                         "messageId": 0,
-                        "sessionId": currentRoomID,
+                        "sessionId": sessionId,
                         "senderId": "tongstar",
                         "readerIds": ["tongstar", "yellowjam"],
-                        "sendDate": chatTime,
-                        "contentType": 0,
+                        "sendDate": "2024-01-14 04:40",
+                        "contentType": 1,
                         "content": text,
                         "isOpponent": false
                     })
@@ -309,15 +300,24 @@ Column {
 
     Rectangle {
         id: sessionFooterRect
+        width: parent.width
         height: 50
-        anchors {
-            left: parent.left
-            right: parent.right
-            bottom: parent.bottom
-        }
 
         Row {
             anchors.fill: parent
+            leftPadding: 5
+            rightPadding: 5
+
+            CustomImageButton {
+                id: imojiButton
+                width: height
+                height: parent.height - 10
+                anchors {
+                    verticalCenter: parent.verticalCenter
+                }
+                source: "qrc:/icon/UserID.png"
+                overlayColor: imojiButton.hovered ? "#cccccc" : "transparent"
+            }
         }
     }
 
