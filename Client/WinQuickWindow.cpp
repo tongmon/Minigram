@@ -18,6 +18,7 @@
 #include <stdexcept>
 
 WinQuickWindow::WinQuickWindow(QQmlApplicationEngine *engine)
+    : m_is_shutdown_state{false}
 {
     if (engine)
         InitWindow(*engine);
@@ -378,6 +379,16 @@ bool WinQuickWindow::nativeEventFilter(const QByteArray &event_type, void *messa
         break;
     }
 
+    case WM_CLOSE: {
+        if (m_is_shutdown_state)
+            break;
+        else
+        {
+            onHideButtonClicked();
+            return true;
+        }
+    }
+
     default:
         break;
     }
@@ -418,6 +429,7 @@ void WinQuickWindow::onMaximizeButtonClicked()
 // 닫기 버튼 클릭시 수행됨, qml에 cppConnector로 연동됨
 void WinQuickWindow::onCloseButtonClicked()
 {
+    m_is_shutdown_state = true;
     SendMessage(m_hwnd, WM_CLOSE, 0, 0);
 }
 

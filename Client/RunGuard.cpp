@@ -5,7 +5,8 @@ RunGuard::RunGuard(const QString &key)
       m_mem_lock_key(GenerateKeyHash(key, "minigram_mem_lock_key")),
       m_shared_mem_key(GenerateKeyHash(key, "minigram_shared_mem_key")),
       m_shared_mem(m_shared_mem_key),
-      m_mem_lock(m_mem_lock_key, 1)
+      m_mem_lock(m_mem_lock_key, 1),
+      m_hwnd_ptr{nullptr}
 {
     m_mem_lock.acquire();
     {
@@ -18,6 +19,11 @@ RunGuard::RunGuard(const QString &key)
 RunGuard::~RunGuard()
 {
     Release();
+}
+
+void RunGuard::SetUniqueHwnd(HWND hwnd)
+{
+    *m_hwnd_ptr = hwnd;
 }
 
 bool RunGuard::IsAlreadyRunning()
@@ -41,6 +47,22 @@ bool RunGuard::TryRun()
 
     m_mem_lock.acquire();
     bool ret = m_shared_mem.create(sizeof(quint64));
+
+    m_file_map.setFileName("minigram/process_id");
+    m_file_map.open(QIODevice::ReadWrite);
+    if (ret)
+        m_hwnd_ptr = reinterpret_cast<HWND *>(m_file_map.map(0, sizeof(HWND)));
+    else
+    {
+        HWND *hwnd_ptr = nullptr;
+        auto ret = m_file_map.read(reinterpret_cast<char *>(hwnd_ptr), sizeof(HWND));
+        if (ret > 0)
+        {
+            ShowWindow(*hwnd_ptr, SW_SHOW);
+            SendMessage(*hwnd_ptr, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+        }
+    }
+    m_file_map.close();
     m_mem_lock.release();
 
     if (!ret)
@@ -57,6 +79,8 @@ void RunGuard::Release()
     m_mem_lock.acquire();
     if (m_shared_mem.isAttached())
         m_shared_mem.detach();
+    if (m_hwnd_ptr)
+        m_file_map.unmap(reinterpret_cast<uchar *>(m_hwnd_ptr));
     m_mem_lock.release();
 }
 

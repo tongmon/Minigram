@@ -22,6 +22,7 @@ class WinQuickWindow : public QObject, public QAbstractNativeEventFilter
     QQuickWindow *m_quick_window;
     HWND m_hwnd;
     int m_resize_border_width;
+    bool m_is_shutdown_state;
 
     std::unique_ptr<MainContext> m_main_context;
 

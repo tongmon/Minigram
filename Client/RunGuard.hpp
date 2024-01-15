@@ -2,9 +2,12 @@
 #define HEADER__FILE__RUNGUARD
 
 #include <QCryptographicHash>
+#include <QFile>
 #include <QSharedMemory>
 #include <QString>
 #include <QSystemSemaphore>
+
+#include <Windows.h>
 
 class RunGuard
 {
@@ -17,6 +20,9 @@ class RunGuard
     QSharedMemory m_shared_mem;
     QSystemSemaphore m_mem_lock;
 
+    QFile m_file_map;
+    HWND *m_hwnd_ptr;
+
     QString GenerateKeyHash(const QString &key, const QString &salt);
     bool IsAlreadyRunning();
     void Release();
@@ -26,6 +32,7 @@ class RunGuard
     ~RunGuard();
 
     bool TryRun();
+    void SetUniqueHwnd(HWND hwnd);
 };
 
 #endif /* HEADER__FILE__RUNGUARD */

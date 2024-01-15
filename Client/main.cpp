@@ -57,6 +57,8 @@ int main(int argc, char *argv[])
         &app, [&](QObject *obj, const QUrl &objUrl) {
             if ((!obj && url == objUrl) || !win_quick_window.InitWindow(engine))
                 QCoreApplication::exit(-1);
+
+            run_guard.SetUniqueHwnd(win_quick_window.GetHandle());
         },
         Qt::QueuedConnection);
     engine.load(url);
