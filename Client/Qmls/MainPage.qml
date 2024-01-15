@@ -48,12 +48,13 @@ Rectangle {
                 }
                 width: parent.width - 10
                 height: width
-                //rounded: true
                 source: "qrc:/icon/UserID.png"
 
                 onClicked: {
-                    sideBarLoader.source = "qrc:/qml/SessionListView.qml"
-                    sideBarLoader.width = sideBarLoader.width ? 0 : 400
+                    if (sideBarView.currentView.length === 0 || sideBarView.currentView !== "session")
+                        sideBarView.currentView = "session"
+                    else
+                        sideBarView.currentView = ""
                 }
             }
 
@@ -65,8 +66,14 @@ Rectangle {
                 }
                 width: parent.width - 10
                 height: width
-                //rounded: true
                 source: "qrc:/icon/UserID.png"
+
+                onClicked: {
+                    if (sideBarView.currentView.length === 0 || sideBarView.currentView !== "contact")
+                        sideBarView.currentView = "contact"
+                    else
+                        sideBarView.currentView = ""
+                }
             }
 
             CustomImageButton {
@@ -82,6 +89,7 @@ Rectangle {
             }
         }
 
+        /*
         Loader {
             id: sideBarLoader
             anchors {
@@ -93,25 +101,59 @@ Rectangle {
 
             // 로드 빠르게 하기 위해 각 뷰를 미리 한 바퀴돈다.
             Component.onCompleted: {
-                // source = "qrc:/qml/SessionListView.qml"
+                source = "qrc:/qml/SessionListView.qml"
+                source = "qrc:/qml/ContactView.qml"
+            }
+
+            onStatusChanged: {
+            }
+        }
+        */
+
+        StackView {
+            id: sideBarView
+            anchors {
+                left: sideBar.right
+                top: parent.top
+                bottom: parent.bottom
+            }
+            width: 0
+
+            property string currentView: ""
+            property var sideBarViewMap: ({})
+
+            onCurrentViewChanged: {
+                if(currentView.length === 0)
+                    sideBarView.width = 0
+                else
+                {
+                    sideBarView.replace(null, sideBarViewMap[currentView], StackView.Immediate)
+                    sideBarView.width = 400
+                }
+            }
+
+            Component.onCompleted: {
+                sideBarViewMap["session"] = Qt.createComponent("qrc:/qml/SessionListView.qml").createObject(null)
+                sideBarViewMap["contact"] = Qt.createComponent("qrc:/qml/ContactView.qml").createObject(null)
+
+                sideBarView.push(sideBarViewMap["session"], StackView.Immediate)
             }
         }
 
-        Rectangle {
-            color: "#28343f"
+        StackView {
+            id: mainView
             anchors {
-                left: sideBarLoader.right
+                left: sideBarView.right
                 right: parent.right
                 top: parent.top
                 bottom: parent.bottom
             }
-
-            StackView {
-                id: mainView
-                objectName: "mainView"
-                anchors.fill: parent
-            }
+            objectName: "mainView"
         }
+    }
+
+    Component.onCompleted: {
+        
     }
 }
 

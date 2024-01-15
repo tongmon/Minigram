@@ -4,11 +4,12 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 import minigram.chat.component 1.0
 
-Column {
+Rectangle {
     anchors.fill: parent
+    color: "#28343f"
 
     property string sessionId: ""
-    property string sessionName: ""
+    property string sessionName: typeof(mainContext) !== "undefined" ? mainContext.getSessionNameById(sessionId) : ""
 
     // function addChat(chatInfo)
     // {
@@ -19,131 +20,152 @@ Column {
     Rectangle {
         id: sessionHeaderRect
         color: "white"
-        width: parent.width
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+        }
         height: 60
 
-        Row {
-            anchors.fill: parent
-            leftPadding: 5
-            rightPadding: 5
-
-            Text {
-                anchors.verticalCenter: parent.verticalCenter 
-                font {
-                    bold: true
-                    pointSize: 15
-                }
-                // height: parent.height
-                width: parent.width - searchBarToggleButton.width - sessionMenuButton.width
-                text: sessionName
+        Text {
+            anchors.verticalCenter: parent.verticalCenter 
+            anchors {
+                verticalCenter: parent.verticalCenter 
+                left: parent.left
+                leftMargin: 5
+                right: searchBarToggleButton.left
             }
-
-            CustomImageButton {
-                id: searchBarToggleButton
-                anchors.verticalCenter: parent.verticalCenter 
-                width: height
-                height: parent.height - 10
-                source: "qrc:/icon/UserID.png"
-
-                onClicked: {
-                    // chatSearchBarRect.visible ^= true
-                    chatSearchBarRect.height = chatSearchBarRect.height ? 0 : 40
-                }
+            font {
+                bold: true
+                pointSize: 15
             }
+            width: parent.width - searchBarToggleButton.width - sessionMenuButton.width
+            text: sessionName
+        }        
+            
+        CustomImageButton {
+            id: searchBarToggleButton
+            anchors {
+                verticalCenter: parent.verticalCenter 
+                right: sessionMenuButton.left
+            }
+            width: height
+            height: parent.height - 10
+            source: "qrc:/icon/UserID.png"
 
-            CustomImageButton {
-                id: sessionMenuButton
-                anchors.verticalCenter: parent.verticalCenter 
-                width: height
-                height: parent.height - 10
-                source: "qrc:/icon/UserID.png"
+            onClicked: {
+                // chatSearchBarRect.visible ^= true
+                chatSearchBarRect.height = chatSearchBarRect.height ? 0 : 40
+            }
+        }
 
-                Menu {
-                    id: sessionMenu
-                    y: sessionMenuButton.height + 2
+        CustomImageButton {
+            id: sessionMenuButton
+            anchors {
+                verticalCenter: parent.verticalCenter 
+                right: parent.right
+                rightMargin: 5
+            }
+            width: height
+            height: parent.height - 10
+            source: "qrc:/icon/UserID.png"
 
-                    MenuItem {
-                        id: inviteMenuItem
-                        text: "Invite new one"
+            Menu {
+                id: sessionMenu
+                y: sessionMenuButton.height + 2
+
+                MenuItem {
+                    id: inviteMenuItem
+                    text: "Invite new one"
+                    background: Rectangle {
+                        anchors.fill: parent
+                        opacity: inviteMenuItem.highlighted ? 0.7 : 1.0
+                        color: "#2F4F4F"
                     }
-                    MenuItem {
-                        id: expelMenuItem
-                        text: "Expel someone"
+                }
+                MenuItem {
+                    id: expelMenuItem
+                    text: "Expel someone"
+                    background: Rectangle {
+                        anchors.fill: parent
+                        opacity: expelMenuItem.highlighted ? 0.7 : 1.0
+                        color: "#2F4F4F"
                     }
-                    MenuItem {
-                        id: etcMenuItem
-                        implicitHeight: 30
-                        contentItem: Item {
-                            anchors.fill: parent
+                }
+                MenuItem {
+                    id: etcMenuItem
+                    implicitHeight: 30
+                    background: Rectangle {
+                        anchors.fill: parent
+                        color: "#2F4F4F"
+                    }
+                    contentItem: Item {
+                        anchors.fill: parent
 
-                            CustomImageButton {
-                                id: notifyToggleButton
-                                height: etcMenuItem.implicitHeight - 5
-                                width: height
-                                anchors {
-                                    left: parent.left
-                                    leftMargin: 5
-                                    verticalCenter: parent.verticalCenter
-                                }
-                                checkable: true
-                                source: "qrc:/icon/UserID.png"
-                                overlayColor: notifyToggleButton.down ? "#666666" : (notifyToggleButton.checked ? "#000000" : "#cccccc")                    
+                        CustomImageButton {
+                            id: notifyToggleButton
+                            height: etcMenuItem.implicitHeight - 5
+                            width: height
+                            anchors {
+                                left: parent.left
+                                leftMargin: 5
+                                verticalCenter: parent.verticalCenter
+                            }
+                            checkable: true
+                            source: "qrc:/icon/UserID.png"
+                            overlayColor: notifyToggleButton.down ? "#666666" : (notifyToggleButton.checked ? "#000000" : "#cccccc")                    
+                        
+                            onClicked: {
+                                            
+                            }
+                        }
+
+                        CustomImageButton {
+                            id: sessionFavoriteButton
+                            height: etcMenuItem.implicitHeight - 5
+                            width: height
+                            anchors {
+                                left: notifyToggleButton.right
+                                verticalCenter: parent.verticalCenter
+                            }
+                            checkable: true
+                            source: "qrc:/icon/UserID.png"
+                            overlayColor: sessionFavoriteButton.down ? "#666666" : (sessionFavoriteButton.checked ? "#000000" : "#cccccc")                    
+                        }
+
+                        CustomImageButton {
+                            id: sessionLeaveButton
+                            height: etcMenuItem.implicitHeight - 5
+                            width: height
+                            anchors {
+                                right: parent.right
+                                rightMargin: 5
+                                verticalCenter: parent.verticalCenter
+                            }
+                            source: "qrc:/icon/UserID.png"
+                            overlayColor: sessionLeaveButton.hovered ? "#666666" : "transparent"
                             
-                                onClicked: {
-                                                
-                                }
-                            }
-
-                            CustomImageButton {
-                                id: sessionFavoriteButton
-                                height: etcMenuItem.implicitHeight - 5
-                                width: height
-                                anchors {
-                                    left: notifyToggleButton.right
-                                    verticalCenter: parent.verticalCenter
-                                }
-                                checkable: true
-                                source: "qrc:/icon/UserID.png"
-                                overlayColor: sessionFavoriteButton.down ? "#666666" : (sessionFavoriteButton.checked ? "#000000" : "#cccccc")                    
-                            }
-
-                            CustomImageButton {
-                                id: sessionLeaveButton
-                                height: etcMenuItem.implicitHeight - 5
-                                width: height
-                                anchors {
-                                    right: parent.right
-                                    rightMargin: 5
-                                    verticalCenter: parent.verticalCenter
-                                }
-                                source: "qrc:/icon/UserID.png"
-                                overlayColor: sessionLeaveButton.hovered ? "#666666" : "transparent"
+                            onClicked: {
                                 
-                                onClicked: {
-                                    
-                                }
                             }
-                        }
-
-                        background: Rectangle {
-                            anchors.fill: parent
-                            // opacity: etcMenuItem.highlighted ? 0.7 : 1.0
-                            color: "#cccccc"
                         }
                     }
                 }
+            }
 
-                onClicked: {
-                    sessionMenu.open()
-                }
+            onClicked: {
+                sessionMenu.open()
             }
         }
     }
 
     Rectangle {
         id: chatSearchBarRect
-        // visible: false
-        width: parent.width
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: sessionHeaderRect.bottom
+        }
         height: 0
         color: "#cccccc"
 
@@ -167,7 +189,6 @@ Column {
                 }
 
                 Keys.onReturnPressed: {
-                    color: "transparent"
                 }
             }
         }
@@ -193,8 +214,12 @@ Column {
 
     ListView {
         id: sessionView
-        width: parent.width
-        height: parent.height - sessionHeaderRect.height - chatSearchBarRect.height - chatInputArea.height - sessionFooterRect.height
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: chatSearchBarRect.bottom
+            bottom: chatInputArea.top
+        }
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
@@ -251,7 +276,11 @@ Column {
 
     Rectangle {
         id: chatInputArea
-        width: parent.width
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: sessionFooterRect.top
+        }
         height: 100
         color: "#cccccc"
 
@@ -300,7 +329,11 @@ Column {
 
     Rectangle {
         id: sessionFooterRect
-        width: parent.width
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: parent.bottom
+        }
         height: 50
 
         CustomImageButton {
