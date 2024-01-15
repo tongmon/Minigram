@@ -38,7 +38,7 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED Core)
 # Major Version에 대한 경로도 설정해줘야 한다.
 set(Qt${QT_VERSION_MAJOR}_DIR ${QT_DIR})
 
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED Qml Quick QuickControls2)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED Qml Quick QuickControls2 Widgets)
 
 # 소스 파일들을 SRC_FILES 변수에 저장
 file(GLOB SRC_FILES CONFIGURE_DEPENDS ./*.cpp)
@@ -59,6 +59,7 @@ target_link_libraries(
     Qt${QT_VERSION_MAJOR}::Qml
     Qt${QT_VERSION_MAJOR}::Quick
     Qt${QT_VERSION_MAJOR}::QuickControls2
+    Qt${QT_VERSION_MAJOR}::Widgets
     Boost::boost
     Boost::system
     Boost::filesystem

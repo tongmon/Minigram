@@ -4,10 +4,13 @@
 #include "TCPClient.hpp"
 #include "TCPServer.hpp"
 
+#include <QAction>
+#include <QMenu>
 #include <QMetaObject>
 #include <QOpenGLContext>
 #include <QQmlContext>
 #include <QQmlProperty>
+#include <QSystemTrayIcon>
 #include <Windows.h>
 #include <Windowsx.h>
 #include <dwmapi.h>
@@ -54,6 +57,68 @@ bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
     m_engine = &engine;
     m_hwnd = (HWND)m_quick_window->winId();
     m_resize_border_width = m_quick_window->property("resizeBorderWidth").toInt() * m_quick_window->devicePixelRatio();
+
+#pragma region Make Tray Icon // 트레이 아이콘 생성
+    if (!QSystemTrayIcon::isSystemTrayAvailable())
+        return false;
+
+    QAction *run_action = new QAction("Run", m_quick_window);
+    QObject::connect(run_action, &QAction::triggered, [this]() -> void {
+        if (GetForegroundWindow() != m_hwnd)
+            SetForegroundWindow(m_hwnd);
+
+        if (GetWindowLong(m_hwnd, GWL_STYLE) & WS_MINIMIZE)
+            onMaximizeButtonClicked();
+        else
+            ShowWindow(m_hwnd, SW_SHOW);
+    });
+
+    QAction *minimize_action = new QAction("Minimize", m_quick_window);
+    QObject::connect(minimize_action, &QAction::triggered, [this]() -> void {
+        onMinimizeButtonClicked();
+    });
+
+    QAction *maximize_action = new QAction("Maximize", m_quick_window);
+    QObject::connect(maximize_action, &QAction::triggered, [this]() -> void {
+        m_quick_window->findChild<QObject *>("maximumButton")->setProperty("checked", true);
+        SendMessage(m_hwnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+    });
+
+    QAction *close_action = new QAction("Close", m_quick_window);
+    QObject::connect(close_action, &QAction::triggered, [this]() -> void {
+        onCloseButtonClicked();
+    });
+
+    QMenu *tray_icon_menu = new QMenu();
+    tray_icon_menu->addAction(run_action);
+    tray_icon_menu->addAction(minimize_action);
+    tray_icon_menu->addAction(maximize_action);
+    tray_icon_menu->addAction(close_action);
+
+    QSystemTrayIcon *tray_icon = new QSystemTrayIcon(m_quick_window);
+    QObject::connect(tray_icon, &QSystemTrayIcon::activated, [this](QSystemTrayIcon::ActivationReason activation_reason) -> void {
+        switch (activation_reason)
+        {
+        case QSystemTrayIcon::DoubleClick: {
+            if (GetForegroundWindow() != m_hwnd)
+                SetForegroundWindow(m_hwnd);
+
+            if (GetWindowLong(m_hwnd, GWL_STYLE) & WS_MINIMIZE)
+                onMaximizeButtonClicked();
+            else
+                ShowWindow(m_hwnd, SW_SHOW);
+            break;
+        }
+        default:
+            break;
+        }
+    });
+    tray_icon->setContextMenu(tray_icon_menu);
+    tray_icon->setIcon(QIcon(":/icon/ApplicationIcon.png"));
+    tray_icon->show();
+
+    // QApplication::setQuitOnLastWindowClosed(false);
+#pragma endregion
 
     QObject::connect(m_quick_window, &QQuickWindow::screenChanged, this, &WinQuickWindow::OnScreenChanged);
 
@@ -354,4 +419,9 @@ void WinQuickWindow::onMaximizeButtonClicked()
 void WinQuickWindow::onCloseButtonClicked()
 {
     SendMessage(m_hwnd, WM_CLOSE, 0, 0);
+}
+
+void WinQuickWindow::onHideButtonClicked()
+{
+    ShowWindow(m_hwnd, SW_HIDE);
 }

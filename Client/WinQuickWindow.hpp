@@ -51,6 +51,7 @@ class WinQuickWindow : public QObject, public QAbstractNativeEventFilter
     Q_INVOKABLE void onMinimizeButtonClicked();
     Q_INVOKABLE void onMaximizeButtonClicked();
     Q_INVOKABLE void onCloseButtonClicked();
+    Q_INVOKABLE void onHideButtonClicked();
 };
 
 #endif /* HEADER__FILE__WINQUICKWINDOW */

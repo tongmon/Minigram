@@ -126,7 +126,8 @@ Rectangle {
                 
             // C++에 구현되어 있는 닫기 버튼에 대한 Invoke 함수 onMaximizeButtonClicked()를 수행
             onClicked: {
-                mainWindowContext.onCloseButtonClicked()
+                // mainWindowContext.onCloseButtonClicked()
+                mainWindowContext.onHideButtonClicked()
             }
         }
     }

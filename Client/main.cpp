@@ -1,17 +1,23 @@
 ﻿#include "ChatModel.hpp"
 #include "ChatSessionSortFilterProxyModel.hpp"
 #include "ContactSortFilterProxyModel.hpp"
+#include "RunGuard.hpp"
 #include "WinQuickWindow.hpp"
 
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QSurfaceFormat>
 
 int main(int argc, char *argv[])
 {
+    // 메신저 프로세스는 단 하나 존재해야 함
+    RunGuard run_guard(QStringLiteral("minigram-messenger-34325527-565723"));
+    if (!run_guard.TryRun())
+        return 1;
+
     // Qt::AA_UseSoftwareOpenGL, Qt::AA_UseDesktopOpenGL, Qt::AA_UseOpenGLES 등 많다.
-    QGuiApplication::setAttribute(Qt::AA_UseOpenGLES);
-    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+    QApplication::setAttribute(Qt::AA_UseOpenGLES);
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
     // Qt Quick 렌더링 옵션 조정
     QSurfaceFormat format;
@@ -19,7 +25,7 @@ int main(int argc, char *argv[])
     // format.setSwapInterval(0);                            // 수직동기화를 0으로 끄지 않으면 윈도우 이동시 버벅거린다.
     QSurfaceFormat::setDefaultFormat(format);
 
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
 
 #pragma region Register cpp type to qml
     qmlRegisterType<Chat>("minigram.chat.component", 1, 0, "Chat");
@@ -49,8 +55,7 @@ int main(int argc, char *argv[])
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreated,
         &app, [&](QObject *obj, const QUrl &objUrl) {
-            if ((!obj && url == objUrl) ||
-                !win_quick_window.InitWindow(engine))
+            if ((!obj && url == objUrl) || !win_quick_window.InitWindow(engine))
                 QCoreApplication::exit(-1);
         },
         Qt::QueuedConnection);
