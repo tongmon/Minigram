@@ -2,6 +2,7 @@
 #define HEADER__FILE__RUNGUARD
 
 #include <QCryptographicHash>
+#include <QDir>
 #include <QFile>
 #include <QSharedMemory>
 #include <QString>
