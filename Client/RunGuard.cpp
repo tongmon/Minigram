@@ -37,46 +37,25 @@ bool RunGuard::IsAlreadyRunning()
     {
         m_shared_mem.detach();
 
-        m_file_map.setFileName("C:/Users/DP91-HSK/Documents/GitHub/Minigram/Client/Build/msvc-x64/Debug/minigram_cache.mem");
-        // m_file_map.setFileName(QDir::currentPath() + "/minigram_cache.mem");
+        m_file_map.setFileName(QDir::currentPath() + "/minigram_cache.mem");
         m_file_map.open(QIODevice::ReadWrite);
 
         HWND hwnd = nullptr;
         auto ret = m_file_map.read(reinterpret_cast<char *>(&hwnd), sizeof(HWND));
-        // 실행중인 프로세스를 foreground window로 만듦
         if (ret > 0)
         {
-            // static HWND running_hwnd = nullptr;
-            // auto custom_enum_window_proc = [](HWND hwnd, LPARAM lparam) -> BOOL {
-            //     DWORD process_id;
-            //     GetWindowThreadProcessId(hwnd, &process_id);
-            //     if (process_id == lparam)
-            //     {
-            //         running_hwnd = hwnd;
-            //         return FALSE;
-            //     }
-            //     return TRUE;
-            // };
-            // EnumWindows(custom_enum_window_proc, pid);
-
             WINDOWPLACEMENT placement_info;
             GetWindowPlacement(hwnd, &placement_info);
-
-            ShowWindow(hwnd, SW_SHOW);
             switch (placement_info.showCmd)
             {
-            case SW_NORMAL:
-            case SW_RESTORE:
-                SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
-                break;
-            case SW_MAXIMIZE:
-                SendMessage(hwnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+            case SW_SHOWMAXIMIZED:
+                ShowWindow(hwnd, SW_SHOWMAXIMIZED);
                 break;
             case SW_SHOWMINIMIZED:
-            case SW_MINIMIZE:
-                SendMessage(hwnd, WM_SYSCOMMAND, SC_RESTORE, 0);
+                ShowWindow(hwnd, SW_RESTORE);
                 break;
             default:
+                ShowWindow(hwnd, SW_NORMAL);
                 break;
             }
             SetForegroundWindow(hwnd);
@@ -98,8 +77,7 @@ bool RunGuard::TryRun()
     bool ret = m_shared_mem.create(sizeof(quint64));
     if (ret)
     {
-        m_file_map.setFileName("C:/Users/DP91-HSK/Documents/GitHub/Minigram/Client/Build/msvc-x64/Debug/minigram_cache.mem");
-        // m_file_map.setFileName(QDir::currentPath() + "/minigram_cache.mem");
+        m_file_map.setFileName(QDir::currentPath() + "/minigram_cache.mem");
         m_file_map.open(QIODevice::ReadWrite);
         m_file_map.resize(sizeof(HWND));
         m_hwnd_ptr = reinterpret_cast<HWND *>(m_file_map.map(0, m_file_map.size()));
