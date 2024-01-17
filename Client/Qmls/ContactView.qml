@@ -86,49 +86,65 @@ Rectangle {
                 anchors {
                     verticalCenter: parent.verticalCenter
                     left: parent.left
+                    leftMargin: 5
                 }
                 height: parent.height - 20
                 width: height
                 rounded: true
-                source: "qrc:/icon/UserID.png" // userImg
+                source: userImg
             }    
 
             Item {
                 anchors {
                     left: contactImageButton.right
+                    leftMargin: 5
                     right: parent.right
                     top: parent.top
                     bottom: parent.bottom
                 }
 
-                Text {
-                    id: userNameText
+                Item {
                     anchors {
-                        verticalCenter: parent.verticalCenter
                         left: parent.left
                         right: parent.right
                         top: parent.top
                     }
                     height: parent.height / 2
-                    font {
-                        bold: true
-                        pointSize: 20
+
+                    Text {
+                        id: userNameText
+                        anchors {
+                            left: parent.left
+                            bottom: parent.bottom
+                            bottomMargin: 6
+                        }
+                        font {
+                            bold: true
+                            pointSize: 15
+                        }
+                        text: userName
                     }
-                    text: userName
                 }
 
-                Text {
+                Item {
                     anchors {
-                        verticalCenter: parent.verticalCenter
                         left: parent.left
                         right: parent.right
                         bottom: parent.bottom
                     }
                     height: parent.height / 2
-                    font {
-                        pointSize: 15
+
+                    Text {
+                        anchors {
+                            left: parent.left
+                            top: parent.top
+                            topMargin: 6
+                        }
+                        font {
+                            pointSize: 11
+                        }
+                        text: contactInfo.objectName
                     }
-                    text: contactInfo.objectName
                 }
             }
 

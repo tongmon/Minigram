@@ -48,11 +48,11 @@ bool RunGuard::IsAlreadyRunning()
             GetWindowPlacement(hwnd, &placement_info);
             switch (placement_info.showCmd)
             {
-            case SW_SHOWMAXIMIZED:
-                ShowWindow(hwnd, SW_SHOWMAXIMIZED);
-                break;
             case SW_SHOWMINIMIZED:
                 ShowWindow(hwnd, SW_RESTORE);
+                break;
+            case SW_SHOWMAXIMIZED:
+                ShowWindow(hwnd, SW_SHOWMAXIMIZED);
                 break;
             default:
                 ShowWindow(hwnd, SW_NORMAL);

@@ -41,8 +41,10 @@ Rectangle {
         text: "New Chat"
         background: Rectangle {
             color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-            radius: 5
+            radius: 8
         }
+
+        property var selectedPerson: ({})
 
         onClicked: {
             sessionNameDecisionPopup.open()
@@ -52,23 +54,22 @@ Rectangle {
             id: sessionNameDecisionPopup
             anchors.centerIn: Overlay.overlay
             width: 500
-            height: 300
+            height: 200
             closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
             modal: true
             background: Rectangle {
-                color: "transparent"
-            }
-            contentItem: Rectangle {
-                anchors.fill: parent
                 color: "#333366"
                 radius: 5
+            }
+            contentItem: Item {
+                anchors.fill: parent
 
                 Item {
                     anchors {
                         left: parent.left
                         right: parent.right
                         top: parent.top
-                        bottom: buttonContainer.top
+                        bottom: sessionNameDecisionPopupButtonContainer.top
                     }
 
                     CustomImageButton {
@@ -76,6 +77,7 @@ Rectangle {
                         anchors {
                             verticalCenter: parent.verticalCenter
                             left: parent.left
+                            leftMargin: 10
                         }
                         width: parent.width * 0.25
                         height: width
@@ -85,7 +87,7 @@ Rectangle {
 
                         onClicked: {
                             var selectedFiles = mainContext.executeFileDialog({
-                                "title": "Selete profile image",
+                                "title": "Select profile image",
                                 "init_dir": ".",
                                 "filter": "Image File(*.png)\0*.png\0",
                                 "max_file_cnt": 1
@@ -98,6 +100,7 @@ Rectangle {
                     Item {
                         anchors {
                             left: sessionImageSelectButton.right
+                            leftMargin: 10
                             right: parent.right
                             top: parent.top
                             bottom: parent.bottom
@@ -116,7 +119,7 @@ Rectangle {
                                     left: parent.left
                                     right: parent.right
                                     bottom: parent.bottom
-                                    bottomMargin: 20
+                                    bottomMargin: 15
                                 }
                                 font {
                                     bold: true
@@ -141,7 +144,6 @@ Rectangle {
                                     right: parent.right
                                     rightMargin: 10
                                     top: parent.top
-                                    topMargin: 8
                                 }
                                 height: 35
                                 radius: 5
@@ -151,13 +153,12 @@ Rectangle {
                                     anchors.fill: parent
                                     selectByMouse: true
                                     inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
-
                                     background: Rectangle {
                                         color: "transparent"
                                     }
 
                                     Keys.onReturnPressed: {
-                                    
+                                        nextButton.clicked()
                                     }
                                     Component.onCompleted: {
                                     }
@@ -168,7 +169,7 @@ Rectangle {
                 }
 
                 Item {
-                    id: buttonContainer
+                    id: sessionNameDecisionPopupButtonContainer
                     anchors {
                         left: parent.left
                         right: parent.right
@@ -209,7 +210,8 @@ Rectangle {
                         text: "Next"
 
                         onClicked: {
-                            
+                            if(sessionNameTextField.text.length > 0)
+                                contactChoicePopup.open()
                         }
                     }
                 }
@@ -218,6 +220,298 @@ Rectangle {
             onClosed: {
                 sessionNameTextField.text = ""
                 sessionImageSelectButton.source = "qrc:/icon/UserID.png"
+            }
+        }
+
+        Popup {
+            id: contactChoicePopup
+            anchors.centerIn: Overlay.overlay
+            width: 500
+            height: 700
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+            background: Rectangle {
+                color: "#333366"
+                radius: 8
+            }
+            contentItem: Item {
+                anchors.fill: parent
+
+                ListView {
+                    id: selectedPersonView
+                    anchors {
+                        left: parent.left
+                        leftMargin: 5
+                        right: parent.right
+                        rightMargin: 5
+                        top: parent.top
+                    }
+                    height: selectedPersonView.count ? 50 : 0
+                    clip: true
+                    orientation: ListView.Horizontal
+                    spacing: 5
+
+                    ScrollBar.horizontal: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                    }
+
+                    model: ListModel {
+                        id: selectedPersonModel
+                    }
+
+                    delegate: Rectangle {
+                        id: selectedPersonInfo
+                        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+                        height: parent ? parent.height - 20 : 0
+                        width: childrenRect.width
+                        objectName: userId
+                        color: "#B240F5"
+                        radius: 8
+
+                        property int selectedPersonIndex: index
+
+                        CustomImageButton {
+                            id: userImage
+                            anchors {
+                                left: parent.left
+                                top: parent.top
+                                bottom: parent.bottom
+                                margins: 5
+                            }
+                            width: height
+                            source: userImg
+                            rounded: true
+                        }
+
+                        Text {
+                            id: userNameText
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                left: userImage.right
+                            }
+                            text: userName
+                        }
+
+                        CustomImageButton {
+                            id: selectedPersonRemoveButton
+                            anchors {
+                                left: userNameText.right
+                                top: parent.top
+                                bottom: parent.bottom
+                                margins: 5
+                            } 
+                            width: height
+                            source: "qrc:/icon/UserID.png"
+                            rounded: true
+
+                            onClicked: {
+                                selectedPersonModel.remove(selectedPersonInfo.selectedPersonIndex)
+                                delete sessionAddButton.selectedPerson[selectedPersonInfo.objectName]
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    id: contactSearchBarRect
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: selectedPersonView.bottom
+                    }
+                    height: 43
+                    color: "transparent"
+
+                    Rectangle {
+                        id: contactSearchBar
+                        anchors {
+                            fill: parent
+                            margins: 5
+                        }            
+                        radius: 5
+
+                        TextField {
+                            id: contactSearchTextField
+                            anchors.fill: parent
+                            selectByMouse: true
+                            inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
+                            background: Rectangle {
+                                color: "transparent"
+                            }
+
+                            Keys.onReturnPressed: {
+                            }
+                        }
+                    }
+                }
+
+                ListView {
+                    id: userListView
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: contactSearchBarRect.bottom
+                        bottom: contactChoicePopupButtonContainer.top
+                    }
+                    clip: true
+
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                    }
+
+                    model: contactSortFilterProxyModel
+
+                    delegate: Rectangle {
+                        id: contactInfo
+                        width: userListView.width
+                        height: 98
+                        color: "#274E7D"
+                        objectName: userId
+
+                        property int contactIndex: index
+
+                        CustomImageButton {
+                            id: contactImageButton
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                left: parent.left
+                                leftMargin: 5
+                            }
+                            height: parent.height - 20
+                            width: height
+                            rounded: true
+                            source: userImg
+                        }    
+
+                        Item {
+                            anchors {
+                                left: contactImageButton.right
+                                leftMargin: 5
+                                right: parent.right
+                                top: parent.top
+                                bottom: parent.bottom
+                            }
+
+                            Item {
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    top: parent.top
+                                }
+                                height: parent.height / 2
+
+                                Text {
+                                    id: userNameText
+                                    anchors {
+                                        left: parent.left
+                                        bottom: parent.bottom
+                                        bottomMargin: 6
+                                    }
+                                    font {
+                                        bold: true
+                                        pointSize: 15
+                                    }
+                                    text: userName
+                                }
+                            }
+
+                            Item {
+                                anchors {
+                                    left: parent.left
+                                    right: parent.right
+                                    bottom: parent.bottom
+                                }
+                                height: parent.height / 2
+
+                                Text {
+                                    anchors {
+                                        left: parent.left
+                                        top: parent.top
+                                        topMargin: 6
+                                    }
+                                    font {
+                                        pointSize: 11
+                                    }
+                                    text: contactInfo.objectName
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+
+                            onClicked: {
+                                if(!sessionAddButton.selectedPerson.hasOwnProperty(userId))
+                                {
+                                    selectedPersonModel.append({
+                                        "userId": userId,
+                                        "userName": userName,
+                                        "userImg": userImg
+                                    })
+                                    sessionAddButton.selectedPerson[userId] = true
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Item {
+                    id: contactChoicePopupButtonContainer
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                    }
+                    height: 50
+
+                    Button {
+                        id: cancleButton
+                        text: "Cancle"
+                        anchors {
+                            right: confirmButton.left
+                            rightMargin: 5
+                            top: parent.top
+                            topMargin: 5
+                            bottom: parent.bottom
+                            bottomMargin: 5
+                        }
+                        background: Rectangle {
+                            color: cancleButton.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                            radius: 5
+                        }
+
+                        onClicked: {
+                            contactChoicePopup.close()
+                        }
+                    }
+
+                    Button {
+                        id: confirmButton
+                        text: "Confirm"
+                        anchors {
+                            right: parent.right
+                            top: parent.top
+                            bottom: parent.bottom
+                            margins: 5
+                        }
+                        background: Rectangle {
+                            color: confirmButton.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                            radius: 5
+                        }
+
+                        onClicked: {
+                            // sessionNameTextField.text, sessionImageSelectButton.source, selectedPerson 변수를 Cpp 로직에 전달하는 로직 박아야됨
+
+                            contactChoicePopup.close()
+                            sessionNameDecisionPopup.close()
+                        }
+                    }
+                }
+            }
+
+            onClosed: {
+                selectedPersonModel.clear()
+                sessionAddButton.selectedPerson = ({})
             }
         }
     }

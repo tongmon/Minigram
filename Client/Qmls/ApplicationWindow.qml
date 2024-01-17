@@ -25,6 +25,24 @@ ApplicationWindow {
     ContactModel {
         id: contactModel
         objectName: "contactModel"
+
+        Component.onCompleted: {
+
+            // 테스트 코드
+            contactModel.append({
+                "userId": "tongstar",
+                "userImg": "qrc:/icon/UserID.png",
+                "userName": "KyungJoonLee",
+                "userInfo": ""
+            })
+
+            contactModel.append({
+                "userId": "yellowjam",
+                "userImg": "qrc:/icon/UserID.png",
+                "userName": "SukYeonLee",
+                "userInfo": ""
+            })
+        }
     }
 
     ContactSortFilterProxyModel {

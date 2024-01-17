@@ -28,7 +28,6 @@ Rectangle {
         height: 60
 
         Text {
-            anchors.verticalCenter: parent.verticalCenter 
             anchors {
                 verticalCenter: parent.verticalCenter 
                 left: parent.left
