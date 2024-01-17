@@ -27,21 +27,15 @@ ApplicationWindow {
         objectName: "contactModel"
 
         Component.onCompleted: {
-
             // 테스트 코드
-            contactModel.append({
-                "userId": "tongstar",
-                "userImg": "qrc:/icon/UserID.png",
-                "userName": "KyungJoonLee",
-                "userInfo": ""
-            })
-
-            contactModel.append({
-                "userId": "yellowjam",
-                "userImg": "qrc:/icon/UserID.png",
-                "userName": "SukYeonLee",
-                "userInfo": ""
-            })
+            for(let i = 0; i < 20; i++) {
+                contactModel.append({
+                    "userId": "tongstar_" + i,
+                    "userImg": "qrc:/icon/UserID.png",
+                    "userName": "KyungJoonLee_" + i,
+                    "userInfo": i
+                })
+            }
         }
     }
 

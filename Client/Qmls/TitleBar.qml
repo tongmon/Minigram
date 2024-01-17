@@ -7,6 +7,7 @@ import QtQuick.Layouts 1.12
 Rectangle {
     id: titleBar
     color: "#1f0830"
+    z: 2
 
     property var titleBarComponents: ({})
 

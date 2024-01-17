@@ -39,6 +39,7 @@ Rectangle {
         }
         height: 35
         text: "New Chat"
+        z: 2
         background: Rectangle {
             color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
             radius: 8
@@ -183,7 +184,7 @@ Rectangle {
                             right: nextButton.left
                             rightMargin: 5
                         }
-                        height: parent.height - 10;
+                        height: parent.height - 10
                         text: "Close"
                         background: Rectangle {
                             color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
@@ -500,7 +501,10 @@ Rectangle {
                         }
 
                         onClicked: {
-                            // sessionNameTextField.text, sessionImageSelectButton.source, selectedPerson 변수를 Cpp 로직에 전달하는 로직 박아야됨
+                            // cpp 단에서 서버로 세션 정보 전송, 테스트하기위해 일단 주석
+                            // mainContext.tryAddSession(sessionNameTextField.text, 
+                            //                          sessionImageSelectButton.source, 
+                            //                          Object.keys(addedPerson))
 
                             contactChoicePopup.close()
                             sessionNameDecisionPopup.close()
@@ -525,6 +529,7 @@ Rectangle {
         }
         height: 43
         color: "transparent"
+        z: 2
 
         Rectangle {
             id: sessionSearchBar
@@ -535,11 +540,16 @@ Rectangle {
             radius: 5
 
             TextField {
+                id: sessionSearchField
                 anchors.fill: parent
                 selectByMouse: true
                 inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText   
                 background: Rectangle {
                     color: "transparent"
+                }
+
+                onTextChanged: {
+                    chatSessionSortFilterProxyModel.filterRegex = sessionSearchField.text
                 }
 
                 Keys.onReturnPressed: {
@@ -703,10 +713,10 @@ Rectangle {
         }
 
         Component.onCompleted: {
-            for(let i=0;i<20;i++) {
+            for(let i = 0; i < 20; i++) {
                 addSession({
                     "sessionId": "tongstar-20231023 11:21:06.053" + i,
-                    "sessionName": "안양팸",
+                    "sessionName": "채팅방_" + i,
                     "sessionImg": "",
                     "recentSenderId": "tongstar",
                     "recentSendDate": "20231215 10:21:06.1211",
