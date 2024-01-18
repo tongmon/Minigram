@@ -67,7 +67,7 @@ ApplicationWindow {
         id: mainWindowLoader 
         anchors.fill: parent
         objectName: "mainWindowLoader"
-        source: "qrc:/qml/MainPage.qml"
+        source: "qrc:/qml/LoginPage.qml" // "qrc:/qml/MainPage.qml" 
     }
 
     Component.onCompleted: {

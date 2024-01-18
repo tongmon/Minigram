@@ -266,7 +266,10 @@ Rectangle {
             width: contactListView.width
             height: 98
             objectName: userId
-            color: "#274E7D"
+            color: Qt.rgba(0.525, 
+                           0.55, 
+                           0.58, 
+                           contactInfoMouseArea.containsMouse ? 1.0 : 0.6)
 
             property int contactIndex: index
 
@@ -338,6 +341,7 @@ Rectangle {
             }
 
             MouseArea {
+                id: contactInfoMouseArea
                 anchors.fill: parent
                 hoverEnabled: true
             }

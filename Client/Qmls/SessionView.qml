@@ -25,6 +25,7 @@ Rectangle {
             right: parent.right
             top: parent.top
         }
+        z: 2
         height: 60
 
         Text {
@@ -167,6 +168,7 @@ Rectangle {
         }
         height: 0
         color: "#cccccc"
+        z: 2
 
         Rectangle {
             id: chatSearchBar
@@ -282,6 +284,7 @@ Rectangle {
         }
         height: 100
         color: "#cccccc"
+        z: 2
 
         Flickable {
             id: chatInputAreaFlickable
@@ -334,6 +337,7 @@ Rectangle {
             bottom: parent.bottom
         }
         height: 50
+        z: 2
 
         CustomImageButton {
             id: imojiButton

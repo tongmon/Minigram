@@ -354,6 +354,7 @@ Rectangle {
                         bottom: contactChoicePopupButtonContainer.top
                     }
                     clip: true
+                    boundsBehavior: Flickable.StopAtBounds
 
                     ScrollBar.vertical: ScrollBar {
                         policy: ScrollBar.AsNeeded
@@ -365,7 +366,10 @@ Rectangle {
                         id: contactInfo
                         width: userListView.width
                         height: 98
-                        color: "#274E7D"
+                        color: Qt.rgba(0.525, 
+                                       0.55, 
+                                       0.58, 
+                                       contactInfoMouseArea.containsMouse ? 1.0 : 0.6)
                         objectName: userId
 
                         property int contactIndex: index
@@ -438,6 +442,7 @@ Rectangle {
                         }
 
                         MouseArea {
+                            id: contactInfoMouseArea
                             anchors.fill: parent
                             hoverEnabled: true
 
@@ -550,6 +555,7 @@ Rectangle {
 
                 onTextChanged: {
                     chatSessionSortFilterProxyModel.filterRegex = sessionSearchField.text
+
                 }
 
                 Keys.onReturnPressed: {
@@ -582,7 +588,10 @@ Rectangle {
             objectName: sessionId
             height: 98
             width: sessionListView.width
-            color: "#274E7D"
+            color: Qt.rgba(0.525, 
+                           0.55, 
+                           0.58, 
+                           sessionListView.currentIndex === sessionIndex ? 1 : sessionInfoMouseArea.containsMouse ? 0.8 : 0.4)
 
             CustomImageButton {
                 id: sessionImageButton
@@ -690,6 +699,7 @@ Rectangle {
             }         
 
             MouseArea {
+                id: sessionInfoMouseArea
                 anchors.fill: parent
                 hoverEnabled: true
 
@@ -702,6 +712,7 @@ Rectangle {
                 }
 
                 onClicked: {
+                    sessionListView.currentIndex = sessionIndex
                     currentSessionId = sessionInfo.objectName
 
                     if(mainView.empty)
@@ -713,6 +724,9 @@ Rectangle {
         }
 
         Component.onCompleted: {
+            sessionListView.currentIndex = -1
+
+            // 테스트 코드
             for(let i = 0; i < 20; i++) {
                 addSession({
                     "sessionId": "tongstar-20231023 11:21:06.053" + i,
