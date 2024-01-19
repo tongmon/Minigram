@@ -18,10 +18,13 @@ class NetworkBuffer
 {
     inline static size_t type_size = sizeof(int64_t);
 
-    std::vector<std::byte> m_buf;
-    size_t m_index;
+    // std::vector<std::byte> m_buf;
+    // size_t m_index;
 
   public:
+    size_t m_index;
+    std::vector<std::byte> m_buf;
+
     NetworkBuffer(const NetworkBuffer &buf);
 
     NetworkBuffer(NetworkBuffer &&buf);
@@ -45,7 +48,6 @@ class NetworkBuffer
         std::memcpy(&data_size, &m_buf[m_index], type_size);
 
         std::memcpy(&val, &m_buf[m_index + type_size], data_size);
-
         m_index += data_size + type_size;
     }
 
@@ -88,7 +90,7 @@ class NetworkBuffer
     template <>
     void Append(const std::string &str)
     {
-        int len = str.size();
+        size_t len = str.size();
         m_buf.resize(m_index + type_size + len);
         std::memcpy(&m_buf[m_index], &len, type_size);
         for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)
@@ -99,7 +101,7 @@ class NetworkBuffer
     template <>
     void Append(const QString &str)
     {
-        int len = str.size();
+        size_t len = str.size();
         m_buf.resize(m_index + type_size + len);
         std::memcpy(&m_buf[m_index], &len, type_size);
         for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)

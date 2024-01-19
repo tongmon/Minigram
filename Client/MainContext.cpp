@@ -150,18 +150,10 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
     m_user_id = id, m_user_pw = pw;
 
-    // Buffer request(m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
-    //                m_user_id.toStdString() + "|" + m_user_pw.toStdString());
-    //
-    //// std::string request = m_window.GetIPAddress() + "|" + std::to_string(m_window.GetPortNumber()) + "|" +
-    ////                       m_user_id.toStdString() + "|" + m_user_pw.toStdString();
-    //
-    // TCPHeader header(LOGIN_CONNECTION_TYPE, request.Size());
-    // request = header.GetHeaderBuffer() + request;
-
     NetworkBuffer net_buf(LOGIN_CONNECTION_TYPE);
-    net_buf += m_window.GetIPAddress();
-    net_buf += m_window.GetPortNumber();
+
+    net_buf += central_server.GetIpAddress();  // 여기 고쳐야됨 클라이언트 ip가 필요함, 현재 서버 ip를 따옴
+    net_buf += central_server.GetPortNumber(); // 여기 고쳐야됨 클라이언트가 열고 있는 포트가 필요함, 현재 서버 포트를 따옴
     net_buf += m_user_id;
     net_buf += m_user_pw;
 

@@ -33,10 +33,6 @@ class TCPServer
     TCPServer(WinQuickWindow &window, const unsigned short &port_num, unsigned int thread_pool_size);
 
     ~TCPServer();
-
-    std::string GetIPAddress();
-
-    unsigned short GetPortNumber();
 };
 
 #endif /* HEADER__FILE__TCPSERVER */

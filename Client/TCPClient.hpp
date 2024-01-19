@@ -69,6 +69,16 @@ class Session
     {
         return m_request.GetDataSize();
     }
+
+    std::string GetIpAddress()
+    {
+        return m_sock.remote_endpoint().address().to_string();
+    }
+
+    int GetPortNumber()
+    {
+        return m_sock.remote_endpoint().port();
+    }
 };
 
 class TCPClient
@@ -148,6 +158,10 @@ class TCPClient
     void Close();
 
     unsigned int MakeRequestID();
+
+    std::string GetIpAddress(int request_id = -1);
+
+    int GetPortNumber(int request_id = -1);
 };
 
 #endif /* HEADER__FILE__TCPCLIENT */

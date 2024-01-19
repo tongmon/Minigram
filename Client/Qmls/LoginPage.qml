@@ -39,8 +39,8 @@ Item {
         // 로그인 성공
         if (result) 
         {
-            userID = userIDTextField.text
-            userPW = passwordTextField.text
+            userID = userIdTextField.text
+            userPW = userPwTextField.text
             mainWindowLoader.source = "qrc:/qml/MainPage.qml"
             return
         }
@@ -225,7 +225,10 @@ Item {
                 }
 
                 onClicked: {
-
+                    if(!userIdTextField.text.length || !userPwTextField.text.length)
+                        return
+                    
+                    mainContext.tryLogin(userIdTextField.text, userPwTextField.text)
                 }
             }
         }

@@ -43,7 +43,8 @@ void MessengerService::LoginHandling()
     //                   &id = bufs[2].Data<const char *>(),
     //                   &pw = bufs[3].Data<const char *>();
 
-    std::string ip, port, id, pw;
+    std::string ip, id, pw;
+    int port;
     m_client_request.GetData(ip);
     m_client_request.GetData(port);
     m_client_request.GetData(id);

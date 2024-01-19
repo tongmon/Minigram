@@ -39,9 +39,6 @@ class WinQuickWindow : public QObject, public QAbstractNativeEventFilter
     QQmlApplicationEngine &GetEngine();
     bool InitWindow(QQmlApplicationEngine &engine);
     void OnScreenChanged(QScreen *screen);
-
-    std::string GetIPAddress();
-    unsigned short GetPortNumber();
     MainContext &GetMainContext();
 
     // Qt 함수 overwrite

@@ -86,7 +86,7 @@ class NetworkBuffer
     template <>
     void Append(const std::string &str)
     {
-        int len = str.size();
+        size_t len = str.size();
         m_buf.resize(m_index + type_size + len);
         std::memcpy(&m_buf[m_index], &len, type_size);
         for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)

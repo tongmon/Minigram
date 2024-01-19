@@ -237,3 +237,19 @@ unsigned int TCPClient::MakeRequestID()
     request_id = request_id++ % USHRT_MAX;
     return request_id;
 }
+
+std::string TCPClient::GetIpAddress(int request_id)
+{
+    if (request_id < 0 && !m_active_sessions.empty())
+        return (*m_active_sessions.begin()).second->GetIpAddress();
+    else
+        return m_active_sessions[request_id]->GetIpAddress();
+}
+
+int TCPClient::GetPortNumber(int request_id)
+{
+    if (request_id < 0 && !m_active_sessions.empty())
+        return (*m_active_sessions.begin()).second->GetPortNumber();
+    else
+        return m_active_sessions[request_id]->GetPortNumber();
+}

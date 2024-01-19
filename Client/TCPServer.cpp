@@ -59,13 +59,3 @@ TCPServer::~TCPServer()
     for (auto &th : m_thread_pool)
         th->join();
 }
-
-std::string TCPServer::GetIPAddress()
-{
-    return m_acceptor->local_endpoint().address().to_string();
-}
-
-unsigned short TCPServer::GetPortNumber()
-{
-    return m_acceptor->local_endpoint().port();
-}
