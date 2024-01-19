@@ -49,6 +49,354 @@ Item {
 
     }
 
+    component LoginView: Rectangle {
+        id: loginView
+        anchors.fill: parent
+        color: "white"
+
+        Item {
+            anchors {
+                verticalCenter: parent.verticalCenter
+                horizontalCenter: parent.horizontalCenter
+            }
+            width: parent.width
+            height: childrenRect.height
+
+            Text {
+                id: loginPageTitleText
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: parent.top
+                }
+                font {
+                    bold: true
+                    pointSize: 20
+                }
+                text: "USER LOGIN"
+            }
+
+            Rectangle {
+                id: userIdInputRect
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: loginPageTitleText.bottom
+                    topMargin: 25
+                }
+                radius: 10
+                height: 35
+                width: 275
+                color: "#cccccc"
+
+                Image {
+                    id: userIdImage
+                    anchors {
+                        left: parent.left              
+                        top: parent.top
+                        bottom: parent.bottom
+                    }
+                    width: parent.height
+                    source: "qrc:/icon/UserID.png"
+                }
+
+                TextField {
+                    id: userIdTextField
+                    placeholderText: "User ID"
+                    selectByMouse: true
+                    inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
+                    anchors {
+                        left: userIdImage.right
+                        right: parent.right
+                        top: parent.top
+                        bottom: parent.bottom
+                    }
+                    background: Rectangle {
+                        color: "transparent"
+                    }
+
+                    Keys.onReturnPressed: {
+                        //if (checkLoginValidation())
+                        //    mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
+                    }
+
+                    // 정규식도 checkLoginValidation() 함수에서 처리하는 것이 바람직해보임
+                    // validator: RegularExpressionValidator { 
+                    //     regularExpression: /[0-9a-zA-Z]+/
+                    // }
+
+                }
+            }
+
+            Rectangle {
+                id: userPwInputRect
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: userIdInputRect.bottom
+                    topMargin: 10
+                }
+                radius: 10
+                height: 35
+                width: 275
+                color: "#cccccc"
+
+                Image {
+                    id: userPwImage
+                    anchors {
+                        left: parent.left              
+                        top: parent.top
+                        bottom: parent.bottom
+                    }
+                    width: parent.height
+                    source: "qrc:/icon/UserID.png"
+                }
+
+                TextField {
+                    id: userPwTextField
+                    placeholderText: "User Password"
+                    selectByMouse: true
+                    inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
+                    echoMode: TextField.Password // echoMode: showText ? TextField.Normal : TextField.Password
+                    passwordCharacter: "●"
+                    anchors {
+                        left: userPwImage.right
+                        right: parent.right
+                        top: parent.top
+                        bottom: parent.bottom
+                    }
+                    background: Rectangle {
+                        color: "transparent"
+                    }
+
+                    Keys.onReturnPressed: {
+                        //if (checkLoginValidation())
+                        //    mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
+                    }
+
+                    // 정규식도 checkLoginValidation() 함수에서 처리하는 것이 바람직해보임
+                    // validator: RegularExpressionValidator { 
+                    //     regularExpression: /[0-9a-zA-Z]+/
+                    // }
+
+                }
+            }
+
+            RowLayout {
+                id: etcUiContainer
+                anchors {
+                    left: userPwInputRect.left
+                    right: userPwInputRect.right
+                    top: userPwInputRect.bottom
+                    topMargin: 10
+                }
+                // Layout.preferredHeight: 50
+
+                CheckBox {
+                    text: "<font color=\"grey\">Remember</font>"
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    id: registerButton
+                    text: "Register"
+                    background: Rectangle {
+                        color: registerButton.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                        radius: 5
+                    }
+
+                    onClicked: {
+                        userInputView.push(registerView)
+                    }
+                }
+            }
+
+            Button {
+                id: loginButton
+                text: "Login"
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: etcUiContainer.bottom
+                    topMargin: 10
+                }
+                background: Rectangle {
+                    color: loginButton.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                    radius: 5
+                }
+
+                onClicked: {
+
+                }
+            }
+        }
+    }
+
+    component RegisterView: Rectangle {
+        id: registerView
+        anchors.fill: parent
+        color: "white"
+
+        Item {
+            anchors {
+                verticalCenter: parent.verticalCenter
+                horizontalCenter: parent.horizontalCenter
+            }
+            width: parent.width
+            height: childrenRect.height
+        
+            Text {
+                id: registerPageTitleText
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: parent.top
+                }
+                font {
+                    bold: true
+                    pointSize: 20
+                }
+                text: "REGISTER ACCOUNT"
+            }
+
+            CustomTextField {
+                id: registerIdField
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: registerPageTitleText.bottom
+                    topMargin: 25
+                }
+                color: "#cccccc"
+                placeholderText: "Put your id..."
+                radius: 10
+                height: 35
+                width: 275
+
+                onReturnPressed: {
+
+                }
+            }
+
+            CustomTextField {
+                id: registerNameField
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: registerIdField.bottom
+                    topMargin: 10
+                }
+                color: "#cccccc"
+                placeholderText: "Put your name..."
+                radius: 10
+                height: 35
+                width: 275
+
+                onReturnPressed: {
+
+                }
+            }
+
+            CustomTextField {
+                id: registerPwField
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: registerNameField.bottom
+                    topMargin: 10
+                }
+                color: "#cccccc"
+                placeholderText: "Put your password..."
+                radius: 10
+                height: 35
+                width: 275
+
+                onReturnPressed: {
+
+                }
+            }
+
+            RowLayout {
+                anchors {
+                    left: registerPwField.left
+                    right: registerPwField.right
+                    top: registerPwField.bottom
+                    topMargin: 10
+                }
+
+                CustomImageButton {
+                    Layout.preferredHeight: 30
+                    Layout.preferredWidth: height
+                    source: "qrc:/icon/UserID.png"
+
+                    onClicked: {
+                        userInputView.pop(null)
+                    }
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                Button {
+                    id: registerConfirmButton
+                    text: "Register"
+                    background: Rectangle {
+                        color: registerConfirmButton.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                        radius: 5
+                    }
+
+                    onClicked: {
+                        userInputView.push(registerSuccessView)
+                    }
+                }
+            }
+        }
+    }
+
+    component RegisterSuccessView: Rectangle {
+        id: registerSuccessView
+        anchors.fill: parent
+        color: "white"
+
+        Item {
+            anchors {
+                verticalCenter: parent.verticalCenter
+                horizontalCenter: parent.horizontalCenter
+            }
+            width: parent.width
+            height: childrenRect.height
+
+            Text {
+                id: registerSuccessPageTitleText
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: parent.top
+                }
+                font {
+                    bold: true
+                    pointSize: 20
+                }
+                text: "REGISTER SUCCESS!"
+            }
+
+            CustomImageButton {
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: registerSuccessPageTitleText.bottom
+                    topMargin: 10
+                }
+                width: 40
+                height: width
+                source: "qrc:/icon/UserID.png"
+                rounded: true
+
+                onClicked: {
+                    userInputView.pop(null)
+                }
+            }
+        }
+    }
+
+    property Component loginView: LoginView {}
+    property Component registerView: RegisterView {}
+    property Component registerSuccessView: RegisterSuccessView {}
+
     TitleBar {
         id: titleBar
         anchors {
@@ -67,8 +415,9 @@ Item {
             top: titleBar.bottom
             bottom: parent.bottom
         }
-        
+         
         Rectangle {
+            id: sideView
             anchors {
                 left: parent.left
                 top: parent.top
@@ -117,510 +466,22 @@ Item {
             }
         }
 
-        Rectangle {
+        StackView {
+            id: userInputView
+            objectName: "userInputView"
             anchors {
+                left: sideView.right
                 right: parent.right
                 top: parent.top
                 bottom: parent.bottom
             }
-            width: parent.width * 0.35
-            color: "white"
+            clip: true
 
-            Item {
-                anchors {
-                    verticalCenter: parent.verticalCenter
-                    horizontalCenter: parent.horizontalCenter
-                }
-                width: parent.width
-                height: childrenRect.height
-
-                Text {
-                    id: loginPageTitleText
-                    anchors {
-                        horizontalCenter: parent.horizontalCenter
-                        top: parent.top
-                    }
-                    font {
-                        bold: true
-                        pointSize: 20
-                    }
-                    text: "USER LOGIN"
-                }
-
-                Rectangle {
-                    id: userIdInputRect
-                    anchors {
-                        horizontalCenter: parent.horizontalCenter
-                        top: loginPageTitleText.bottom
-                        topMargin: 25
-                    }
-                    radius: 10
-                    height: 35
-                    width: 275
-                    color: "#cccccc"
-
-                    Image {
-                        id: userIdImage
-                        anchors {
-                            left: parent.left              
-                            top: parent.top
-                            bottom: parent.bottom
-                        }
-                        width: parent.height
-                        source: "qrc:/icon/UserID.png"
-                    }
-
-                    TextField {
-                        id: userIdTextField
-                        placeholderText: "User ID"
-                        selectByMouse: true
-                        inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
-                        anchors {
-                            left: userIdImage.right
-                            right: parent.right
-                            top: parent.top
-                            bottom: parent.bottom
-                        }
-                        background: Rectangle {
-                            color: "transparent"
-                        }
-
-                        Keys.onReturnPressed: {
-                            //if (checkLoginValidation())
-                            //    mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
-                        }
-
-                        // 정규식도 checkLoginValidation() 함수에서 처리하는 것이 바람직해보임
-                        // validator: RegularExpressionValidator { 
-                        //     regularExpression: /[0-9a-zA-Z]+/
-                        // }
-
-                    }
-                }
-
-                Rectangle {
-                    id: userPwInputRect
-                    anchors {
-                        horizontalCenter: parent.horizontalCenter
-                        top: userIdInputRect.bottom
-                        topMargin: 10
-                    }
-                    radius: 10
-                    height: 35
-                    width: 275
-                    color: "#cccccc"
-
-                    Image {
-                        id: userPwImage
-                        anchors {
-                            left: parent.left              
-                            top: parent.top
-                            bottom: parent.bottom
-                        }
-                        width: parent.height
-                        source: "qrc:/icon/UserID.png"
-                    }
-
-                    TextField {
-                        id: userPwTextField
-                        placeholderText: "User Password"
-                        selectByMouse: true
-                        inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
-                        echoMode: TextField.Password // echoMode: showText ? TextField.Normal : TextField.Password
-                        passwordCharacter: "●"
-                        anchors {
-                            left: userPwImage.right
-                            right: parent.right
-                            top: parent.top
-                            bottom: parent.bottom
-                        }
-                        background: Rectangle {
-                            color: "transparent"
-                        }
-
-                        Keys.onReturnPressed: {
-                            //if (checkLoginValidation())
-                            //    mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
-                        }
-
-                        // 정규식도 checkLoginValidation() 함수에서 처리하는 것이 바람직해보임
-                        // validator: RegularExpressionValidator { 
-                        //     regularExpression: /[0-9a-zA-Z]+/
-                        // }
-
-                    }
-                }
-
-                RowLayout {
-                    id: etcUiContainer
-                    anchors {
-                        left: userPwInputRect.left
-                        right: userPwInputRect.right
-                        top: userPwInputRect.bottom
-                        topMargin: 10
-                    }
-                    // Layout.preferredHeight: 50
-
-                    CheckBox {
-                        text: "<font color=\"grey\">Remember</font>"
-                    }
-
-                    Item {
-                        Layout.fillWidth: true
-                    }
-
-                    Button {
-                        id: registerButton
-                        text: "Register"
-                        background: Rectangle {
-                            color: registerButton.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                            radius: 5
-                        }
-
-                        onClicked: {
-
-                        }
-                    }
-                }
-
-                Button {
-                    id: loginButton
-                    text: "Login"
-                    anchors {
-                        horizontalCenter: parent.horizontalCenter
-                        top: etcUiContainer.bottom
-                        topMargin: 10
-                    }
-                    background: Rectangle {
-                        color: loginButton.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                        radius: 5
-                    }
-
-                    onClicked: {
-                        
-                    }
-                }
+            Component.onCompleted: {
+                userInputView.push(loginView)
             }
         }
     }
-
-    /*
-    Popup {
-        id: registerPopup
-        x: (applicationWindow.width - width) / 2
-        y: (applicationWindow.height - height) / 2
-        width: 400
-        height: 500
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        contentItem: Rectangle {
-            anchors.fill: parent
-            
-            ColumnLayout {
-                anchors.fill: parent
-
-                Text {
-                    text: "Create Account"
-                }
-
-                Image {
-                    Layout.preferredHeight: 50
-                    Layout.preferredWidth: height
-                    Layout.alignment: Qt.AlignHCenter
-                    id: registerImage
-                    source: "file:///C:/Users/DP91-HSK/Pictures/Saved Pictures/profile.png"
-                    fillMode: Image.PreserveAspectFit
-
-                    property bool rounded: true
-                    property bool adapt: true
-
-                    layer.enabled: rounded
-                    layer.effect: OpacityMask {
-                        maskSource: Item {
-                            width: registerImage.width
-                            height: registerImage.height
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: registerImage.adapt ? registerImage.width : Math.min(registerImage.width, registerImage.height)
-                                height: registerImage.adapt ? registerImage.height : width
-                                radius: Math.min(width, height)
-                            }
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                    }
-                }
-
-                CustomTextField {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: registerPopup.height  * 0.1
-                    Layout.margins: 5
-                    id: registerIDField
-                    radius: 5
-                    color: "#cccccc"
-                    placeholderText: "Put your id..."
-
-                    onReturnPressed: {
-                        
-                    }
-                }
-
-                CustomTextField {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: registerPopup.height  * 0.1
-                    Layout.margins: 5
-                    id: registerNameField
-                    radius: 5
-                    color: "#cccccc"
-                    placeholderText: "Put your name..."
-
-                    onReturnPressed: {
-                        
-                    }
-                }
-
-                CustomTextField {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: registerPopup.height  * 0.1
-                    Layout.margins: 5
-                    id: registerPasswordField
-                    radius: 5
-                    color: "#cccccc"
-                    placeholderText: "Put your password..."
-                    echoMode: TextField.Password
-                    passwordCharacter: "●"
-                    
-                    onReturnPressed: {
-                        
-                    }
-                }
-
-                Button {
-                    text: "Sign Up"
-
-                    onClicked: {
-                        img_path = registerImage.source.toString()
-                        switch () 
-                        {
-                        case 'f':
-                            img_path = decodeURIComponent(img_path.replace(/^(file:\/{3})/,""));
-                            break
-                        default:
-                            img_path = ""
-                            break
-                        }
-                        
-                        mainContext.trySignUp({
-                            "id": registerIDField.text,
-                            "pw": registerPasswordField.text,
-                            "name": registerNameField.text,
-                            "img_path": img_path
-                        })
-                    }
-                }
-            }
-        }
-    }
-
-    Popup {
-        id: registerSuccessPopup
-        x: (applicationWindow.width - width) / 2
-        y: (applicationWindow.height - height) / 2
-        width: 300
-        height: 300
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        contentItem: Rectangle {
-            anchors.fill: parent
-            
-            ColumnLayout {
-                anchors.fill: parent    
-
-                Text {
-                    text: "Register Success!"
-                }    
-
-                Button {
-                    text: "Confirm"
-
-                    onClicked: {
-                        registerSuccessPopup.close()
-                    }
-                }
-            }
-        }
-    }
-
-    ColumnLayout {
-        anchors.fill: parent
-        spacing: 0
-
-        TitleBar {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 35
-            Layout.alignment: Qt.AlignTop
-        }
-
-        Item {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-        }
-
-        Text {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredHeight: 35
-            text: qsTr("User Login")
-        }
-
-        Item {
-            Layout.preferredHeight: 20
-            Layout.fillWidth: true
-        }
-
-        Rectangle {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredHeight: 35
-            Layout.preferredWidth: 275
-            radius: 10
-
-            Image {
-                id: userIDImage
-                anchors {
-                    left: parent.left              
-                    top: parent.top
-                    bottom: parent.bottom
-                }
-                width: parent.height
-                source: "qrc:/icon/UserID.png" // from https://www.pngwing.com/
-            }
-
-            TextField {
-                id: userIDTextField
-                placeholderText: "User ID"
-                selectByMouse: true
-                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
-                
-                // 정규식도 checkLoginValidation() 함수에서 처리하는 것이 바람직해보임
-                // validator: RegularExpressionValidator { 
-                //     regularExpression: /[0-9a-zA-Z]+/
-                // }
-
-                anchors {
-                    left: userIDImage.right                
-                    top: parent.top
-                    right: parent.right
-                    bottom: parent.bottom
-                }
-
-                Keys.onReturnPressed: {
-                    if (checkLoginValidation())
-                        mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
-                }
-
-                background: Rectangle {
-                    color: "transparent"
-                }
-            }
-        }
-
-        Item {
-            Layout.preferredHeight: 10
-            Layout.fillWidth: true
-        }
-
-        Rectangle {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredHeight: 35
-            Layout.preferredWidth: 275
-            radius: 10
-
-            Image {
-                id: passwordImage
-                anchors {
-                    left: parent.left              
-                    top: parent.top
-                    bottom: parent.bottom
-                }
-                width: parent.height
-                source: "qrc:/icon/Password.png"
-            }
-
-            TextField {
-                id: passwordTextField
-                placeholderText: "Password"
-                selectByMouse: true
-                inputMethodHints: Qt.ImhNoAutoUppercase | Qt.ImhNoPredictiveText
-                echoMode: TextField.Password // echoMode: showText ? TextField.Normal : TextField.Password
-                passwordCharacter: "●"
-                
-                anchors {
-                    left: passwordImage.right                
-                    top: parent.top
-                    right: parent.right
-                    bottom: parent.bottom
-                }
-
-                Keys.onReturnPressed: {
-                    if (checkLoginValidation())
-                        mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
-                }
-
-                background: Rectangle {
-                    color: "transparent"
-                }
-            }
-        }
-
-        Item {
-            Layout.preferredHeight: 10
-            Layout.fillWidth: true
-        }
-
-        Rectangle {
-            Layout.alignment: Qt.AlignHCenter
-            Layout.preferredHeight: 35
-            Layout.preferredWidth: 275
-            color: "transparent"
-
-            CheckBox {
-                anchors.left: parent.left 
-                text: "<font color=\"white\">Remember</font>"
-            }
-
-            Button {
-                id: registerButton
-                anchors.right: parent.right
-                text: "Register"
-
-                onClicked: {
-                    registerPopup.open()
-                }
-            }
-        }
-
-        Item {
-            Layout.preferredHeight: 20
-            Layout.fillWidth: true
-        }
-
-        Button {
-            Layout.alignment: Qt.AlignHCenter
-            text: qsTr("Login")
-
-            onClicked: {
-                if (checkLoginValidation())
-                    mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
-            }
-        }
-
-        Item {
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-        }
-    }
-    */
 
     Component.onCompleted: {
         
