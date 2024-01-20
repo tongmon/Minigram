@@ -427,3 +427,13 @@ void WinQuickWindow::onHideButtonClicked()
 {
     ShowWindow(m_hwnd, SW_HIDE);
 }
+
+std::string WinQuickWindow::GetLocalIp()
+{
+    return m_local_server->GetIp();
+}
+
+int WinQuickWindow::GetLocalPort()
+{
+    return m_local_server->GetPort();
+}

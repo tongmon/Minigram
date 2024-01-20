@@ -2,6 +2,8 @@
 #include "Service.hpp"
 #include "WinQuickWindow.hpp"
 
+#include <Iphlpapi.h>
+
 void TCPServer::StartAcceptor()
 {
     std::shared_ptr<boost::asio::ip::tcp::socket> sock(new boost::asio::ip::tcp::socket(m_ios));
@@ -58,4 +60,52 @@ TCPServer::~TCPServer()
 
     for (auto &th : m_thread_pool)
         th->join();
+}
+
+std::string TCPServer::GetIp()
+{
+    static std::string ip_ret;
+    if (!ip_ret.empty())
+        return ip_ret;
+
+    unsigned long ip_adapter_size = sizeof(IP_ADAPTER_ADDRESSES);
+    // std::shared_ptr<IP_ADAPTER_ADDRESSES> addresses(new IP_ADAPTER_ADDRESSES{});
+
+    int max_try_limit = 3;
+    ULONG ret;
+    PIP_ADAPTER_ADDRESSES addresses = nullptr;
+    do
+    {
+        addresses = reinterpret_cast<PIP_ADAPTER_ADDRESSES>(HeapAlloc(GetProcessHeap(), 0, ip_adapter_size));
+        if (!addresses)
+            return "";
+
+        ret = GetAdaptersAddresses(AF_INET, 0, nullptr, addresses, &ip_adapter_size);
+        if (ret == ERROR_BUFFER_OVERFLOW)
+        {
+            HeapFree(GetProcessHeap(), 0, addresses);
+            addresses = nullptr;
+        }
+        else
+            break;
+    } while (max_try_limit--);
+
+    if (ret != NO_ERROR)
+        return "";
+
+    for (auto address = addresses; address; address = address->Next)
+    {
+        if (address->PhysicalAddress)
+        {
+            ip_ret = std::to_string(address->PhysicalAddress[0]);
+            for (size_t i = 1; i < address->PhysicalAddressLength; i++)
+                ip_ret += ("." + std::to_string(address->PhysicalAddress[i]));
+        }
+    }
+    return ip_ret;
+}
+
+int TCPServer::GetPort()
+{
+    return m_acceptor->local_endpoint().port();
 }

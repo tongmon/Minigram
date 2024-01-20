@@ -41,6 +41,9 @@ class WinQuickWindow : public QObject, public QAbstractNativeEventFilter
     void OnScreenChanged(QScreen *screen);
     MainContext &GetMainContext();
 
+    std::string GetLocalIp();
+    int GetLocalPort();
+
     // Qt 함수 overwrite
     bool eventFilter(QObject *obj, QEvent *evt);
     bool nativeEventFilter(const QByteArray &event_type, void *message, long *result);

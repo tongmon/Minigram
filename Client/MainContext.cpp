@@ -152,8 +152,11 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
     NetworkBuffer net_buf(LOGIN_CONNECTION_TYPE);
 
-    net_buf += central_server.GetIpAddress();  // 여기 고쳐야됨 클라이언트 ip가 필요함, 현재 서버 ip를 따옴
-    net_buf += central_server.GetPortNumber(); // 여기 고쳐야됨 클라이언트가 열고 있는 포트가 필요함, 현재 서버 포트를 따옴
+    auto t = m_window.GetLocalIp();
+    auto tt = m_window.GetLocalPort();
+
+    net_buf += m_window.GetLocalIp();   // central_server.GetIpAddress();  // 여기 고쳐야됨 클라이언트 ip가 필요함, 현재 서버 ip를 따옴
+    net_buf += m_window.GetLocalPort(); // central_server.GetPortNumber(); // 여기 고쳐야됨 클라이언트가 열고 있는 포트가 필요함, 현재 서버 포트를 따옴
     net_buf += m_user_id;
     net_buf += m_user_pw;
 
