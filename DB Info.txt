@@ -199,16 +199,14 @@ Minigram.exe
 cache
 	L sessions
 		L session_id
-			L session_img_info.bck
+			L 날짜.이미지_확장자
 	L contact
 		L user_id
-			L user_img_info.bck
-	L user
-		L user_img_info.bck
+			L profile_img
+				L 날짜.이미지_확장자
+			L setting_info
 			
-
-### session_img_info.bck, user_img_info.bck, user_img_info.bck
-이미지 갱신 날짜 + "|" + 이미지 base64 인코딩 정보
+날짜는 이미지 갱신 날짜
 
 
 ## Server Cache 구성
@@ -216,11 +214,11 @@ MinigramServer.exe
 	L users
 		L user_id
 			L profile_img
-				L 날짜.txt
+				L 날짜.이미지_확장자
 	L sessions
 		L session_id
 			L session_img
-				L 날짜.txt
+				L 날짜.이미지_확장자
 
 ## 참고할 만한 글
 https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/

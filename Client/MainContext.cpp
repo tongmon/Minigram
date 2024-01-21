@@ -12,6 +12,7 @@
 #include <QImage>
 #include <QMetaObject>
 
+#include <filesystem>
 #include <fstream>
 #include <regex>
 #include <sstream>
@@ -145,32 +146,45 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 {
     auto &central_server = m_window.GetServerHandle();
 
-    int request_id = central_server.MakeRequestID();
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+    static std::atomic_int request_id = -1;
+    if (request_id.load() < 0)
+        request_id.store(central_server.MakeRequestID());
+    else
+    {
+        // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
+        return;
+    }
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load());
 
     m_user_id = id, m_user_pw = pw;
 
     NetworkBuffer net_buf(LOGIN_CONNECTION_TYPE);
 
-    auto t = m_window.GetLocalIp();
-    auto tt = m_window.GetLocalPort();
-
-    net_buf += m_window.GetLocalIp();   // central_server.GetIpAddress();  // 여기 고쳐야됨 클라이언트 ip가 필요함, 현재 서버 ip를 따옴
-    net_buf += m_window.GetLocalPort(); // central_server.GetPortNumber(); // 여기 고쳐야됨 클라이언트가 열고 있는 포트가 필요함, 현재 서버 포트를 따옴
+    net_buf += m_window.GetLocalIp();
+    net_buf += m_window.GetLocalPort();
     net_buf += m_user_id;
     net_buf += m_user_pw;
 
-    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
+        {
+            request_id.store(-1);
             return;
+        }
 
         central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
+            {
+                request_id.store(-1);
                 return;
+            }
 
             central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
+                {
+                    request_id.store(-1);
                     return;
+                }
 
                 QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
                                           "processLogin",
@@ -941,72 +955,93 @@ void MainContext::tryAddContact(const QString &user_id)
     });
 }
 
-// Server에 전달하는 버퍼 형식: ID | PW | Name | Image(base64)
+// Server에 전달하는 버퍼 형식: ID | PW | Name | Image(raw data) | Image format
 // Server에서 받는 버퍼 형식: Login Result | Register Date
 void MainContext::trySignUp(const QVariantMap &qvm)
 {
     auto &central_server = m_window.GetServerHandle();
 
-    int request_id = central_server.MakeRequestID();
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+    static std::atomic_int request_id = -1;
+    if (request_id.load() < 0)
+        request_id.store(central_server.MakeRequestID());
+    else
+    {
+        // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
+        return;
+    }
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load());
 
-    // Buffer request((qvm["id"].toString() + "|" + qvm["pw"].toString() + "|" + qvm["name"].toString()).toStdString());
-    std::string img_base64 = "null";
+    std::shared_ptr<QImage> img_data;
+    std::string img_type;
 
     if (!qvm["img_path"].toString().isEmpty())
     {
-        QBuffer buf;
-        buf.open(QIODevice::WriteOnly);
-        QImage img(qvm["img_path"].toString());
-        img.save(&buf, "PNG");
-        img_base64 = buf.data().toBase64().toStdString();
+        img_data = std::make_shared<QImage>(qvm["img_path"].toString());
+
+        img_type = std::filesystem::path(qvm["img_path"].toString().toStdString()).extension().string();
+        img_type.erase(img_type.begin());
+
+        size_t img_size = img_data->sizeInBytes();
+        while (5242880 < img_size) // 이미지 크기가 5MB를 초과하면 계속 축소함
+        {
+            *img_data = img_data->scaled(img_data->width() * 0.75, img_data->height() * 0.75, Qt::KeepAspectRatio);
+            img_size = img_data->sizeInBytes();
+        }
+
+        // QBuffer buf;
+        // buf.open(QIODevice::WriteOnly);
+        // QImage img(qvm["img_path"].toString());
+        // img.save(&buf, "PNG");
+        // img_base64 = buf.data().toBase64().toStdString();
     }
 
+    m_user_id = qvm["id"].toString();
+
     NetworkBuffer net_buf(USER_REGISTER_TYPE);
-    net_buf += qvm["id"].toString();
+    net_buf += m_user_id;
     net_buf += qvm["pw"].toString();
     net_buf += qvm["name"].toString();
-    net_buf += img_base64;
 
-    // request += ("|" + img_base64);
-    //
-    // TCPHeader header(USER_REGISTER_TYPE, request.Size());
-    // request = header.GetHeaderBuffer() + request;
+    if (img_data)
+        net_buf += *img_data;
+    else
+        net_buf += std::string();
 
-    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+    net_buf += img_type;
+
+    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
                                       "manageRegisterResult",
                                       Q_ARG(int, REGISTER_CONNECTION_FAIL));
+            request_id.store(-1);
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
                                           "manageRegisterResult",
                                           Q_ARG(int, REGISTER_CONNECTION_FAIL));
+                request_id.store(-1);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, &img_base64, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
                                               "manageRegisterResult",
                                               Q_ARG(int, REGISTER_CONNECTION_FAIL));
+                    request_id.store(-1);
                     return;
                 }
 
-                // std::vector<std::string> parsed;
-                // boost::split(parsed, session->GetResponse().CStr(), boost::is_any_of("|"));
-                // int result = parsed[0][0];
-
                 auto response = session->GetResponse();
                 int64_t result;
-                std::string register_date;
+                long long register_date;
 
                 response.GetData(result);
                 response.GetData(register_date);
@@ -1014,15 +1049,15 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                 // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
                 if (result == REGISTER_SUCCESS)
                 {
-                    std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/user";
+                    std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/user/" + m_user_id.toStdString() + "/profile_img";
                     boost::filesystem::create_directories(user_cache_path);
 
-                    if (img_base64 != "null")
+                    if (img_data)
                     {
-                        img_base64 = register_date + "|" + img_base64;
-                        std::ofstream img_file(user_cache_path + "/user_img_info.bck");
+                        std::string file_path = user_cache_path + "/" + std::to_string(register_date) + "." + img_type;
+                        std::ofstream img_file(file_path, std::ios::binary);
                         if (img_file.is_open())
-                            img_file.write(img_base64.c_str(), img_base64.size());
+                            img_file.write(reinterpret_cast<char *>(img_data->bits()), img_data->byteCount());
                     }
                 }
 

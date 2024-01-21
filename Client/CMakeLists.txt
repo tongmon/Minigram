@@ -66,7 +66,8 @@ target_link_libraries(
     Boost::json
     dwmapi.lib
     gdi32.lib
-    IPHLPAPI.lib
+    iphlpapi.lib
+    ws2_32.lib
 )
 
 #add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD

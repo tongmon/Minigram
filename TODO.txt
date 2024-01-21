@@ -82,3 +82,4 @@ topwindow인지 검사하고 있는 함수가 있어야 됨 ex) activate window
 채팅 보내는 함수들 구조 다시 변경해야 함, qml 소통 방식 바뀜
 
 tryRefreshSession을 하면 reader_id 갱신을 위해 해당 세션에 참가한 사용자들 한테도 알려야 함 (RefreshReaderIds)
+

@@ -10,6 +10,8 @@
 
 #include <boost/asio.hpp>
 
+#include <QBuffer>
+#include <QImage>
 #include <QString>
 
 // connection_type(int64_t) | total buffer size(int64_t) | (data_info)
@@ -106,6 +108,20 @@ class NetworkBuffer
         std::memcpy(&m_buf[m_index], &len, type_size);
         for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)
             m_buf[i] = static_cast<std::byte>(str.at(j++).toLatin1());
+        m_index = m_buf.size();
+    }
+
+    template <>
+    void Append(const QImage &img_data)
+    {
+        QByteArray bytes = QByteArray::fromRawData(reinterpret_cast<const char *>(img_data.bits()),
+                                                   img_data.byteCount());
+
+        size_t len = bytes.size();
+        m_buf.resize(m_index + type_size + len);
+        std::memcpy(&m_buf[m_index], &len, type_size);
+        for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)
+            m_buf[i] = static_cast<std::byte>(bytes.at(j++));
         m_index = m_buf.size();
     }
 

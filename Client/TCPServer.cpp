@@ -3,6 +3,7 @@
 #include "WinQuickWindow.hpp"
 
 #include <Iphlpapi.h>
+#include <winsock2.h>
 
 void TCPServer::StartAcceptor()
 {
@@ -69,7 +70,6 @@ std::string TCPServer::GetIp()
         return ip_ret;
 
     unsigned long ip_adapter_size = sizeof(IP_ADAPTER_ADDRESSES);
-    // std::shared_ptr<IP_ADAPTER_ADDRESSES> addresses(new IP_ADAPTER_ADDRESSES{});
 
     int max_try_limit = 3;
     ULONG ret;
@@ -95,13 +95,17 @@ std::string TCPServer::GetIp()
 
     for (auto address = addresses; address; address = address->Next)
     {
-        if (address->PhysicalAddress)
+        if (address->OperStatus == IfOperStatusUp)
         {
-            ip_ret = std::to_string(address->PhysicalAddress[0]);
-            for (size_t i = 1; i < address->PhysicalAddressLength; i++)
-                ip_ret += ("." + std::to_string(address->PhysicalAddress[i]));
+            auto addr_ptr = reinterpret_cast<sockaddr_in *>(address->FirstUnicastAddress->Address.lpSockaddr);
+            ip_ret = inet_ntoa(addr_ptr->sin_addr);
+            break;
         }
     }
+
+    if (addresses)
+        HeapFree(GetProcessHeap(), 0, addresses);
+
     return ip_ret;
 }
 

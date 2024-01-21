@@ -57,7 +57,7 @@ void MessengerService::LoginHandling()
     soci::indicator ind;
     std::string pw_from_db;
     bool login_result;
-    *m_sql << "select password from user_tb where user_id = :id", soci::into(pw_from_db, ind), soci::use(id);
+    *m_sql << "select password from user_tb where user_id=:id", soci::into(pw_from_db, ind), soci::use(id);
 
     if (ind == soci::i_ok)
         login_result = pw_from_db == pw;
@@ -811,7 +811,7 @@ void MessengerService::ContactListInitHandling()
                              });
 }
 
-// Client에서 받는 버퍼 형식: ID | PW | Name | Image(base64)
+// Client에서 받는 버퍼 형식: ID | PW | Name | Image(raw data) | Image type
 // Client에 전달하는 버퍼 형식: Login Result | Register Date
 void MessengerService::RegisterUserHandling()
 {
@@ -822,43 +822,47 @@ void MessengerService::RegisterUserHandling()
     // const std::string &user_id = parsed[0], &user_pw = parsed[1], &user_name = parsed[2], &user_img = parsed[3] == "null" ? "" : parsed[3];
 
     int cnt = 0;
-    std::string user_id, user_pw, user_name, user_img;
+    std::string user_id, user_pw, user_name, img_type;
+    std::vector<std::byte> user_img;
 
     m_client_request.GetData(user_id);
     m_client_request.GetData(user_pw);
     m_client_request.GetData(user_name);
     m_client_request.GetData(user_img);
+    m_client_request.GetData(img_type);
 
     *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
         soci::into(cnt), soci::use(user_id);
 
-    std::string img_path, cur_date;
+    std::string img_path;
+    long long cur_date;
     size_t register_ret;
 
     if (cnt)
     {
         register_ret = REGISTER_DUPLICATION;
-        cur_date = "0000-00-00 00:00:00.000";
+        cur_date = 0; // = "0000-00-00 00:00:00.000";
     }
     else
     {
         register_ret = REGISTER_SUCCESS;
-        std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
-        cur_date = std::format("{0:%F %T}", tp);
+        cur_date = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        // std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
+        // cur_date = std::format("{0:%F %T}", tp);
 
         if (!user_img.empty())
         {
             img_path = boost::dll::program_location().parent_path().string() + "/users/" + user_id + "/profile_img";
             boost::filesystem::create_directories(img_path);
 
-            img_path += ("/" + cur_date + ".txt");
-            std::ofstream img_file(img_path);
+            img_path += ("/" + std::to_string(cur_date) + "." + img_type);
+            std::ofstream img_file(img_path, std::ios::binary);
             if (img_file.is_open())
-                img_file.write(user_img.c_str(), user_img.size());
+                img_file.write(reinterpret_cast<char *>(&user_img[0]), user_img.size());
         }
 
         *m_sql << "insert into user_tb values(:uid, :unm, :uinfo, :upw, :uimgpath)",
-            soci::use(user_id), soci::use(user_name), soci::use("register_date:" + cur_date + "|"), soci::use(user_pw), soci::use(img_path);
+            soci::use(user_id), soci::use(user_name), soci::use("register_date:" + std::to_string(cur_date) + "|"), soci::use(user_pw), soci::use(img_path);
     }
 
     NetworkBuffer net_buf(USER_REGISTER_TYPE);
