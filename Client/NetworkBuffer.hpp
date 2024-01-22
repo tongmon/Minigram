@@ -49,7 +49,9 @@ class NetworkBuffer
         size_t data_size;
         std::memcpy(&data_size, &m_buf[m_index], type_size);
 
-        std::memcpy(&val, &m_buf[m_index + type_size], data_size);
+        if (data_size)
+            std::memcpy(&val, &m_buf[m_index + type_size], data_size);
+
         m_index += data_size + type_size;
     }
 
@@ -61,7 +63,9 @@ class NetworkBuffer
 
         val.clear();
         val.resize(data_size);
-        std::memcpy(&val[0], &m_buf[m_index + type_size], data_size);
+
+        if (data_size)
+            std::memcpy(&val[0], &m_buf[m_index + type_size], data_size);
 
         m_index += data_size + type_size;
     }
@@ -74,7 +78,9 @@ class NetworkBuffer
 
         val.clear();
         val.resize(data_size);
-        std::memcpy(&val[0], &m_buf[m_index + type_size], data_size);
+
+        if (data_size)
+            std::memcpy(&val[0], &m_buf[m_index + type_size], data_size);
 
         m_index += data_size + type_size;
     }

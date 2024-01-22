@@ -51,7 +51,7 @@ Item {
 
     component LoginView: Rectangle {
         id: loginView
-        anchors.fill: parent
+        // anchors.fill: parent
         color: "white"
 
         Item {
@@ -236,7 +236,7 @@ Item {
 
     component RegisterView: Rectangle {
         id: registerView
-        anchors.fill: parent
+        // anchors.fill: parent
         color: "white"
 
         Item {

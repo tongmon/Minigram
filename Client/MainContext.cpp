@@ -986,9 +986,9 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
     if (!qvm["img_path"].toString().isEmpty())
     {
-        img_data = std::make_shared<QImage>(qvm["img_path"].toString());
-
-        img_type = std::filesystem::path(qvm["img_path"].toString().toStdString()).extension().string();
+        std::wstring img_path = qvm["img_path"].toString().toStdWString(); // 한글 처리를 위함
+        img_data = std::make_shared<QImage>(QString::fromWCharArray(img_path.c_str()));
+        img_type = std::filesystem::path(img_path).extension().string();
         if (!img_type.empty())
             img_type.erase(img_type.begin());
 
