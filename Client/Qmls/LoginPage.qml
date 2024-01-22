@@ -260,12 +260,37 @@ Item {
                 text: "REGISTER ACCOUNT"
             }
 
+            CustomImageButton {
+                id: registerImgButton
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: registerPageTitleText.bottom
+                    topMargin: 10
+                }
+                rounded: true
+                source: "qrc:/icon/UserID.png"
+                overlayColor: Qt.rgba(100, 100, 100, hovered ? 0.7 : 0)
+                width: 50
+                height: width
+
+                onClicked: {
+                    var selectedFiles = mainContext.executeFileDialog({
+                        "title": "Select profile image",
+                        "init_dir": ".",
+                        "filter": "Image File(*.png)\0*.png\0",
+                        "max_file_cnt": 1
+                    })
+                    if(selectedFiles.length)
+                        source = "file:///" + selectedFiles[0]
+                }
+            }
+
             CustomTextField {
                 id: registerIdField
                 anchors {
                     horizontalCenter: parent.horizontalCenter
-                    top: registerPageTitleText.bottom
-                    topMargin: 25
+                    top: registerImgButton.bottom
+                    topMargin: 10
                 }
                 color: "#cccccc"
                 placeholderText: "Put your id..."
@@ -305,6 +330,8 @@ Item {
                 }
                 color: "#cccccc"
                 placeholderText: "Put your password..."
+                echoMode: TextField.Password
+                passwordCharacter: "●"
                 radius: 10
                 height: 35
                 width: 275
@@ -345,7 +372,26 @@ Item {
                     }
 
                     onClicked: {
-                        userInputView.push(registerSuccessView)
+                        var img_path = registerImgButton.source.toString()
+                        switch (img_path[0])
+                        {
+                        // 파일 선택한 경우
+                        case 'f':
+                            img_path = decodeURIComponent(img_path.replace(/^(file:\/{3})/, ""));
+                            break
+                        // qrc, http 등... 유저가 세션 이미지를 따로 선택하지 않은 경우
+                        default:
+                            img_path = ""
+                            break
+                        }
+
+                        mainContext.trySignUp({
+                            "img_path": img_path,
+                            "id": registerIdField.text,
+                            "pw": registerPwField.text,
+                            "name": registerNameField.text
+                        })
+                        // userInputView.push(registerSuccessView)
                     }
                 }
             }

@@ -1,5 +1,6 @@
 ﻿#include "PostgreDBPool.hpp"
 
+#include <iostream>
 #include <regex>
 
 PostgreDBPool::PostgreDBPool(const PostgreConnectionInfo &connection_info)
@@ -13,7 +14,25 @@ PostgreDBPool::PostgreDBPool(const PostgreConnectionInfo &connection_info)
     session_info = std::regex_replace(session_info, std::regex("%DB_USER%"), connection_info.db_user);
     session_info = std::regex_replace(session_info, std::regex("%DB_PASSWORD%"), connection_info.db_password);
 
-    for (size_t i = 0; i != connection_info.pool_size; ++i)
+    // try
+    // {
+    //     soci::session sql(*soci::factory_postgresql(), session_info);
+    //     size_t cnt;
+    //     std::string user_id = "tongstar";
+    //     sql << "select count(*) from contact_tb where exists(select 1 from contact_tb where user_id=:uid)",
+    //         soci::into(cnt), soci::use(user_id);
+    // }
+    // catch (soci::postgresql_soci_error const &e)
+    // {
+    //     std::cerr << "PostgreSQL error: " << e.sqlstate()
+    //               << " " << e.what() << std::endl;
+    // }
+    // catch (std::exception const &e)
+    // {
+    //     std::cerr << "Some other error: " << e.what() << std::endl;
+    // }
+
+    for (size_t i = 0; i < connection_info.pool_size; ++i)
     {
         soci::session &sql = m_connection_pool->at(i);
         sql.open(*soci::factory_postgresql(), session_info);

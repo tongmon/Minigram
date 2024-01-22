@@ -26,7 +26,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Qt5Config.cmake 파일의 경로를 적어준다.  
 # D:/ProgramFiles/Qt/5.15.10/msvc2022_64/lib/cmake/Qt5
 # C:/Users/DP91-HSK/Documents/Libraries/5.15.10-MSVC-x64-shared/lib/cmake/Qt5
-set(QT_DIR "D:/ProgramFiles/Qt/5.15.10/msvc2022_64/lib/cmake/Qt5")
+set(QT_DIR "C:/Users/DP91-HSK/Documents/Libraries/5.15.10-MSVC-x64-shared/lib/cmake/Qt5")
 
 # Boost Asio 포함
 find_package(Boost REQUIRED COMPONENTS system filesystem json)

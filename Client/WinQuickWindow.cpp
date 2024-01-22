@@ -90,12 +90,6 @@ bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
         onCloseButtonClicked();
     });
 
-    QMenu *tray_icon_menu = new QMenu();
-    tray_icon_menu->addAction(run_action);
-    tray_icon_menu->addAction(minimize_action);
-    tray_icon_menu->addAction(maximize_action);
-    tray_icon_menu->addAction(close_action);
-
     QSystemTrayIcon *tray_icon = new QSystemTrayIcon(m_quick_window);
     QObject::connect(tray_icon, &QSystemTrayIcon::activated, [this](QSystemTrayIcon::ActivationReason activation_reason) -> void {
         switch (activation_reason)
@@ -114,6 +108,13 @@ bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
             break;
         }
     });
+
+    QMenu *tray_icon_menu = new QMenu();
+    tray_icon_menu->addAction(run_action);
+    tray_icon_menu->addAction(minimize_action);
+    tray_icon_menu->addAction(maximize_action);
+    tray_icon_menu->addAction(close_action);
+
     tray_icon->setContextMenu(tray_icon_menu);
     tray_icon->setIcon(QIcon(":/icon/ApplicationIcon.png"));
     tray_icon->show();

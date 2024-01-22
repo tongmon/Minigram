@@ -18,6 +18,9 @@ Port: 5432
 User: tongstar, PW: @***********
 DB Name: Minigram
 
+tongstar 유저에게 웬만하면 superuser 권한을 주자.
+안그러면 따로 Role을 생성하여 관리하거나 각 테이블마다 `GRANT SELECT ON user_tb TO PUBLIC` 이런 명령어로 수정 권한을 줘야 soci 라이브러리가 작동한다.
+
 
 ## Postgre 테이블 생성
 

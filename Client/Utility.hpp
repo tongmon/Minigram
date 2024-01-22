@@ -3,6 +3,8 @@
 
 #include <Windows.h>
 #include <algorithm>
+#include <chrono>
+#include <ctime>
 #include <map>
 #include <string>
 #include <string_view>
@@ -197,6 +199,28 @@ inline std::string DecodeURL(const std::string &str)
         }
     }
     return result;
+}
+
+// fork되는 환경에서 사용하면 localtime_s 수행시 내부적인 lock이 꼬일 수 있으니 해당 함수는 fork 함수가 사용되지 않는 환경에서 사용하기
+inline std::string MillisecondToCurrentDate(long long time_since_epoch, const std::string time_format = "%F %T")
+{
+    using namespace std::chrono;
+
+    auto cur_ms = milliseconds{time_since_epoch};
+    std::time_t cur_time_t = (duration_cast<seconds>(cur_ms)).count();
+    std::size_t f_sec = cur_ms.count() % 1000;
+
+    std::tm t;
+    localtime_s(&t, &cur_time_t);
+
+    char buf[MAX_PATH];
+    std::strftime(buf, MAX_PATH, time_format.c_str(), &t);
+    std::string time_buf = buf;
+
+    if (time_format.back() == 'T' || time_format.back() == 'S')
+        time_buf += ("." + std::to_string(f_sec));
+
+    return time_buf;
 }
 
 // 정렬된 데이터 넘겨야 작동함

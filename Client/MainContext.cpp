@@ -154,7 +154,12 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
         // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
         return;
     }
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load());
+
+    if (!central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load()))
+    {
+        request_id.store(-1);
+        return;
+    }
 
     m_user_id = id, m_user_pw = pw;
 
@@ -969,7 +974,12 @@ void MainContext::trySignUp(const QVariantMap &qvm)
         // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
         return;
     }
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load());
+
+    if (!central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load()))
+    {
+        request_id.store(-1);
+        return;
+    }
 
     std::shared_ptr<QImage> img_data;
     std::string img_type;
@@ -979,20 +989,15 @@ void MainContext::trySignUp(const QVariantMap &qvm)
         img_data = std::make_shared<QImage>(qvm["img_path"].toString());
 
         img_type = std::filesystem::path(qvm["img_path"].toString().toStdString()).extension().string();
-        img_type.erase(img_type.begin());
+        if (!img_type.empty())
+            img_type.erase(img_type.begin());
 
-        size_t img_size = img_data->sizeInBytes();
+        size_t img_size = img_data->byteCount();
         while (5242880 < img_size) // 이미지 크기가 5MB를 초과하면 계속 축소함
         {
             *img_data = img_data->scaled(img_data->width() * 0.75, img_data->height() * 0.75, Qt::KeepAspectRatio);
-            img_size = img_data->sizeInBytes();
+            img_size = img_data->byteCount();
         }
-
-        // QBuffer buf;
-        // buf.open(QIODevice::WriteOnly);
-        // QImage img(qvm["img_path"].toString());
-        // img.save(&buf, "PNG");
-        // img_base64 = buf.data().toBase64().toStdString();
     }
 
     m_user_id = qvm["id"].toString();
@@ -1003,7 +1008,12 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     net_buf += qvm["name"].toString();
 
     if (img_data)
-        net_buf += *img_data;
+    {
+        QBuffer buf;
+        buf.open(QIODevice::WriteOnly);
+        img_data->save(&buf, img_type.c_str());
+        net_buf += buf.data();
+    }
     else
         net_buf += std::string();
 
@@ -1055,9 +1065,11 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     if (img_data)
                     {
                         std::string file_path = user_cache_path + "/" + std::to_string(register_date) + "." + img_type;
-                        std::ofstream img_file(file_path, std::ios::binary);
-                        if (img_file.is_open())
-                            img_file.write(reinterpret_cast<char *>(img_data->bits()), img_data->byteCount());
+                        img_data->save(file_path.c_str(), img_type.c_str());
+
+                        // std::ofstream img_file(file_path, std::ios::binary);
+                        // if (img_file.is_open())
+                        //     img_file.write(reinterpret_cast<char *>(img_data->bits()), img_data->byteCount());
                     }
                 }
 

@@ -815,13 +815,7 @@ void MessengerService::ContactListInitHandling()
 // Client에 전달하는 버퍼 형식: Login Result | Register Date
 void MessengerService::RegisterUserHandling()
 {
-    // std::vector<std::string> parsed;
-    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
-
-    // int cnt = 0;
-    // const std::string &user_id = parsed[0], &user_pw = parsed[1], &user_name = parsed[2], &user_img = parsed[3] == "null" ? "" : parsed[3];
-
-    int cnt = 0;
+    size_t cnt = 0;
     std::string user_id, user_pw, user_name, img_type;
     std::vector<std::byte> user_img;
 
@@ -831,7 +825,7 @@ void MessengerService::RegisterUserHandling()
     m_client_request.GetData(user_img);
     m_client_request.GetData(img_type);
 
-    *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
+    *m_sql << "select count(*) from user_tb where exists(select 1 from user_tb where user_id=:uid)",
         soci::into(cnt), soci::use(user_id);
 
     std::string img_path;
@@ -846,9 +840,7 @@ void MessengerService::RegisterUserHandling()
     else
     {
         register_ret = REGISTER_SUCCESS;
-        cur_date = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-        // std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
-        // cur_date = std::format("{0:%F %T}", tp);
+        cur_date = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 
         if (!user_img.empty())
         {
@@ -856,10 +848,14 @@ void MessengerService::RegisterUserHandling()
             boost::filesystem::create_directories(img_path);
 
             img_path += ("/" + std::to_string(cur_date) + "." + img_type);
-            std::ofstream img_file(img_path, std::ios::binary);
+
+            std::ofstream img_file(img_path, std::ios::binary | std::ios::trunc);
             if (img_file.is_open())
                 img_file.write(reinterpret_cast<char *>(&user_img[0]), user_img.size());
         }
+
+        // std::chrono::system_clock::time_point tp(std::chrono::milliseconds{cur_date});
+        // std::string cur_date_formatted = std::format("{0:%F %T}", tp);
 
         *m_sql << "insert into user_tb values(:uid, :unm, :uinfo, :upw, :uimgpath)",
             soci::use(user_id), soci::use(user_name), soci::use("register_date:" + std::to_string(cur_date) + "|"), soci::use(user_pw), soci::use(img_path);
