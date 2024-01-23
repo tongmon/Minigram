@@ -34,7 +34,7 @@ class NetworkBuffer
 
     size_t GetDataSize() const;
 
-    size_t GetHeaderSize() const;
+    static size_t GetHeaderSize();
 
     template <typename T>
     void GetData(T &val)

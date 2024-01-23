@@ -9,6 +9,7 @@ Rectangle {
     color: "#cccccc"
 
     property alias placeholderText: customTextField.placeholderText
+    property alias placeholderTextColor: customTextField.placeholderTextColor
     property alias echoMode: customTextField.echoMode
     property alias passwordCharacter: customTextField.passwordCharacter
     property alias text: customTextField.text

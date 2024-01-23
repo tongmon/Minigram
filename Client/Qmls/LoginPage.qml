@@ -49,9 +49,27 @@ Item {
 
     }
 
+    function processSignUp(result)
+    {
+        switch (result)
+        {
+        case 0: // SUCCESS
+            userInputView.push(registerSuccessView)
+            break
+        case 1: // DUP
+            registerResultText.text = "Your Id is already used by someone!"
+            break       
+        case 2: // CONNECTION_FAIL
+            registerResultText.text = "Connection fail with server!"
+            break   
+        default: // Unkown Error
+            registerResultText.text = "Unkown error!"
+            break              
+        }
+    }
+
     component LoginView: Rectangle {
         id: loginView
-        // anchors.fill: parent
         color: "white"
 
         Item {
@@ -236,10 +254,10 @@ Item {
 
     component RegisterView: Rectangle {
         id: registerView
-        // anchors.fill: parent
         color: "white"
 
         Item {
+            id: registerViewMainContainer
             anchors {
                 verticalCenter: parent.verticalCenter
                 horizontalCenter: parent.horizontalCenter
@@ -371,7 +389,46 @@ Item {
                         radius: 5
                     }
 
+                    //function checkIdValidation(id)
+                    //{
+//
+                    //}
+//
+                    //function checkIdValidation(id)
+                    //{
+                    //    
+                    //}
+//
+                    //function checkIdValidation(id)
+                    //{
+                    //    
+                    //}
+
                     onClicked: {
+                        registerResultText.text = ""
+
+                        // 일단 테스트 빠르게 하기 위해 비활성화
+                        //var idRegex = /^[a-zA-Z0-9]{6,31}$/
+                        //if(!idRegex.test(registerIdField.text)) 
+                        //{
+                        //    registerResultText.text = "Please fill your id with corrrect format!"
+                        //    return
+                        //}
+
+                        //var nameRegex = /^\w{6,31}$/
+                        //if(!nameRegex.test(registerNameField.text)) 
+                        //{
+                        //    registerResultText.text = "Please fill your name with corrrect format!"
+                        //    return
+                        //}
+
+                        //var pwRegex = /^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,31}$/
+                        //if(!pwRegex.test(registerPwField.text)) 
+                        //{
+                        //    registerResultText.text = "Please fill your pw with corrrect format!"
+                        //    return
+                        //}
+
                         var img_path = registerImgButton.source.toString()
                         switch (img_path[0])
                         {
@@ -391,16 +448,28 @@ Item {
                             "pw": registerPwField.text,
                             "name": registerNameField.text
                         })
-                        // userInputView.push(registerSuccessView)
                     }
                 }
             }
+        }
+
+        Text {
+            id: registerResultText
+            anchors {
+                top: registerViewMainContainer.bottom
+                horizontalCenter: parent.horizontalCenter
+            }
+            font {
+                bold: true
+                pointSize: 14
+            }
+            text: ""
+            color: "red"
         }
     }
 
     component RegisterSuccessView: Rectangle {
         id: registerSuccessView
-        anchors.fill: parent
         color: "white"
 
         Item {

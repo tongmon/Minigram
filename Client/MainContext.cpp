@@ -177,14 +177,14 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 request_id.store(-1);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     request_id.store(-1);
@@ -316,11 +316,11 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
@@ -410,11 +410,11 @@ void MainContext::tryInitSessionList()
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
@@ -587,14 +587,14 @@ void MainContext::tryRefreshSession(const QString &session_id)
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 request_id = -1;
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     request_id = -1;
@@ -693,14 +693,14 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int message_id)
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 request_id = -1;
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     request_id = -1;
@@ -798,11 +798,11 @@ void MainContext::tryGetContactList()
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
@@ -900,14 +900,14 @@ void MainContext::tryAddContact(const QString &user_id)
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 request_id = -1;
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     request_id = -1;
@@ -977,6 +977,10 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
     if (!central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load()))
     {
+        QMetaObject::invokeMethod(m_login_page,
+                                  "processSignUp",
+                                  Qt::DirectConnection,
+                                  Q_ARG(int, REGISTER_CONNECTION_FAIL)); // 여기 안됨
         request_id.store(-1);
         return;
     }
@@ -1002,7 +1006,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
     m_user_id = qvm["id"].toString();
 
-    NetworkBuffer net_buf(USER_REGISTER_TYPE);
+    NetworkBuffer net_buf(SIGNUP_TYPE);
     net_buf += m_user_id;
     net_buf += qvm["pw"].toString();
     net_buf += qvm["name"].toString();
@@ -1022,28 +1026,28 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
-            QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
-                                      "manageRegisterResult",
+            QMetaObject::invokeMethod(m_login_page,
+                                      "processSignUp",
                                       Q_ARG(int, REGISTER_CONNECTION_FAIL));
             request_id.store(-1);
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
-                QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
-                                          "manageRegisterResult",
+                QMetaObject::invokeMethod(m_login_page,
+                                          "processSignUp",
                                           Q_ARG(int, REGISTER_CONNECTION_FAIL));
                 request_id.store(-1);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
-                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
-                                              "manageRegisterResult",
+                    QMetaObject::invokeMethod(m_login_page,
+                                              "processSignUp",
                                               Q_ARG(int, REGISTER_CONNECTION_FAIL));
                     request_id.store(-1);
                     return;
@@ -1066,15 +1070,11 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     {
                         std::string file_path = user_cache_path + "/" + std::to_string(register_date) + "." + img_type;
                         img_data->save(file_path.c_str(), img_type.c_str());
-
-                        // std::ofstream img_file(file_path, std::ios::binary);
-                        // if (img_file.is_open())
-                        //     img_file.write(reinterpret_cast<char *>(img_data->bits()), img_data->byteCount());
                     }
                 }
 
-                QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("loginPage"),
-                                          "manageRegisterResult",
+                QMetaObject::invokeMethod(m_login_page,
+                                          "processSignUp",
                                           Q_ARG(int, result));
 
                 central_server.CloseRequest(session->GetID());
@@ -1127,11 +1127,11 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
         if (!session.get() || !session->IsValid())
             return;
 
-        central_server.AsyncRead(session->GetID(), session->GetHeaderSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            central_server.AsyncRead(session->GetID(), session->GetDataSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 

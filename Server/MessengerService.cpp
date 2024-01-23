@@ -291,11 +291,11 @@ void MessengerService::ChatHandling()
             if (!session.get() || !session->IsValid())
                 return;
 
-            peer->AsyncRead(session->GetID(), session->GetHeaderSize(), [peer, send_buf = std::move(send_buf), mut, remaining_participant_cnt, reader_ids, req_ids, message_id, this](std::shared_ptr<Session> session) mutable -> void {
+            peer->AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [peer, send_buf = std::move(send_buf), mut, remaining_participant_cnt, reader_ids, req_ids, message_id, this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                peer->AsyncRead(session->GetID(), session->GetDataSize(), [peer, send_buf = std::move(send_buf), mut, remaining_participant_cnt, reader_ids, req_ids, message_id, this](std::shared_ptr<Session> session) mutable -> void {
+                peer->AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [peer, send_buf = std::move(send_buf), mut, remaining_participant_cnt, reader_ids, req_ids, message_id, this](std::shared_ptr<Session> session) mutable -> void {
                     if (!session.get() || !session->IsValid())
                         return;
 
@@ -813,7 +813,7 @@ void MessengerService::ContactListInitHandling()
 
 // Client에서 받는 버퍼 형식: ID | PW | Name | Image(raw data) | Image type
 // Client에 전달하는 버퍼 형식: Login Result | Register Date
-void MessengerService::RegisterUserHandling()
+void MessengerService::SignUpHandling()
 {
     size_t cnt = 0;
     std::string user_id, user_pw, user_name, img_type;
@@ -844,10 +844,10 @@ void MessengerService::RegisterUserHandling()
 
         if (!user_img.empty())
         {
-            img_path = boost::dll::program_location().parent_path().string() + "/users/" + user_id + "/profile_img";
+            img_path = boost::dll::program_location().parent_path().string() + "\\users\\" + user_id + "\\profile_img";
             boost::filesystem::create_directories(img_path);
 
-            img_path += ("/" + std::to_string(cur_date) + "." + img_type);
+            img_path += ("\\" + std::to_string(cur_date) + "." + img_type);
 
             std::ofstream img_file(img_path, std::ios::binary | std::ios::trunc);
             if (img_file.is_open())
@@ -857,11 +857,12 @@ void MessengerService::RegisterUserHandling()
         // std::chrono::system_clock::time_point tp(std::chrono::milliseconds{cur_date});
         // std::string cur_date_formatted = std::format("{0:%F %T}", tp);
 
+        std::string user_info = "register_date:" + std::to_string(cur_date) + "|";
         *m_sql << "insert into user_tb values(:uid, :unm, :uinfo, :upw, :uimgpath)",
-            soci::use(user_id), soci::use(user_name), soci::use("register_date:" + std::to_string(cur_date) + "|"), soci::use(user_pw), soci::use(img_path);
+            soci::use(user_id), soci::use(user_name), soci::use(user_info), soci::use(user_pw), soci::use(img_path);
     }
 
-    NetworkBuffer net_buf(USER_REGISTER_TYPE);
+    NetworkBuffer net_buf(SIGNUP_TYPE);
     net_buf += register_ret;
     net_buf += cur_date;
 
@@ -1119,8 +1120,8 @@ void MessengerService::StartHandling()
                                                             case CONTACTLIST_INITIAL_TYPE:
                                                                 ContactListInitHandling();
                                                                 break;
-                                                            case USER_REGISTER_TYPE:
-                                                                RegisterUserHandling();
+                                                            case SIGNUP_TYPE:
+                                                                SignUpHandling();
                                                                 break;
                                                             case SESSION_ADD_TYPE:
                                                                 SessionAddHandling();

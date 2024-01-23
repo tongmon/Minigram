@@ -50,10 +50,9 @@ size_t NetworkBuffer::GetDataSize() const
     return size;
 }
 
-size_t NetworkBuffer::GetHeaderSize() const
+size_t NetworkBuffer::GetHeaderSize()
 {
-    static size_t header_size = type_size * 2;
-    return header_size;
+    return type_size * 2;
 }
 
 void NetworkBuffer::Append(const char *str)

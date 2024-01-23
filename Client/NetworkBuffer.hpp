@@ -20,13 +20,10 @@ class NetworkBuffer
 {
     inline static size_t type_size = sizeof(int64_t);
 
-    // std::vector<std::byte> m_buf;
-    // size_t m_index;
+    std::vector<std::byte> m_buf;
+    size_t m_index;
 
   public:
-    size_t m_index;
-    std::vector<std::byte> m_buf;
-
     NetworkBuffer(const NetworkBuffer &buf);
 
     NetworkBuffer(NetworkBuffer &&buf);
@@ -41,7 +38,7 @@ class NetworkBuffer
 
     size_t GetDataSize() const;
 
-    size_t GetHeaderSize() const;
+    static size_t GetHeaderSize();
 
     template <typename T>
     void GetData(T &val)

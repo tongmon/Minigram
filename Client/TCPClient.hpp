@@ -59,16 +59,6 @@ class Session
     {
         return m_id;
     }
-
-    auto GetHeaderSize() const
-    {
-        return m_request.GetHeaderSize();
-    }
-
-    auto GetDataSize() const
-    {
-        return m_request.GetDataSize();
-    }
 };
 
 class TCPClient

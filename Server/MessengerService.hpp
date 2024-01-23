@@ -22,7 +22,7 @@ class MessengerService : public Service
     void FetchMoreMessageHandling();
     void SessionListInitHandling();
     void ContactListInitHandling();
-    void RegisterUserHandling();
+    void SignUpHandling();
     void SessionAddHandling();
     void ContactAddHandling();
 
