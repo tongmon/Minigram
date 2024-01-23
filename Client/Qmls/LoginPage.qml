@@ -7,24 +7,6 @@ import QtGraphicalEffects 1.15
 Item {
     objectName: "loginPage"
 
-    function manageRegisterResult(result)
-    {
-        switch(result) 
-        {
-        // 가입 성공
-        case 1:
-            registerPopup.close()
-            registerSuccessPopup.open()
-            break
-        case 2:
-            break
-        case 3:
-            break
-        default:
-            break
-        }
-    }
-
     // 비밀번호, 아이디 유효성 검사
     function checkLoginValidation()
     {
@@ -36,17 +18,23 @@ Item {
 
     function processLogin(result)
     {
-        // 로그인 성공
-        if (result) 
+        switch (result)
         {
-            userID = userIdTextField.text
-            userPW = userPwTextField.text
-            mainWindowLoader.source = "qrc:/qml/MainPage.qml"
-            return
+        case 0: // SUCCESS
+            mainWindowLoader.source = "qrc:/qml/MainPage.qml" 
+            break
+        case 1: // FAIL
+            userInputView.currentItem.loginResult = "Login fail!"
+            break
+        case 2: // CONNECTION FAIL
+            userInputView.currentItem.loginResult = "Can't connect with server!"
+            break
+        case 3: // PROCEEDING
+            userInputView.currentItem.loginResult = "Login is still proceeding..."
+            break
+        default: // UNKNOWN ERROR
+            break
         }
-
-        // 로그인 실패
-
     }
 
     function processSignUp(result)
@@ -56,14 +44,17 @@ Item {
         case 0: // SUCCESS
             userInputView.push(registerSuccessView)
             break
-        case 1: // DUP
-            registerResultText.text = "Your Id is already used by someone!"
+        case 1: // DUPLICATION
+            userInputView.currentItem.registerResult = "Your Id is already used by someone!"
             break       
-        case 2: // CONNECTION_FAIL
-            registerResultText.text = "Connection fail with server!"
+        case 2: // CONNECTION FAIL
+            userInputView.currentItem.registerResult = "Connection fail with server!"
             break   
-        default: // Unkown Error
-            registerResultText.text = "Unkown error!"
+        case 3: // PROCEEDING
+            userInputView.currentItem.registerResult = "Sign up is still proceeding..."
+            break
+        default: // UNKNOWN ERROR
+            userInputView.currentItem.registerResult = "Unkown error!"
             break              
         }
     }
@@ -72,7 +63,10 @@ Item {
         id: loginView
         color: "white"
 
+        property string loginResult: ""
+
         Item {
+            id: loginViewMainContainer
             anchors {
                 verticalCenter: parent.verticalCenter
                 horizontalCenter: parent.horizontalCenter
@@ -184,7 +178,8 @@ Item {
                         color: "transparent"
                     }
 
-                    Keys.onReturnPressed: {
+                    Keys.onReturnPressed: {      
+                        loginButton.clicked()                
                         //if (checkLoginValidation())
                         //    mainContext.tryLogin(userIDTextField.text, passwordTextField.text)
                     }
@@ -243,18 +238,46 @@ Item {
                 }
 
                 onClicked: {
-                    if(!userIdTextField.text.length || !userPwTextField.text.length)
-                        return
-                    
+                    //var idRegex = /^[a-zA-Z0-9]{6,31}$/
+                    //if(!idRegex.test(userIdTextField.text)) 
+                    //{
+                    //    loginResult = "Please fill your id with corrrect format!"
+                    //    return
+                    //}
+
+                    // var pwRegex = /^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,31}$/
+                    // if(!pwRegex.test(userPwTextField.text)) 
+                    // {
+                    //     loginResult = "Please fill your pw with corrrect format!"
+                    //     return
+                    // }  
+
                     mainContext.tryLogin(userIdTextField.text, userPwTextField.text)
                 }
             }
+        }
+
+        Text {
+            id: loginResultText
+            anchors {
+                top: loginViewMainContainer.bottom
+                topMargin: 10
+                horizontalCenter: parent.horizontalCenter
+            }
+            font {
+                bold: true
+                pointSize: 14
+            }
+            text: loginResult
+            color: "red"            
         }
     }
 
     component RegisterView: Rectangle {
         id: registerView
         color: "white"
+
+        property string registerResult: ""
 
         Item {
             id: registerViewMainContainer
@@ -389,43 +412,28 @@ Item {
                         radius: 5
                     }
 
-                    //function checkIdValidation(id)
-                    //{
-//
-                    //}
-//
-                    //function checkIdValidation(id)
-                    //{
-                    //    
-                    //}
-//
-                    //function checkIdValidation(id)
-                    //{
-                    //    
-                    //}
-
                     onClicked: {
-                        registerResultText.text = ""
+                        registerResult = ""
 
                         // 일단 테스트 빠르게 하기 위해 비활성화
                         //var idRegex = /^[a-zA-Z0-9]{6,31}$/
                         //if(!idRegex.test(registerIdField.text)) 
                         //{
-                        //    registerResultText.text = "Please fill your id with corrrect format!"
+                        //    registerResult = "Please fill your id with corrrect format!"
                         //    return
                         //}
 
                         //var nameRegex = /^\w{6,31}$/
                         //if(!nameRegex.test(registerNameField.text)) 
                         //{
-                        //    registerResultText.text = "Please fill your name with corrrect format!"
+                        //    registerResult = "Please fill your name with corrrect format!"
                         //    return
                         //}
 
                         //var pwRegex = /^(?=.*[a-zA-Z])(?=.*[!@#$%^*+=-])(?=.*[0-9]).{8,31}$/
                         //if(!pwRegex.test(registerPwField.text)) 
                         //{
-                        //    registerResultText.text = "Please fill your pw with corrrect format!"
+                        //    registerResult = "Please fill your pw with corrrect format!"
                         //    return
                         //}
 
@@ -457,13 +465,14 @@ Item {
             id: registerResultText
             anchors {
                 top: registerViewMainContainer.bottom
+                topMargin: 10
                 horizontalCenter: parent.horizontalCenter
             }
             font {
                 bold: true
                 pointSize: 14
             }
-            text: ""
+            text: registerResult
             color: "red"
         }
     }

@@ -67,50 +67,6 @@ bool TCPClient::AsyncConnect(const std::string &raw_ip_address,
     return true;
 }
 
-// void TCPClient::AsyncWrite(unsigned int request_id,
-//                            const std::string &request,
-//                            std::function<void(std::shared_ptr<Session>)> on_finish_write)
-//{
-//     std::shared_ptr<Session> session;
-//
-//     std::unique_lock<std::mutex> lock(m_active_sessions_guard);
-//     if (m_active_sessions.find(request_id) == m_active_sessions.end())
-//     {
-//         if (on_finish_write)
-//             on_finish_write(nullptr);
-//         return;
-//     }
-//     m_active_sessions[request_id]->m_request = request;
-//     session = m_active_sessions[request_id];
-//     lock.unlock();
-//
-//     boost::asio::async_write(session->m_sock,
-//                              session->m_request.AsioBuffer(),
-//                              [this, session, on_finish_write](const boost::system::error_code &ec, std::size_t bytes_transferred) {
-//                                  if (ec != boost::system::errc::success)
-//                                  {
-//                                      session->m_ec = ec;
-//                                      CloseRequest(session->m_id);
-//                                      if (on_finish_write)
-//                                          on_finish_write(session);
-//                                      return;
-//                                  }
-//
-//                                  std::unique_lock<std::mutex> cancel_lock(session->m_cancel_guard);
-//
-//                                  if (session->m_was_cancelled)
-//                                  {
-//                                      CloseRequest(session->m_id);
-//                                      if (on_finish_write)
-//                                          on_finish_write(session);
-//                                      return;
-//                                  }
-//
-//                                  if (on_finish_write)
-//                                      on_finish_write(session);
-//                              });
-// }
-
 void TCPClient::AsyncRead(unsigned int request_id, size_t buffer_size, std::function<void(std::shared_ptr<Session>)> on_finish_read)
 {
     std::shared_ptr<Session> session;

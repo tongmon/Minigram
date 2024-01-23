@@ -27,7 +27,16 @@ enum AccountRegisterResult : int64_t
 {
     REGISTER_SUCCESS,
     REGISTER_DUPLICATION,
-    REGISTER_CONNECTION_FAIL
+    REGISTER_CONNECTION_FAIL,
+    REGISTER_PROCEEDING
+};
+
+enum LoginResult : int64_t
+{
+    LOGIN_SUCCESS,
+    LOGIN_FAIL,
+    LOGIN_CONNECTION_FAIL,
+    LOGIN_PROCEEDING
 };
 
 enum ContactAddResult : int64_t

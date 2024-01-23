@@ -37,12 +37,6 @@ MessengerService::~MessengerService()
 // Client에 전달하는 버퍼 형식: 로그인 성공 여부
 void MessengerService::LoginHandling()
 {
-    // auto bufs = m_client_request.Split('|');
-    // const std::string &ip = bufs[0].Data<const char *>(),
-    //                   &port = bufs[1].Data<const char *>(),
-    //                   &id = bufs[2].Data<const char *>(),
-    //                   &pw = bufs[3].Data<const char *>();
-
     std::string ip, id, pw;
     int port;
     m_client_request.GetData(ip);
@@ -53,27 +47,31 @@ void MessengerService::LoginHandling()
     std::cout << "ID: " << id << "  Password: " << pw << "\n";
 
     NetworkBuffer net_buf(LOGIN_CONNECTION_TYPE);
+    int64_t login_result;
+    size_t cnt;
+    *m_sql << "select count(*) from user_tb where exists(select 1 from user_tb where user_id=:uid)",
+        soci::into(cnt), soci::use(id);
 
-    soci::indicator ind;
-    std::string pw_from_db;
-    bool login_result;
-    *m_sql << "select password from user_tb where user_id=:id", soci::into(pw_from_db, ind), soci::use(id);
+    if (cnt)
+    {
+        soci::indicator ind;
+        std::string pw_from_db;
+        *m_sql << "select password from user_tb where user_id=:id", soci::into(pw_from_db, ind), soci::use(id);
 
-    if (ind == soci::i_ok)
-        login_result = pw_from_db == pw;
+        if (ind == soci::i_ok)
+            login_result = (pw_from_db == pw ? LOGIN_SUCCESS : LOGIN_FAIL);
+        else
+            login_result = LOGIN_FAIL;
+    }
     else
-        login_result = false;
+        login_result = LOGIN_FAIL;
 
-    net_buf += static_cast<std::byte>(login_result);
+    net_buf += login_result;
 
     // 로그인한 사람의 ip, port 정보 갱신
-    if (login_result)
+    if (login_result == LOGIN_SUCCESS)
         *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
             soci::use(ip), soci::use(port), soci::use(id);
-
-    // 로그인 완료라고 클라이언트에 알림
-    // TCPHeader header(LOGIN_CONNECTION_TYPE, m_request.Size());
-    // m_request = header.GetHeaderBuffer() + m_request;
 
     m_request = std::move(net_buf);
 
