@@ -48,8 +48,8 @@ class NetworkBuffer
         m_index += data_size + type_size;
     }
 
-    template <>
-    void GetData(std::string &val)
+    template <typename V, template <typename...> class R>
+    void GetData(R<V> &val)
     {
         size_t data_size;
         std::memcpy(&data_size, &m_buf[m_index], type_size);
@@ -64,7 +64,7 @@ class NetworkBuffer
     }
 
     template <>
-    void GetData(std::vector<std::byte> &val)
+    void GetData(std::string &val)
     {
         size_t data_size;
         std::memcpy(&data_size, &m_buf[m_index], type_size);
@@ -85,6 +85,16 @@ class NetworkBuffer
         m_buf.resize(m_index + type_size + buf_len);
         std::memcpy(&m_buf[m_index], &buf_len, type_size);
         std::memcpy(&m_buf[m_index + type_size], &other, buf_len);
+        m_index = m_buf.size();
+    }
+
+    template <typename V, template <typename...> class R>
+    void Append(R<V> &other)
+    {
+        size_t len = other.size();
+        m_buf.resize(m_index + type_size + len);
+        for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)
+            m_buf[i] = static_cast<std::byte>(other[j++]);
         m_index = m_buf.size();
     }
 

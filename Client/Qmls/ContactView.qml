@@ -4,6 +4,7 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 
 Rectangle {
+    objectName: "contactView"
     color: "#19314F"
     anchors.fill: parent
 

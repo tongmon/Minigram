@@ -184,13 +184,15 @@ Session Refresh 통신과 동일하다.
 		{
 			"user_id": "tongstar",
 			"user_name": "KyungJoonLee"
-			"user_img": "Base64 인코딩된 user 이미지",
-			"user_img_date": "YYYY-MM-DD hh:mm:ss.ms 로컬 user 이미지 파일이 최신인지 알기 위함"
+			"user_img": 이미지 확장자 (. 포함),
+			"user_img_date": int64_t 자료형의 since epoch time
 			"user_info": "어쩌구 저쩌구 블라블라"
 		},
 		...
 	]
 }
+
+raw img file이 담긴 배열을 전송함
 
 ## Client Cache 구성
 
@@ -199,17 +201,20 @@ Session Refresh 통신과 동일하다.
 
 캐시 파일 구성은 밑과 같다.
 Minigram.exe
-cache
-	L sessions
-		L session_id
+minigram_cache
+	L user_id
+		L profile_img
 			L 날짜.이미지_확장자
-	L contact
-		L user_id
-			L profile_img
+		L sessions
+			L session_id
 				L 날짜.이미지_확장자
-			L setting_info
+		L contact
+			L acquaintance_id
+				L profile_img
+					L 날짜.이미지_확장자
+		L setting_info
 			
-날짜는 이미지 갱신 날짜
+날짜는 이미지 갱신 날짜(time since epoch)
 
 
 ## Server Cache 구성

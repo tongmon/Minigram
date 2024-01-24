@@ -33,6 +33,7 @@ MainContext::MainContext(WinQuickWindow &window)
     m_application_window = m_window.GetQuickWindow().findChild<QObject *>("applicationWindow");
     m_main_page = m_window.GetQuickWindow().findChild<QObject *>("mainPage");
     m_login_page = m_window.GetQuickWindow().findChild<QObject *>("loginPage");
+    m_contact_view = m_window.GetQuickWindow().findChild<QObject *>("contactView");
 }
 
 MainContext::~MainContext()
@@ -151,7 +152,9 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
         request_id.store(central_server.MakeRequestID());
     else
     {
-        // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
+        QMetaObject::invokeMethod(m_login_page,
+                                  "processLogin",
+                                  Q_ARG(QVariant, LOGIN_PROCEEDING));
         return;
     }
 
@@ -162,7 +165,6 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
         {
             QMetaObject::invokeMethod(m_login_page,
                                       "processLogin",
-                                      Qt::DirectConnection,
                                       Q_ARG(QVariant, LOGIN_CONNECTION_FAIL));
             request_id.store(-1);
             return;
@@ -180,7 +182,6 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
             {
                 QMetaObject::invokeMethod(m_login_page,
                                           "processLogin",
-                                          Qt::DirectConnection,
                                           Q_ARG(QVariant, LOGIN_CONNECTION_FAIL));
                 request_id.store(-1);
                 return;
@@ -191,7 +192,6 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                 {
                     QMetaObject::invokeMethod(m_login_page,
                                               "processLogin",
-                                              Qt::DirectConnection,
                                               Q_ARG(QVariant, LOGIN_CONNECTION_FAIL));
                     request_id.store(-1);
                     return;
@@ -202,7 +202,6 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                     {
                         QMetaObject::invokeMethod(m_login_page,
                                                   "processLogin",
-                                                  Qt::DirectConnection,
                                                   Q_ARG(QVariant, LOGIN_CONNECTION_FAIL));
                         request_id.store(-1);
                         return;
@@ -213,7 +212,6 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
                     QMetaObject::invokeMethod(m_login_page,
                                               "processLogin",
-                                              Qt::DirectConnection,
                                               Q_ARG(QVariant, result));
 
                     central_server.CloseRequest(session->GetID());
@@ -780,118 +778,131 @@ void MainContext::tryGetContactList()
 {
     auto &central_server = m_window.GetServerHandle();
 
-    int request_id = central_server.MakeRequestID();
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
-
-    // std::string request = m_user_id.toStdString(),
-    std::string file_path = boost::dll::program_location().parent_path().string() + "/cache/contact";
-    std::vector<std::pair<std::string, std::string>> acq_data;
-
-    boost::filesystem::directory_iterator root{file_path};
-    while (root != boost::filesystem::directory_iterator{})
+    static std::atomic_int request_id = -1;
+    if (request_id.load() < 0)
+        request_id.store(central_server.MakeRequestID());
+    else
     {
-        auto dir = *root;
-        std::string img_update_date;
+        return;
+    }
 
-        boost::filesystem::directory_iterator child{dir.path()};
-        while (child != boost::filesystem::directory_iterator{})
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
         {
-            auto file = *child;
-            if (file.path().filename() == "user_img_info.bck")
-            {
-                std::ifstream of(file.path().c_str());
-                if (of.is_open())
-                    std::getline(of, img_update_date, '|');
-                break;
-            }
+            request_id.store(-1);
+            return;
         }
 
-        acq_data.push_back({dir.path().filename().string(), img_update_date});
-    }
+        std::string file_path = boost::dll::program_location().parent_path().string() + "/minigram_cache/" + m_user_id.toStdString() + "/contact";
+        std::vector<std::pair<std::string, int64_t>> acq_data;
 
-    NetworkBuffer net_buf(CONTACTLIST_INITIAL_TYPE);
-    net_buf += m_user_id;
-    net_buf += acq_data.size();
-    for (const auto &data : acq_data)
-    {
-        net_buf += data.first;
-        net_buf += data.second;
-    }
+        if (!std::filesystem::exists(file_path))
+            std::filesystem::create_directories(file_path);
 
-    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
-        if (!session.get() || !session->IsValid())
-            return;
-
-        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
-            if (!session.get() || !session->IsValid())
-                return;
-
-            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
-                if (!session.get() || !session->IsValid())
-                    return;
-
-                std::string json_txt; // = Utf8ToStr(DecodeBase64(session->GetResponse().CStr()));
-                session->GetResponse().GetData(json_txt);
-
-                boost::json::error_code ec;
-                boost::json::value json_data = boost::json::parse(json_txt, ec);
-                auto contact_arrray = json_data.as_object()["contact_init_data"].as_array();
-
-                for (int i = 0; i < contact_arrray.size(); i++)
+        std::filesystem::directory_iterator it{file_path};
+        while (it != std::filesystem::end(it))
+        {
+            int64_t img_update_date = 0;
+            if (std::filesystem::is_directory(it->path()))
+            {
+                auto profile_img_path = it->path() / "profile_img";
+                if (!std::filesystem::exists(profile_img_path))
+                    std::filesystem::create_directories(profile_img_path);
+                else
                 {
-                    auto acquaintance_data = contact_arrray[i].as_object();
-
-                    QStringList qsl;
-                    qsl.push_back(acquaintance_data["user_id"].as_string().c_str());
-                    qsl.push_back(acquaintance_data["user_name"].as_string().c_str());
-
-                    std::string acquaintance_dir = file_path + "/" + acquaintance_data["user_id"].as_string().c_str();
-
-                    // 친구 user에 대한 캐시가 없으면 생성함
-                    if (!boost::filesystem::exists(acquaintance_dir))
-                    {
-                        boost::filesystem::create_directories(acquaintance_dir);
-                    }
-
-                    if (acquaintance_data["user_img_date"].as_string() == "null")
-                    {
-                        qsl.push_back("");
-                    }
-                    else if (!acquaintance_data["user_img"].as_string().empty())
-                    {
-                        std::string_view base64_img = acquaintance_data["user_img"].as_string().c_str();
-                        qsl.push_back(base64_img.data());
-
-                        std::ofstream img_bck(acquaintance_dir + "/user_img_info.bck");
-                        if (img_bck.is_open())
-                        {
-                            std::string img_cache = acquaintance_data["user_img_date"].as_string().c_str();
-                            img_cache += "|";
-                            img_cache += base64_img.data();
-                            img_bck.write(img_cache.c_str(), img_cache.size());
-                        }
-                    }
-                    else
-                    {
-                        std::string base64_img;
-                        std::ifstream img_bck(acquaintance_dir + "/user_img_info.bck");
-                        if (img_bck.is_open())
-                        {
-                            std::getline(img_bck, base64_img, '|');
-                            base64_img.clear();
-                            std::getline(img_bck, base64_img);
-                        }
-                        qsl.push_back(base64_img.data());
-                    }
-
-                    qsl.push_back(acquaintance_data["user_info"].as_string().data());
-
-                    // 실제 채팅방 삽입하는 로직
-                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("contactButton"),
-                                              "addContact",
-                                              Q_ARG(QStringList, qsl));
+                    std::filesystem::directory_iterator child{profile_img_path};
+                    // 일단 프로필 이미지는 단 하나만 저장한다고 가정
+                    if (child != std::filesystem::end(child))
+                        img_update_date = std::atoll(child->path().stem().string().c_str());
                 }
-                central_server.CloseRequest(session->GetID());
+
+                if (img_update_date)
+                    acq_data.push_back({it->path().filename().string(), img_update_date});
+            }
+            it++;
+        }
+
+        NetworkBuffer net_buf(CONTACTLIST_INITIAL_TYPE);
+        net_buf += m_user_id;
+        net_buf += acq_data.size();
+        for (const auto &data : acq_data)
+        {
+            net_buf += data.first;
+            net_buf += data.second;
+        }
+
+        central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                request_id.store(-1);
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    request_id.store(-1);
+                    return;
+                }
+
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        request_id.store(-1);
+                        return;
+                    }
+
+                    std::string json_txt;
+                    session->GetResponse().GetData(json_txt);
+
+                    boost::json::error_code ec;
+                    boost::json::value json_data = boost::json::parse(json_txt, ec);
+                    auto contact_arrray = json_data.as_object()["contact_init_data"].as_array();
+
+                    for (int i = 0; i < contact_arrray.size(); i++)
+                    {
+                        auto acquaintance_data = contact_arrray[i].as_object();
+
+                        QVariantMap qvm;
+                        qvm.insert("userId", acquaintance_data["user_id"].as_string().c_str());
+                        qvm.insert("userName", acquaintance_data["user_name"].as_string().c_str());
+                        qvm.insert("userInfo", acquaintance_data["user_info"].as_string().c_str());
+
+                        std::filesystem::path acq_dir{file_path + "/" + acquaintance_data["user_id"].as_string().c_str()};
+
+                        // 친구 user에 대한 캐시가 없으면 생성함
+                        if (!std::filesystem::exists(acq_dir))
+                            std::filesystem::create_directories(acq_dir / "profile_img");
+
+                        std::string profile_img;
+                        std::filesystem::directory_iterator img_dir{acq_dir / "profile_img"};
+                        if (img_dir != std::filesystem::end(img_dir))
+                            profile_img = img_dir->path().string().c_str();
+
+                        if (acquaintance_data["user_img_date"].as_int64() < 0)
+                            qvm.insert("userImg", profile_img.c_str());
+                        else
+                        {
+                            std::vector<unsigned char> img_data;
+                            session->GetResponse().GetData(img_data);
+
+                            auto profile_img_path = acq_dir / "profile_img" / (std::to_string(acquaintance_data["user_img_date"].as_int64()) + acquaintance_data["user_img"].as_string().c_str());
+                            std::ofstream of(profile_img_path, std::ios::binary);
+                            if (of.is_open())
+                                of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
+
+                            qvm.insert("userImg", profile_img_path.string().c_str());
+                        }
+
+                        // 실제 채팅방 삽입하는 로직
+                        // QMetaObject::invokeMethod(m_contact_view,
+                        //                           "addContact",
+                        //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                    }
+
+                    central_server.CloseRequest(session->GetID());
+                    request_id.store(-1);
+                });
             });
         });
     });
@@ -997,7 +1008,6 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     {
         QMetaObject::invokeMethod(m_login_page,
                                   "processSignUp",
-                                  Qt::DirectConnection,
                                   Q_ARG(QVariant, REGISTER_PROCEEDING));
         return;
     }
@@ -1007,7 +1017,6 @@ void MainContext::trySignUp(const QVariantMap &qvm)
         {
             QMetaObject::invokeMethod(m_login_page,
                                       "processSignUp",
-                                      Qt::DirectConnection,
                                       Q_ARG(QVariant, REGISTER_CONNECTION_FAIL));
             request_id.store(-1);
             return;
@@ -1056,7 +1065,6 @@ void MainContext::trySignUp(const QVariantMap &qvm)
             {
                 QMetaObject::invokeMethod(m_login_page,
                                           "processSignUp",
-                                          Qt::DirectConnection,
                                           Q_ARG(int, REGISTER_CONNECTION_FAIL));
                 request_id.store(-1);
                 return;
@@ -1067,7 +1075,6 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                 {
                     QMetaObject::invokeMethod(m_login_page,
                                               "processSignUp",
-                                              Qt::DirectConnection,
                                               Q_ARG(int, REGISTER_CONNECTION_FAIL));
                     request_id.store(-1);
                     return;
@@ -1078,7 +1085,6 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     {
                         QMetaObject::invokeMethod(m_login_page,
                                                   "processSignUp",
-                                                  Qt::DirectConnection,
                                                   Q_ARG(int, REGISTER_CONNECTION_FAIL));
                         request_id.store(-1);
                         return;
@@ -1094,8 +1100,8 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
                     if (result == REGISTER_SUCCESS)
                     {
-                        std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/user/" + m_user_id.toStdString() + "/profile_img";
-                        boost::filesystem::create_directories(user_cache_path);
+                        std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/minigram_cache/" + m_user_id.toStdString() + "/profile_img";
+                        std::filesystem::create_directories(user_cache_path);
 
                         if (img_data)
                         {
@@ -1106,7 +1112,6 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
                     QMetaObject::invokeMethod(m_login_page,
                                               "processSignUp",
-                                              Qt::DirectConnection,
                                               Q_ARG(QVariant, result));
 
                     central_server.CloseRequest(session->GetID());

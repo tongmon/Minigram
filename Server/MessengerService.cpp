@@ -14,6 +14,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -719,25 +720,9 @@ void MessengerService::SessionListInitHandling()
 
 // Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( [ acq id / acq img date ] 배열 )
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
-void MessengerService::ContactListInitHandling()
+void MessengerService::GetContactListHandling()
 {
-    using namespace bsoncxx;
-    using namespace bsoncxx::builder;
-
-    // std::vector<std::string> parsed;
-    // std::unordered_map<std::string, std::string> contact_cache;
-    //
-    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    // std::string user_id = parsed[0];
-    //
-    // for (int i = 1; i < parsed.size(); i++)
-    // {
-    //     std::vector<std::string> descendant;
-    //     boost::split(descendant, parsed[i], boost::is_any_of("/"));
-    //     contact_cache[descendant[0]] = descendant[1];
-    // }
-
-    std::unordered_map<std::string, std::string> contact_cache;
+    std::unordered_map<std::string, int64_t> contact_cache;
     std::string user_id;
     size_t contact_ary_size;
 
@@ -746,16 +731,18 @@ void MessengerService::ContactListInitHandling()
 
     for (size_t i = 0; i < contact_ary_size; i++)
     {
-        std::string acq_id, acq_img_date;
+        std::string acq_id;
+        int64_t acq_img_date;
         m_client_request.GetData(acq_id);
         m_client_request.GetData(acq_img_date);
         contact_cache[acq_id] = acq_img_date;
     }
 
     boost::json::array contact_array;
+    std::vector<std::vector<unsigned char>> raw_imgs;
 
-    soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id from contact_tb where user_id=:uid and status=1", soci::use(user_id));
-
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id from contact_tb where user_id=:uid and status=:stat",
+                                  soci::use(user_id), soci::use(static_cast<int>(RELATION_FRIEND)));
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         boost::json::object acquaintance_data;
@@ -770,19 +757,28 @@ void MessengerService::ContactListInitHandling()
         acquaintance_data["user_name"] = acquaintance_nm;
         acquaintance_data["user_info"] = acquaintance_info;
 
-        boost::filesystem::path path = img_path;
-        if (!img_path.empty() && path.stem() > contact_cache[acquaintance_id])
+        int64_t img_update_date = 0;
+        std::filesystem::path path_data;
+        if (!img_path.empty())
         {
-            int width, height, channels;
-            unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
-            std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
-            acquaintance_data["user_img"] = EncodeBase64(img_buffer); // 추후에 raw binary 보내는 로직으로 변경
-            acquaintance_data["user_img_date"] = path.stem().string();
+            path_data = img_path;
+            img_update_date = std::atoll(path_data.stem().string().c_str());
         }
-        else
+
+        acquaintance_data["user_img"] = "";
+        acquaintance_data["user_img_date"] = -1;
+
+        // 이미지 갱신해야 될 때
+        if ((contact_cache.find(acquaintance_id) != contact_cache.end() && img_update_date > contact_cache[acquaintance_id]) ||
+            (contact_cache.find(acquaintance_id) == contact_cache.end() && img_update_date))
         {
-            acquaintance_data["user_img"] = "";
-            acquaintance_data["user_img_date"] = img_path.empty() ? "null" : "";
+            std::ifstream inf(img_path, std::ios::binary);
+            if (inf.is_open())
+            {
+                acquaintance_data["user_img"] = path_data.extension().string();
+                acquaintance_data["user_img_date"] = img_update_date;
+                raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
+            }
         }
 
         contact_array.push_back(acquaintance_data);
@@ -794,6 +790,8 @@ void MessengerService::ContactListInitHandling()
     // chatroom_init_json에 담긴 json을 client에 전송함
     NetworkBuffer net_buf(CONTACTLIST_INITIAL_TYPE);
     net_buf += boost::json::serialize(contact_init_json);
+    for (const auto &img_data : raw_imgs)
+        net_buf += img_data;
 
     m_request = std::move(net_buf);
 
@@ -1116,7 +1114,7 @@ void MessengerService::StartHandling()
                                                                 SessionListInitHandling();
                                                                 break;
                                                             case CONTACTLIST_INITIAL_TYPE:
-                                                                ContactListInitHandling();
+                                                                GetContactListHandling();
                                                                 break;
                                                             case SIGNUP_TYPE:
                                                                 SignUpHandling();

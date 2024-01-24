@@ -30,6 +30,7 @@ class MainContext : public QObject
     QObject *m_application_window;
     QObject *m_main_page;
     QObject *m_login_page;
+    QObject *m_contact_view;
 
   public:
     MainContext(WinQuickWindow &window);
