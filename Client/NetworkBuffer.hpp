@@ -55,6 +55,8 @@ class NetworkBuffer
     template <typename V, template <typename...> class R>
     void GetData(R<V> &val)
     {
+        static_assert(sizeof(V) == 1, "Template argument size in GetData() function is not 1.");
+
         size_t data_size;
         std::memcpy(&data_size, &m_buf[m_index], type_size);
 
@@ -110,6 +112,8 @@ class NetworkBuffer
     template <typename V, template <typename...> class R>
     void Append(R<V> &other)
     {
+        static_assert(sizeof(V) == 1, "Template argument size in Append() function is not 1.");
+
         size_t len = other.size();
         m_buf.resize(m_index + type_size + len);
         for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)
