@@ -766,7 +766,7 @@ void MessengerService::GetContactListHandling()
         }
 
         acquaintance_data["user_img"] = "";
-        acquaintance_data["user_img_date"] = -1;
+        // acquaintance_data["user_img_date"] = -1;
 
         // 이미지 갱신해야 될 때
         if ((contact_cache.find(acquaintance_id) != contact_cache.end() && img_update_date > contact_cache[acquaintance_id]) ||
@@ -775,8 +775,7 @@ void MessengerService::GetContactListHandling()
             std::ifstream inf(img_path, std::ios::binary);
             if (inf.is_open())
             {
-                acquaintance_data["user_img"] = path_data.extension().string();
-                acquaintance_data["user_img_date"] = img_update_date;
+                acquaintance_data["user_img"] = path_data.filename().string();
                 raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
             }
         }
@@ -989,23 +988,18 @@ void MessengerService::SessionAddHandling()
 }
 
 // Client에서 받는 버퍼 형식: current user id | user id to add
-// Client에 전달하는 버퍼 형식: contact add result | added user name | added user img date | added user base64 img
+// Client에 전달하는 버퍼 형식: contact add result | added user name | added user img name | added user raw profile img
 void MessengerService::ContactAddHandling()
 {
-    // std::vector<std::string> parsed;
-    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    //
-    // const std::string &user_id = parsed[0], user_id_to_add = parsed[1];
-
     std::string user_id, user_id_to_add;
 
     m_client_request.GetData(user_id);
     m_client_request.GetData(user_id_to_add);
 
-    size_t contact_add_result = CONTACTADD_SUCCESS;
+    int64_t contact_add_result = CONTACTADD_SUCCESS;
 
     int cnt = 0;
-    *m_sql << "count(*) from user_tb where exist(select 1 from user_tb where user_id=:uid)",
+    *m_sql << "select count(*) from user_tb where exists(select 1 from user_tb where user_id=:uid)",
         soci::into(cnt), soci::use(user_id_to_add);
 
     // id가 존재하지 않는 경우
@@ -1013,41 +1007,24 @@ void MessengerService::ContactAddHandling()
         contact_add_result = CONTACTADD_ID_NO_EXSIST;
     else
     {
-        *m_sql << "count(*) from contact_tb where exist(select 1 from contact_tb where user_id=:uid and acquaintance_id=:acqid)",
-            soci::into(cnt), soci::use(user_id), soci::use(user_id_to_add);
+        int stat;
+        *m_sql << "select status from contact_tb where user_id=:uid and acquaintance_id=:acqid",
+            soci::into(stat), soci::use(user_id), soci::use(user_id_to_add);
 
-        // id가 존재하는데 이미 추가요청을 보냈거나 친구인 경우
-        if (cnt)
+        if (m_sql->got_data())
             contact_add_result = CONTACTADD_DUPLICATION;
     }
-
-    std::string user_name, img_path, img_date, img_data;
-    user_name = img_date = img_data = "null";
 
     if (contact_add_result == CONTACTADD_SUCCESS)
     {
         *m_sql << "insert into contact_tb values(:uid, :acqid, :status)",
             soci::use(user_id), soci::use(user_id_to_add), soci::use(static_cast<int>(RELATION_PROCEEDING));
 
-        *m_sql << "select user_nm, img_path from user_tb where user_id=:uid",
-            soci::into(user_name), soci::into(img_path), soci::use(user_id_to_add);
-
-        boost::filesystem::path path = img_path;
-        if (!img_path.empty())
-        {
-            int width, height, channels;
-            unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
-            std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
-            img_date = path.stem().string();
-            img_data = EncodeBase64(img_buffer); // buffer 클래스가 있기에 이진수로 바로 쏴주는게 좋을듯
-        }
+        // user_id_to_add가 접속 중이면 뭐 보내고 아니면 그냥 끝
     }
 
     NetworkBuffer net_buf(CONTACT_ADD_TYPE);
     net_buf += contact_add_result;
-    net_buf += user_name;
-    net_buf += img_date;
-    net_buf += img_data;
 
     m_request = std::move(net_buf);
 
@@ -1058,9 +1035,49 @@ void MessengerService::ContactAddHandling()
                                  {
                                      // write에 이상이 있는 경우
                                  }
-
                                  delete this;
                              });
+
+    // std::string user_name, img_path, img_date, img_data;
+    // user_name = img_date = img_data = "null";
+    //
+    // if (contact_add_result == CONTACTADD_SUCCESS)
+    //{
+    //    *m_sql << "insert into contact_tb values(:uid, :acqid, :status)",
+    //        soci::use(user_id), soci::use(user_id_to_add), soci::use(static_cast<int>(RELATION_PROCEEDING));
+    //
+    //    *m_sql << "select user_nm, img_path from user_tb where user_id=:uid",
+    //        soci::into(user_name), soci::into(img_path), soci::use(user_id_to_add);
+    //
+    //    boost::filesystem::path path = img_path;
+    //    if (!img_path.empty())
+    //    {
+    //        int width, height, channels;
+    //        unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
+    //        std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
+    //        img_date = path.stem().string();
+    //        img_data = EncodeBase64(img_buffer); // buffer 클래스가 있기에 이진수로 바로 쏴주는게 좋을듯
+    //    }
+    //}
+    //
+    // NetworkBuffer net_buf(CONTACT_ADD_TYPE);
+    // net_buf += contact_add_result;
+    // net_buf += user_name;
+    // net_buf += img_date;
+    // net_buf += img_data;
+    //
+    // m_request = std::move(net_buf);
+    //
+    // boost::asio::async_write(*m_sock,
+    //                         m_request.AsioBuffer(),
+    //                         [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+    //                             if (ec != boost::system::errc::success)
+    //                             {
+    //                                 // write에 이상이 있는 경우
+    //                             }
+    //
+    //                             delete this;
+    //                         });
 }
 
 void MessengerService::StartHandling()

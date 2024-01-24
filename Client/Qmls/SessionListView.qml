@@ -7,6 +7,7 @@ Rectangle {
     id: sessionListBck
     color: "#19314F"
     anchors.fill: parent
+    objectName: "sessionListView"
 
     // chat list view 템플릿
     property var sessionViewComponent: Qt.createComponent("qrc:/qml/SessionView.qml")

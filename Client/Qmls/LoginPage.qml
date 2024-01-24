@@ -611,7 +611,7 @@ Item {
     }
 
     Component.onCompleted: {
-        
+        mainContext.getEssentialObjects()
     }
 
     Component.onDestruction: {

@@ -30,10 +30,7 @@ MainContext::MainContext(WinQuickWindow &window)
     m_contact_model = m_window.GetQuickWindow().findChild<ContactModel *>("contactModel");
     m_chat_session_model = m_window.GetQuickWindow().findChild<ChatSessionModel *>("chatSessionModel");
 
-    m_application_window = m_window.GetQuickWindow().findChild<QObject *>("applicationWindow");
-    m_main_page = m_window.GetQuickWindow().findChild<QObject *>("mainPage");
-    m_login_page = m_window.GetQuickWindow().findChild<QObject *>("loginPage");
-    m_contact_view = m_window.GetQuickWindow().findChild<QObject *>("contactView");
+    getEssentialObjects();
 }
 
 MainContext::~MainContext()
@@ -139,6 +136,10 @@ void MainContext::RefreshReaderIds(Service *service)
                               Q_ARG(int, static_cast<int>(message_id)));
 
     delete service;
+}
+
+void MainContext::RecieveContactRequest(Service *service)
+{
 }
 
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
@@ -831,7 +832,7 @@ void MainContext::tryGetContactList()
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 request_id.store(-1);
@@ -879,14 +880,14 @@ void MainContext::tryGetContactList()
                         if (img_dir != std::filesystem::end(img_dir))
                             profile_img = img_dir->path().string().c_str();
 
-                        if (acquaintance_data["user_img_date"].as_int64() < 0)
+                        if (acquaintance_data["user_img"].as_string().empty())
                             qvm.insert("userImg", profile_img.c_str());
                         else
                         {
                             std::vector<unsigned char> img_data;
                             session->GetResponse().GetData(img_data);
 
-                            auto profile_img_path = acq_dir / "profile_img" / (std::to_string(acquaintance_data["user_img_date"].as_int64()) + acquaintance_data["user_img"].as_string().c_str());
+                            auto profile_img_path = acq_dir / "profile_img" / acquaintance_data["user_img"].as_string().c_str();
                             std::ofstream of(profile_img_path, std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
@@ -909,90 +910,114 @@ void MainContext::tryGetContactList()
 }
 
 // Server에 전달하는 버퍼 형식: current user id | user id to add
-// Server에서 받는 버퍼 형식: contact가 추가되었는지 결과값 | added user name | added user img date | added user base64 img
+// Server에서 받는 버퍼 형식: contact가 추가되었는지 결과값 | added user name | added user img name | added user raw profile img
 void MainContext::tryAddContact(const QString &user_id)
 {
     auto &central_server = m_window.GetServerHandle();
 
-    static int request_id = -1;
-    if (request_id < 0)
-        request_id = central_server.MakeRequestID();
+    static std::atomic_int request_id = -1;
+    if (request_id.load() < 0)
+        request_id.store(central_server.MakeRequestID());
     else
     {
-        // 아직 진행 중인데 다시 시도하려 할 때 수행 로직
         return;
     }
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
-
-    NetworkBuffer net_buf(CONTACT_ADD_TYPE);
-    net_buf += m_user_id;
-    net_buf += user_id;
-
-    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
-            request_id = -1;
+            request_id.store(-1);
             return;
         }
 
-        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+        NetworkBuffer net_buf(CONTACT_ADD_TYPE);
+        net_buf += m_user_id;
+        net_buf += user_id;
+
+        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
-                request_id = -1;
+                request_id.store(-1);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
-                    request_id = -1;
+                    request_id.store(-1);
                     return;
                 }
 
-                auto response = session->GetResponse();
-                int64_t result;
-                std::string user_name, img_date, img_data;
-
-                response.GetData(result);
-                response.GetData(user_name);
-                response.GetData(img_date);
-                response.GetData(img_data);
-
-                QVariantMap qvm;
-                qvm["userId"] = qvm["userName"] = qvm["userImg"] = "";
-
-                // session->GetResponse()[0] 종류에 따라 로직 추가해야 됨
-                if (result == CONTACTADD_SUCCESS)
-                {
-                    qvm["userId"] = user_id;
-                    qvm["userName"] = user_name.data();
-                    qvm["userImg"] = "";
-
-                    std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/contact/" + user_id.toStdString();
-                    boost::filesystem::create_directories(user_cache_path);
-
-                    if (img_data != "null")
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
                     {
-                        std::string img_base64 = img_date.data();
-                        img_base64 += "|";
-                        img_base64 += img_data.data();
-
-                        std::ofstream img_file(user_cache_path + "/user_img_info.bck");
-                        if (img_file.is_open())
-                            img_file.write(img_base64.c_str(), img_base64.size());
+                        request_id.store(-1);
+                        return;
                     }
-                }
 
-                QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("contactButton"),
-                                          "processAddContact",
-                                          Q_ARG(int64_t, result),
-                                          Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                    int64_t result;
+                    session->GetResponse().GetData(result);
 
-                central_server.CloseRequest(session->GetID());
-                request_id = -1;
+                    // QMetaObject::invokeMethod(m_contact_view,
+                    //                           "processAddContact",
+                    //                           Q_ARG(int64_t, result),
+                    //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                    central_server.CloseRequest(session->GetID());
+                    request_id.store(-1);
+
+                    // auto response = session->GetResponse();
+                    // int64_t result;
+                    // std::string user_name, img_date, img_data;
+                    //
+                    // response.GetData(result);
+                    // response.GetData(user_name);
+                    // response.GetData(img_date);
+                    // response.GetData(img_data);
+                    //
+                    // QVariantMap qvm;
+                    // qvm["userId"] = qvm["userName"] = qvm["userImg"] = "";
+                    //
+                    //// session->GetResponse()[0] 종류에 따라 로직 추가해야 됨
+                    // if (result == CONTACTADD_SUCCESS)
+                    //{
+                    //     qvm["userId"] = user_id;
+                    //     qvm["userName"] = user_name.data();
+                    //     qvm["userImg"] = "";
+                    //
+                    //    std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/contact/" + user_id.toStdString();
+                    //    boost::filesystem::create_directories(user_cache_path);
+                    //
+                    //    if (img_data != "null")
+                    //    {
+                    //        std::string img_base64 = img_date.data();
+                    //        img_base64 += "|";
+                    //        img_base64 += img_data.data();
+                    //
+                    //        std::ofstream img_file(user_cache_path + "/user_img_info.bck");
+                    //        if (img_file.is_open())
+                    //            img_file.write(img_base64.c_str(), img_base64.size());
+                    //    }
+                    //}
+                    //
+                    // QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("contactButton"),
+                    //                          "processAddContact",
+                    //                          Q_ARG(int64_t, result),
+                    //                          Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                    //
+                    // central_server.CloseRequest(session->GetID());
+                    // request_id = -1;
+                });
             });
         });
     });
+}
+
+void MainContext::tryGetContactRequestList()
+{
+}
+
+void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accepted)
+{
 }
 
 // Server에 전달하는 버퍼 형식: ID | PW | Name | Image(raw data) | Image format
@@ -1060,7 +1085,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
         net_buf += img_type;
 
-        central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_login_page,
@@ -1267,4 +1292,12 @@ QString MainContext::getSessionImgById(const QString &session_id)
 QString MainContext::getSessionNameById(const QString &session_id)
 {
     return m_chat_session_model->data(session_id, ChatSessionModel::NAME_ROLE).toString();
+}
+
+void MainContext::getEssentialObjects()
+{
+    m_main_page = m_window.GetQuickWindow().findChild<QObject *>("mainPage");
+    m_login_page = m_window.GetQuickWindow().findChild<QObject *>("loginPage");
+    m_contact_view = m_window.GetQuickWindow().findChild<QObject *>("contactView");
+    m_session_list_view = m_window.GetQuickWindow().findChild<QObject *>("sessionListView");
 }

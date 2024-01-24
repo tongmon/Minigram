@@ -153,7 +153,7 @@ Rectangle {
     }
 
     Component.onCompleted: {
-        
+        mainContext.getEssentialObjects()
     }
 }
 
