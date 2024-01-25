@@ -263,11 +263,12 @@ void MessengerService::ChatHandling()
         if (participant_id == sender_id)
             continue;
 
+        soci::indicator ind;
         *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
-            soci::into(login_ip), soci::into(login_port), soci::use(participant_id);
+            soci::into(login_ip, ind), soci::into(login_port), soci::use(participant_id);
 
         // 로그인 중이 아니면 푸시알림 건너뜀
-        if (login_ip.empty())
+        if (ind == soci::i_null)
             continue;
 
         auto request_id = m_peer->MakeRequestID();
@@ -806,6 +807,24 @@ void MessengerService::GetContactListHandling()
                              });
 }
 
+void MessengerService::GetContactRequestListHandling()
+{
+    std::string user_id;
+    m_client_request.GetData(user_id);
+
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id, status from contact_tb where participant_id=:id",
+                                  soci::use(user_id));
+
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        std::string acq_id = it->get<std::string>(0);
+        int status = it->get<int>(1);
+
+        if (status != RELATION_TAKE)
+            continue;
+    }
+}
+
 // Client에서 받는 버퍼 형식: ID | PW | Name | Image(raw data) | Image type
 // Client에 전달하는 버퍼 형식: Login Result | Register Date
 void MessengerService::SignUpHandling()
@@ -1018,9 +1037,51 @@ void MessengerService::ContactAddHandling()
     if (contact_add_result == CONTACTADD_SUCCESS)
     {
         *m_sql << "insert into contact_tb values(:uid, :acqid, :status)",
-            soci::use(user_id), soci::use(user_id_to_add), soci::use(static_cast<int>(RELATION_PROCEEDING));
+            soci::use(user_id), soci::use(user_id_to_add), soci::use(static_cast<int>(RELATION_SEND));
+
+        *m_sql << "insert into contact_tb values(:uid, :acqid, :status)",
+            soci::use(user_id_to_add), soci::use(user_id), soci::use(static_cast<int>(RELATION_TAKE));
 
         // user_id_to_add가 접속 중이면 뭐 보내고 아니면 그냥 끝
+        soci::indicator ind;
+        std::string login_ip;
+        int login_port;
+
+        *m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
+            soci::into(login_ip, ind), soci::into(login_port), soci::use(user_id_to_add);
+
+        if (ind != soci::i_null)
+        {
+            // 친구 추가 허락을 맡을 사람에게 보낼 버퍼
+            // id | name | info | profile img
+            m_peer->AsyncConnect(login_ip, login_port, m_peer->MakeRequestID(), [peer = m_peer, sql = std::make_shared<soci::session>(PostgreDBPool::Get()), user_id_to_add](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                std::string user_name, user_info, profile_path;
+                *sql << "select user_nm, user_info, img_path from user_tb where user_id=:uid",
+                    soci::into(user_name), soci::into(user_info), soci::into(profile_path), soci::use(user_id_to_add);
+
+                std::vector<unsigned char> raw_img;
+                if (!profile_path.empty())
+                {
+                    std::ifstream inf(profile_path, std::ios::binary);
+                    if (inf.is_open())
+                        raw_img.assign(std::istreambuf_iterator<char>(inf), {});
+                }
+
+                NetworkBuffer net_buf(CONTACT_ADD_TYPE);
+                net_buf += user_id_to_add;
+                net_buf += user_name;
+                net_buf += user_info;
+                net_buf += raw_img;
+
+                peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                        return;
+                });
+            });
+        }
     }
 
     NetworkBuffer net_buf(CONTACT_ADD_TYPE);
@@ -1144,6 +1205,9 @@ void MessengerService::StartHandling()
                                                                 break;
                                                             case FETCH_MORE_MESSAGE_TYPE:
                                                                 FetchMoreMessageHandling();
+                                                                break;
+                                                            case GET_CONTACT_REQUEST_LIST_TYPE:
+                                                                GetContactRequestListHandling();
                                                                 break;
                                                             default:
                                                                 break;

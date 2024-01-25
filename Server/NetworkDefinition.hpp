@@ -20,6 +20,7 @@ enum ConnectionType : int64_t
     SESSION_REFRESH_TYPE,
     FETCH_MORE_MESSAGE_TYPE,
     MESSAGE_READER_UPDATE_TYPE,
+    GET_CONTACT_REQUEST_LIST_TYPE,
     CONNECTION_TYPE_CNT
 };
 
@@ -49,7 +50,8 @@ enum ContactAddResult : int64_t
 
 enum ContactRelationStatus : int64_t
 {
-    RELATION_PROCEEDING,
+    RELATION_SEND,
+    RELATION_TAKE,
     RELATION_FRIEND,
     RELATION_HIDE,
     RELATION_BLOCKED

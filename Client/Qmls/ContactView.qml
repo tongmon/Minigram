@@ -8,6 +8,25 @@ Rectangle {
     color: "#19314F"
     anchors.fill: parent
 
+    function processAddContact(result)
+    {
+        switch (result)
+        {
+        case 0: // CONTACTADD_SUCCESS
+            contactAddResultText.text = ""
+            break
+        case 1: // CONTACTADD_DUPLICATION
+            contactAddResultText.text = "You have already tried to add this id."
+            break
+        case 2: // CONTACTADD_ID_NO_EXSIST
+            contactAddResultText.text = "There is no id match what you filled"
+            break
+        case 3: // CONTACTADD_CONNECTION_FAIL
+            contactAddResultText.text = "Connection fail!"
+            break
+        }
+    }
+
     Button {
         id: addContactButton
         anchors {
@@ -158,6 +177,21 @@ Rectangle {
                         bottom: parent.bottom
                     }
                     height: parent.height * 0.2    
+
+                    Text {
+                        id: contactAddResultText
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            left: parent.left
+                            leftMargin: 5
+                        }
+                        text: ""
+                        font {
+                            bold: true
+                            pointSize: 15
+                        }
+                        color: "red"
+                    }
 
                     Button {
                         id: cancleButton

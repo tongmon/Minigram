@@ -922,9 +922,13 @@ void MainContext::tryAddContact(const QString &user_id)
     {
         return;
     }
+
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
+            QMetaObject::invokeMethod(m_contact_view,
+                                      "processAddContact",
+                                      Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
             request_id.store(-1);
             return;
         }
@@ -936,6 +940,9 @@ void MainContext::tryAddContact(const QString &user_id)
         central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
+                QMetaObject::invokeMethod(m_contact_view,
+                                          "processAddContact",
+                                          Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                 request_id.store(-1);
                 return;
             }
@@ -943,6 +950,9 @@ void MainContext::tryAddContact(const QString &user_id)
             central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
+                    QMetaObject::invokeMethod(m_contact_view,
+                                              "processAddContact",
+                                              Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                     request_id.store(-1);
                     return;
                 }
@@ -950,6 +960,9 @@ void MainContext::tryAddContact(const QString &user_id)
                 central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
+                        QMetaObject::invokeMethod(m_contact_view,
+                                                  "processAddContact",
+                                                  Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                         request_id.store(-1);
                         return;
                     }
@@ -957,10 +970,9 @@ void MainContext::tryAddContact(const QString &user_id)
                     int64_t result;
                     session->GetResponse().GetData(result);
 
-                    // QMetaObject::invokeMethod(m_contact_view,
-                    //                           "processAddContact",
-                    //                           Q_ARG(int64_t, result),
-                    //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                    QMetaObject::invokeMethod(m_contact_view,
+                                              "processAddContact",
+                                              Q_ARG(QVariant, result));
 
                     central_server.CloseRequest(session->GetID());
                     request_id.store(-1);
@@ -1014,6 +1026,43 @@ void MainContext::tryAddContact(const QString &user_id)
 
 void MainContext::tryGetContactRequestList()
 {
+    auto &central_server = m_window.GetServerHandle();
+
+    static std::atomic_int request_id = -1;
+    if (request_id.load() < 0)
+        request_id.store(central_server.MakeRequestID());
+    else
+    {
+
+        return;
+    }
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            request_id.store(-1);
+            return;
+        }
+
+        NetworkBuffer net_buf(GET_CONTACT_REQUEST_LIST_TYPE);
+        net_buf += m_user_id;
+
+        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                request_id.store(-1);
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    request_id.store(-1);
+                    return;
+                }
+            });
+        });
+    });
 }
 
 void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accepted)
