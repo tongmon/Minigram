@@ -28,7 +28,7 @@ class Session
 
     boost::system::error_code m_ec;
 
-    unsigned int m_id;
+    size_t m_id;
 
     bool m_was_cancelled;
     std::mutex m_cancel_guard;
@@ -37,7 +37,7 @@ class Session
     Session(boost::asio::io_service &ios,
             const std::string &raw_ip_address,
             unsigned short port_num,
-            unsigned int id)
+            size_t id)
         : m_sock(ios),
           m_ep(boost::asio::ip::address::from_string(raw_ip_address), port_num),
           m_id(id),
@@ -64,7 +64,7 @@ class Session
 class TCPClient
 {
     boost::asio::io_service m_ios;
-    std::map<unsigned int, std::shared_ptr<Session>> m_active_sessions;
+    std::map<size_t, std::shared_ptr<Session>> m_active_sessions;
     std::mutex m_active_sessions_guard;
     std::unique_ptr<boost::asio::io_service::work> m_work;
     std::list<std::unique_ptr<std::thread>> m_threads;
@@ -75,8 +75,12 @@ class TCPClient
 
     bool AsyncConnect(const std::string &raw_ip_address,
                       unsigned short port_num,
-                      unsigned int request_id,
+                      size_t request_id,
                       std::function<void(std::shared_ptr<Session>)> on_success_connection = {});
+
+    void AsyncConnect(const std::string &raw_ip_address,
+                      unsigned short port_num,
+                      std::function<void(std::shared_ptr<Session>)> on_finish_connection);
 
     template <typename T>
     void AsyncWrite(unsigned int request_id,
