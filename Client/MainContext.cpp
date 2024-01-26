@@ -1028,19 +1028,16 @@ void MainContext::tryGetContactRequestList()
 {
     auto &central_server = m_window.GetServerHandle();
 
-    static std::atomic_int request_id = -1;
-    if (request_id.load() < 0)
-        request_id.store(central_server.MakeRequestID());
-    else
-    {
+    static std::atomic_bool is_ready = true;
 
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
         return;
-    }
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
-            request_id.store(-1);
+            is_ready.store(true);
             return;
         }
 
@@ -1050,14 +1047,14 @@ void MainContext::tryGetContactRequestList()
         central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
-                request_id.store(-1);
+                is_ready.store(true);
                 return;
             }
 
             central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
-                    request_id.store(-1);
+                    is_ready.store(true);
                     return;
                 }
             });

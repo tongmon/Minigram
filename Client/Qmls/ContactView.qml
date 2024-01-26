@@ -28,11 +28,134 @@ Rectangle {
     }
 
     Button {
-        id: addContactButton
+        id: contactRequestsViewButton
         anchors {
             left: parent.left
             right: parent.right
             top: parent.top
+            margins: 5
+        }
+        height: 35
+        text: "View Contact Requests"
+        z: 2
+        background: Rectangle {
+            color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+            radius: 5
+        }
+
+        onClicked: {
+            contactAddPopup.open()
+        }
+
+        Popup {
+            id: contactRequestsViewPopup
+            anchors.centerIn: Overlay.overlay
+            width: 500
+            height: 700
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+            modal: true
+            background: Rectangle {
+                color: "#333366"
+                radius: 5
+            }
+            contentItem: Item {
+                anchors.fill: parent
+
+                Text {
+                    id: contactRequestsViewTitle
+                    anchors {
+                        horizontalCenter: parent.horizontalCenter
+                        top: parent.top
+                        topMargin: 5
+                    }
+                    text: "Contact Requests"
+                    font {
+                        bold: true
+                        pointSize: 20
+                    }
+                }
+
+                ListView {
+                    id: contactRequestsView
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        top: contactRequestsViewTitle.bottom
+                        bottom: parent.bottom
+                    }
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    ScrollBar.vertical: ScrollBar {
+                        policy: ScrollBar.AsNeeded
+                    }
+
+                    model: ListModel {
+                        id: contactRequestsViewModel
+                    }
+
+                    delegate: Rectangle {
+                        id: requesterInfo
+                        width: contactRequestsView.width
+                        height: 98
+                        objectName: requesterId
+                        color: Qt.rgba(0.525, 
+                                       0.55, 
+                                       0.58, 
+                                       requesterInfoMouseArea.containsMouse ? 1.0 : 0.6)
+
+                        property int requesterIndex: index
+
+                        CustomImageButton {
+                            id: requesterImageButton
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                left: parent.left
+                                leftMargin: 5
+                            }
+                            height: parent.height - 20
+                            width: height
+                            rounded: true
+                            source: requesterImg
+                        }    
+
+                        Item {
+                            anchors {
+                                left: requesterImageButton.right
+                                leftMargin: 5
+                                right: parent.right
+                                top: parent.top
+                                bottom: parent.bottom
+                            }
+                        }
+
+                        MouseArea {
+                            id: requesterInfoMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                        }
+                    }
+                }
+
+                Item {
+                    id: contactRequestsViewButtonContainer
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        bottom: parent.bottom
+                    }
+                    height: 50
+                }
+            }
+        }
+    }
+
+    Button {
+        id: addContactButton
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: contactRequestViewButton.bottom
             margins: 5
         }
         height: 35
