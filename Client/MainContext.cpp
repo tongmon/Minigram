@@ -138,8 +138,19 @@ void MainContext::RefreshReaderIds(Service *service)
     delete service;
 }
 
+// Server에서 받는 버퍼 형식: add user id | add user name | add user info | img name | raw img
 void MainContext::RecieveContactRequest(Service *service)
 {
+    QString add_user_id, add_user_name, add_user_info, add_user_img_name;
+    std::vector<std::byte> raw_img;
+
+    service->server_response.GetData(add_user_id);
+    service->server_response.GetData(add_user_name);
+    service->server_response.GetData(add_user_info);
+    service->server_response.GetData(add_user_img_name);
+    service->server_response.GetData(raw_img);
+
+    delete service;
 }
 
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
@@ -911,7 +922,7 @@ void MainContext::tryGetContactList()
 
 // Server에 전달하는 버퍼 형식: current user id | user id to add
 // Server에서 받는 버퍼 형식: contact가 추가되었는지 결과값 | added user name | added user img name | added user raw profile img
-void MainContext::tryAddContact(const QString &user_id)
+void MainContext::trySendContactRequest(const QString &user_id)
 {
     auto &central_server = m_window.GetServerHandle();
 
@@ -933,7 +944,7 @@ void MainContext::tryAddContact(const QString &user_id)
             return;
         }
 
-        NetworkBuffer net_buf(CONTACT_ADD_TYPE);
+        NetworkBuffer net_buf(SEND_CONTACT_REQUEST_TYPE);
         net_buf += m_user_id;
         net_buf += user_id;
 
@@ -1057,6 +1068,52 @@ void MainContext::tryGetContactRequestList()
                     is_ready.store(true);
                     return;
                 }
+
+                std::string json_txt;
+                session->GetResponse().GetData(json_txt);
+
+                boost::json::error_code ec;
+                boost::json::value json_data = boost::json::parse(json_txt, ec);
+                auto contact_request_arrray = json_data.as_object()["contact_request_init_data"].as_array();
+
+                for (int i = 0; i < contact_request_arrray.size(); i++)
+                {
+                    auto requester_data = contact_request_arrray[i].as_object();
+
+                    QVariantMap qvm;
+                    qvm.insert("userId", requester_data["user_id"].as_string().c_str());
+                    qvm.insert("userName", requester_data["user_name"].as_string().c_str());
+                    qvm.insert("userInfo", requester_data["user_info"].as_string().c_str());
+
+                    std::filesystem::path img_path = boost::dll::program_location().parent_path().string() +
+                                                     "/minigram_cache/" +
+                                                     m_user_id.toStdString() +
+                                                     "/contact_request/" +
+                                                     requester_data["user_id"].as_string().c_str();
+
+                    if (!std::filesystem::exists(img_path))
+                        std::filesystem::create_directory(img_path);
+
+                    if (requester_data["user_img"].as_string().empty())
+                        qvm.insert("userImg", "");
+                    else
+                    {
+                        std::vector<unsigned char> img_data;
+                        session->GetResponse().GetData(img_data);
+
+                        img_path /= requester_data["user_img"].as_string().c_str();
+                        std::ofstream of(img_path, std::ios::binary);
+                        if (of.is_open())
+                            of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
+
+                        qvm.insert("userImg", img_path.string().c_str());
+                    }
+
+                    // qvm으로 requester 추가하는 로직
+                }
+
+                central_server.CloseRequest(session->GetID());
+                is_ready.store(true);
             });
         });
     });

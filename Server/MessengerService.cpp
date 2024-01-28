@@ -767,7 +767,6 @@ void MessengerService::GetContactListHandling()
         }
 
         acquaintance_data["user_img"] = "";
-        // acquaintance_data["user_img_date"] = -1;
 
         // 이미지 갱신해야 될 때
         if ((contact_cache.find(acquaintance_id) != contact_cache.end() && img_update_date > contact_cache[acquaintance_id]) ||
@@ -812,17 +811,59 @@ void MessengerService::GetContactRequestListHandling()
     std::string user_id;
     m_client_request.GetData(user_id);
 
+    boost::json::array contact_request_array;
+    std::vector<std::vector<unsigned char>> raw_imgs;
     soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id, status from contact_tb where participant_id=:id",
                                   soci::use(user_id));
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
+        boost::json::object requester_info;
         std::string acq_id = it->get<std::string>(0);
         int status = it->get<int>(1);
 
         if (status != RELATION_TAKE)
             continue;
+
+        std::string user_name, user_info, profile_path;
+        *m_sql << "select user_nm, user_info, img_path from user_tb where user_id=:uid",
+            soci::into(user_name), soci::into(user_info), soci::into(profile_path), soci::use(acq_id);
+
+        if (!profile_path.empty())
+        {
+            std::ifstream inf(profile_path, std::ios::binary);
+            if (inf.is_open())
+                raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
+        }
+
+        requester_info["user_id"] = acq_id;
+        requester_info["user_name"] = user_name;
+        requester_info["user_img"] = profile_path;
+        requester_info["user_info"] = user_info;
+
+        contact_request_array.push_back(requester_info);
     }
+
+    boost::json::object contact_request_init_json;
+    contact_request_init_json["contact_request_init_data"] = contact_request_array;
+
+    NetworkBuffer net_buf(GET_CONTACT_REQUEST_LIST_TYPE);
+    net_buf += boost::json::serialize(contact_request_init_json);
+    for (const auto &raw_img : raw_imgs)
+        net_buf += raw_img;
+
+    m_request = std::move(m_request);
+
+    boost::asio::async_write(*m_sock,
+                             m_request.AsioBuffer(),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
 }
 
 // Client에서 받는 버퍼 형식: ID | PW | Name | Image(raw data) | Image type
@@ -1008,7 +1049,7 @@ void MessengerService::SessionAddHandling()
 
 // Client에서 받는 버퍼 형식: current user id | user id to add
 // Client에 전달하는 버퍼 형식: contact add result | added user name | added user img name | added user raw profile img
-void MessengerService::ContactAddHandling()
+void MessengerService::SendContactRequestHandling()
 {
     std::string user_id, user_id_to_add;
 
@@ -1070,10 +1111,11 @@ void MessengerService::ContactAddHandling()
                         raw_img.assign(std::istreambuf_iterator<char>(inf), {});
                 }
 
-                NetworkBuffer net_buf(CONTACT_ADD_TYPE);
+                NetworkBuffer net_buf(RECEIVE_CONTACT_REQUEST_TYPE);
                 net_buf += user_id_to_add;
                 net_buf += user_name;
                 net_buf += user_info;
+                net_buf += profile_path.empty() ? "" : std::filesystem::path(profile_path).filename().string();
                 net_buf += raw_img;
 
                 peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
@@ -1084,7 +1126,7 @@ void MessengerService::ContactAddHandling()
         }
     }
 
-    NetworkBuffer net_buf(CONTACT_ADD_TYPE);
+    NetworkBuffer net_buf(SEND_CONTACT_REQUEST_TYPE);
     net_buf += contact_add_result;
 
     m_request = std::move(net_buf);
@@ -1200,8 +1242,8 @@ void MessengerService::StartHandling()
                                                             case SESSION_ADD_TYPE:
                                                                 SessionAddHandling();
                                                                 break;
-                                                            case CONTACT_ADD_TYPE:
-                                                                ContactAddHandling();
+                                                            case SEND_CONTACT_REQUEST_TYPE:
+                                                                SendContactRequestHandling();
                                                                 break;
                                                             case FETCH_MORE_MESSAGE_TYPE:
                                                                 FetchMoreMessageHandling();

@@ -44,7 +44,7 @@ Rectangle {
         }
 
         onClicked: {
-            contactAddPopup.open()
+            contactRequestsViewPopup.open()
         }
 
         Popup {
@@ -68,6 +68,7 @@ Rectangle {
                         top: parent.top
                         topMargin: 5
                     }
+                    z: 2
                     text: "Contact Requests"
                     font {
                         bold: true
@@ -81,7 +82,8 @@ Rectangle {
                         left: parent.left
                         right: parent.right
                         top: contactRequestsViewTitle.bottom
-                        bottom: parent.bottom
+                        topMargin: 5
+                        bottom: contactRequestsViewButtonContainer.top
                     }
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
@@ -127,6 +129,34 @@ Rectangle {
                                 top: parent.top
                                 bottom: parent.bottom
                             }
+
+                            Button {
+                                id: contactRequestDissmissButton
+                                anchors {
+                                    verticalCenter: parent.verticalCenter
+                                    right: contactRequestAcceptButton.left
+                                    rightMargin: 5
+                                }
+                                text: "Dismiss"
+                                background: Rectangle {
+                                    color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                                    radius: 5
+                                }
+                            }
+
+                            Button {
+                                id: contactRequestAcceptButton
+                                anchors {
+                                    verticalCenter: parent.verticalCenter
+                                    right: parent.right
+                                    rightMargin: 5
+                                }
+                                text: "Accept"
+                                background: Rectangle {
+                                    color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                                    radius: 5
+                                }
+                            }
                         }
 
                         MouseArea {
@@ -145,6 +175,48 @@ Rectangle {
                         bottom: parent.bottom
                     }
                     height: 50
+
+                    Button {
+                        id: contactRequestsViewCloseButton
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            right: contactRequestsViewDismissAllButton.left
+                            rightMargin: 5
+                        }
+                        text: "Close"
+                        background: Rectangle {
+                            color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                            radius: 5
+                        }
+                    }
+
+                    Button {
+                        id: contactRequestsViewDismissAllButton
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            right: contactRequestsViewClaimAllButton.left
+                            rightMargin: 5
+                        }
+                        text: "Dismiss All"
+                        background: Rectangle {
+                            color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                            radius: 5
+                        }
+                    }
+
+                    Button {
+                        id: contactRequestsViewClaimAllButton
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            right: parent.right
+                            rightMargin: 5
+                        }
+                        text: "Claim All"
+                        background: Rectangle {
+                            color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                            radius: 5
+                        }
+                    }
                 }
             }
         }

@@ -70,6 +70,9 @@ void Service::StartHandling()
                                                             case MESSAGE_READER_UPDATE_TYPE:
                                                                 window.GetMainContext().RefreshReaderIds(this);
                                                                 break;
+                                                            case RECEIVE_CONTACT_REQUEST_TYPE:
+                                                                window.GetMainContext().RecieveContactRequest(this);
+                                                                break;
                                                             default:
                                                                 break;
                                                             }

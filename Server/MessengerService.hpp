@@ -25,7 +25,7 @@ class MessengerService : public Service
     void GetContactRequestListHandling();
     void SignUpHandling();
     void SessionAddHandling();
-    void ContactAddHandling();
+    void SendContactRequestHandling();
 
   public:
     MessengerService(std::shared_ptr<TCPClient> peer, std::shared_ptr<boost::asio::ip::tcp::socket> sock);

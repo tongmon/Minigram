@@ -191,6 +191,21 @@ Session Refresh 통신과 동일하다.
 	]
 }
 
+#### Contact Request Init
+친구 추가 정보 가져올 때 서버가 클라로 던져주는 json 데이터
+
+{
+	"contact_request_init_data": [
+		{
+			"user_id": "tongstar",
+			"user_name": "KyungJoonLee"
+			"user_img": 이미지 이름(확장자 포함),
+			"user_info": "어쩌구 저쩌구 블라블라"
+		},
+		...
+	]
+}
+
 raw img file이 담긴 배열을 함께 전송함
 
 ## Client Cache 구성
@@ -211,6 +226,9 @@ minigram_cache
 			L acquaintance_id
 				L profile_img
 					L 날짜.이미지_확장자
+		L contact_request
+			L requester_id
+				L 날짜.이미지_확장자
 		L setting_info
 			
 날짜는 이미지 갱신 날짜(time since epoch)
