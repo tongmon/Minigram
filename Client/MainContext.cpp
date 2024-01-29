@@ -138,17 +138,46 @@ void MainContext::RefreshReaderIds(Service *service)
     delete service;
 }
 
-// Server에서 받는 버퍼 형식: add user id | add user name | add user info | img name | raw img
+// Server에서 받는 버퍼 형식: requester id | requester name | requester info | img name | raw img
 void MainContext::RecieveContactRequest(Service *service)
 {
-    QString add_user_id, add_user_name, add_user_info, add_user_img_name;
-    std::vector<std::byte> raw_img;
+    QString requester_id, requester_name, requester_info, requester_img_name;
+    std::vector<std::byte> requester_img;
 
-    service->server_response.GetData(add_user_id);
-    service->server_response.GetData(add_user_name);
-    service->server_response.GetData(add_user_info);
-    service->server_response.GetData(add_user_img_name);
-    service->server_response.GetData(raw_img);
+    service->server_response.GetData(requester_id);
+    service->server_response.GetData(requester_name);
+    service->server_response.GetData(requester_info);
+    service->server_response.GetData(requester_img_name);
+    service->server_response.GetData(requester_img);
+
+    std::filesystem::path req_cache_path = boost::dll::program_location().parent_path().string() +
+                                           "/minigram_cache/" +
+                                           m_user_id.toStdString() +
+                                           "/contact_request/" +
+                                           requester_id.toStdString(),
+                          img_path;
+
+    if (!std::filesystem::exists(req_cache_path))
+        std::filesystem::create_directory(req_cache_path);
+
+    if (!requester_img_name.isEmpty())
+    {
+        img_path = req_cache_path / requester_img_name.toStdString();
+        std::ofstream of(img_path);
+        if (of.is_open())
+            of.write(reinterpret_cast<char *>(&requester_img[0]), requester_img.size());
+    }
+
+    QVariantMap qvm;
+    qvm.insert("userId", requester_id);
+    qvm.insert("userName", requester_name);
+    qvm.insert("userInfo", requester_info);
+    qvm.insert("userImg", img_path.empty() ? "" : img_path.string().c_str());
+
+    // requester 추가 함수 호출
+    QMetaObject::invokeMethod(m_contact_view,
+                              "recieveContactRequest",
+                              Q_ARG(QVariant, qvm));
 
     delete service;
 }
@@ -938,7 +967,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
         if (!session.get() || !session->IsValid())
         {
             QMetaObject::invokeMethod(m_contact_view,
-                                      "processAddContact",
+                                      "processSendContactRequest",
                                       Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
             request_id.store(-1);
             return;
@@ -952,7 +981,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_contact_view,
-                                          "processAddContact",
+                                          "processSendContactRequest",
                                           Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                 request_id.store(-1);
                 return;
@@ -962,7 +991,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                 if (!session.get() || !session->IsValid())
                 {
                     QMetaObject::invokeMethod(m_contact_view,
-                                              "processAddContact",
+                                              "processSendContactRequest",
                                               Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                     request_id.store(-1);
                     return;
@@ -972,7 +1001,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                     if (!session.get() || !session->IsValid())
                     {
                         QMetaObject::invokeMethod(m_contact_view,
-                                                  "processAddContact",
+                                                  "processSendContactRequest",
                                                   Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                         request_id.store(-1);
                         return;
@@ -982,7 +1011,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                     session->GetResponse().GetData(result);
 
                     QMetaObject::invokeMethod(m_contact_view,
-                                              "processAddContact",
+                                              "processSendContactRequest",
                                               Q_ARG(QVariant, result));
 
                     central_server.CloseRequest(session->GetID());
@@ -1023,7 +1052,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                     //}
                     //
                     // QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("contactButton"),
-                    //                          "processAddContact",
+                    //                          "processSendContactRequest",
                     //                          Q_ARG(int64_t, result),
                     //                          Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     //
@@ -1147,7 +1176,10 @@ void MainContext::tryGetContactRequestList()
                             qvm.insert("userImg", profile_img_path.string().c_str());
                         }
 
-                        // qvm으로 requester 추가하는 로직
+                        // qvm으로 contact request 추가하는 로직
+                        QMetaObject::invokeMethod(m_contact_view,
+                                                  "recieveContactRequest",
+                                                  Q_ARG(QVariant, qvm));
                     }
 
                     central_server.CloseRequest(session->GetID());

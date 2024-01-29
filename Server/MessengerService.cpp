@@ -1124,8 +1124,8 @@ void MessengerService::SendContactRequestHandling()
         if (ind != soci::i_null)
         {
             // 친구 추가 허락을 맡을 사람에게 보낼 버퍼
-            // id | name | info | profile img
-            m_peer->AsyncConnect(login_ip, login_port, m_peer->MakeRequestID(), [peer = m_peer, sql = std::make_shared<soci::session>(PostgreDBPool::Get()), user_id_to_add](std::shared_ptr<Session> session) -> void {
+            // requester id | requester name | requester info | img name | raw img
+            m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, sql = std::make_shared<soci::session>(PostgreDBPool::Get()), user_id_to_add](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 

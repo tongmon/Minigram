@@ -21,6 +21,45 @@ TCPClient::~TCPClient()
     Close();
 }
 
+void TCPClient::AsyncConnect(const std::string &raw_ip_address, unsigned short port_num, std::function<void(std::shared_ptr<Session>)> on_finish_connection)
+{
+    std::shared_ptr<Session> session;
+    std::unique_lock<std::mutex> lock(m_active_sessions_guard);
+
+    static size_t request_id = 0;
+    do
+    {
+        request_id = request_id++ % ULLONG_MAX;
+    } while (m_active_sessions.find(request_id) != m_active_sessions.end());
+
+    session = std::make_shared<Session>(m_ios, raw_ip_address, port_num, request_id);
+    m_active_sessions[request_id] = session;
+
+    lock.unlock();
+
+    session->m_sock.open(session->m_ep.protocol());
+
+    session->m_sock.async_connect(session->m_ep,
+                                  [this, session, on_finish_connection](const boost::system::error_code &ec) {
+                                      if (ec != boost::system::errc::success)
+                                      {
+                                          session->m_ec = ec;
+                                          on_finish_connection(CloseRequest(session->m_id));
+                                          return;
+                                      }
+
+                                      std::unique_lock<std::mutex> cancel_lock(session->m_cancel_guard);
+
+                                      if (session->m_was_cancelled)
+                                      {
+                                          on_finish_connection(CloseRequest(session->m_id));
+                                          return;
+                                      }
+
+                                      on_finish_connection(session);
+                                  });
+}
+
 bool TCPClient::AsyncConnect(const std::string &raw_ip_address,
                              unsigned short port_num,
                              unsigned int request_id,

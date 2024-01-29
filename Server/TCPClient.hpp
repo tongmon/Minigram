@@ -74,6 +74,10 @@ class TCPClient
     TCPClient(unsigned char num_of_threads);
     ~TCPClient();
 
+    void AsyncConnect(const std::string &raw_ip_address,
+                      unsigned short port_num,
+                      std::function<void(std::shared_ptr<Session>)> on_finish_connection);
+
     bool AsyncConnect(const std::string &raw_ip_address,
                       unsigned short port_num,
                       unsigned int request_id,

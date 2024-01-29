@@ -8,12 +8,13 @@ Rectangle {
     color: "#19314F"
     anchors.fill: parent
 
-    function processAddContact(result)
+    function processSendContactRequest(result)
     {
         switch (result)
         {
         case 0: // CONTACTADD_SUCCESS
             contactAddResultText.text = ""
+            contactAddPopup.close()
             break
         case 1: // CONTACTADD_DUPLICATION
             contactAddResultText.text = "You have already tried to add this id."
@@ -25,6 +26,11 @@ Rectangle {
             contactAddResultText.text = "Connection fail!"
             break
         }
+    }
+
+    function recieveContactRequest(requester_info)
+    {
+        contactRequestModel.append(requester_info)
     }
 
     Button {
@@ -98,7 +104,7 @@ Rectangle {
                         id: requesterInfo
                         width: contactRequestsView.width
                         height: 98
-                        objectName: requesterId
+                        objectName: userId
                         color: Qt.rgba(0.525, 
                                        0.55, 
                                        0.58, 
@@ -116,7 +122,7 @@ Rectangle {
                             height: parent.height - 20
                             width: height
                             rounded: true
-                            source: requesterImg
+                            source: userImg
                         }    
 
                         Item {
@@ -126,6 +132,17 @@ Rectangle {
                                 right: parent.right
                                 top: parent.top
                                 bottom: parent.bottom
+                            }
+
+                            Text {
+                                anchors {
+                                    verticalCenter: parent.verticalCenter
+                                    left: parent.left
+                                }
+                                font {
+                                    pointSize: 15
+                                }
+                                text: userName
                             }
 
                             Button {
@@ -429,9 +446,9 @@ Rectangle {
                             }
 
                             onClicked: {
-                                // contact 추가하는 로직 추가
+                                // contactAddPopup.close()
 
-                                contactAddPopup.close()
+                                mainContext.trySendContactRequest(idInputTextField.text)
                             }
                         }                    
                     }
