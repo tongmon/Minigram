@@ -32,6 +32,7 @@ class ContactModel : public QAbstractListModel
     QHash<int, QByteArray> roleNames() const;
 
     Q_INVOKABLE void append(const QVariantMap &qvm);
+    Q_INVOKABLE void remove(const QString &user_id);
     Q_INVOKABLE void clear();
 };
 

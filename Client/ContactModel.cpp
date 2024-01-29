@@ -67,6 +67,20 @@ void ContactModel::append(const QVariantMap &qvm)
     endInsertRows();
 }
 
+Q_INVOKABLE void ContactModel::remove(const QString &user_id)
+{
+    int ind = m_id_index_map[user_id];
+    beginRemoveRows(QModelIndex(), ind, ind);
+    endRemoveRows();
+    delete m_contacts[ind];
+    m_contacts.removeAt(ind);
+
+    m_id_index_map.remove(user_id);
+    for (auto i = m_id_index_map.begin(), end = m_id_index_map.end(); i != end; i++)
+        if (ind < i.value())
+            i.value()--;
+}
+
 void ContactModel::clear()
 {
     beginRemoveRows(QModelIndex(), 0, rowCount() - 1);

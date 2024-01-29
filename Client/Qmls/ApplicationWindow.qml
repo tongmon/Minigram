@@ -48,6 +48,20 @@ ApplicationWindow {
         filterRole: 258
     }
 
+    ContactModel {
+        id: contactRequestModel
+        objectName: "contactRequestModel"
+    }
+
+    ContactSortFilterProxyModel {
+        id: contactRequestFilterProxyModel
+        objectName: "contactRequestFilterProxyModel"
+        sourceModel: contactRequestModel
+        dynamicSortFilter: true
+        sortRole: 258
+        filterRole: 258
+    }
+
     ChatSessionModel {
         id: chatSessionModel
         objectName: "chatSessionModel"

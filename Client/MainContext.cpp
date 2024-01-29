@@ -869,11 +869,11 @@ void MainContext::tryGetContactList()
 
                     boost::json::error_code ec;
                     boost::json::value json_data = boost::json::parse(json_txt, ec);
-                    auto contact_arrray = json_data.as_object()["contact_init_data"].as_array();
+                    auto contact_array = json_data.as_object()["contact_init_data"].as_array();
 
-                    for (int i = 0; i < contact_arrray.size(); i++)
+                    for (int i = 0; i < contact_array.size(); i++)
                     {
-                        auto acquaintance_data = contact_arrray[i].as_object();
+                        auto acquaintance_data = contact_array[i].as_object();
 
                         QVariantMap qvm;
                         qvm.insert("userId", acquaintance_data["user_id"].as_string().c_str());
@@ -1035,6 +1035,8 @@ void MainContext::trySendContactRequest(const QString &user_id)
     });
 }
 
+// Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ requester id / requester img date ] 배열 )
+// Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryGetContactRequestList()
 {
     auto &central_server = m_window.GetServerHandle();
@@ -1052,68 +1054,105 @@ void MainContext::tryGetContactRequestList()
             return;
         }
 
+        std::string file_path = boost::dll::program_location().parent_path().string() + "/minigram_cache/" + m_user_id.toStdString() + "/contact_request";
+        std::vector<std::pair<std::string, int64_t>> acq_data;
+
+        if (!std::filesystem::exists(file_path))
+            std::filesystem::create_directories(file_path);
+
+        std::filesystem::directory_iterator it{file_path};
+        while (it != std::filesystem::end(it))
+        {
+            if (std::filesystem::is_directory(it->path()))
+            {
+                std::filesystem::directory_iterator di{it->path()};
+                if (di != std::filesystem::end(di))
+                {
+                    acq_data.push_back({it->path().filename().string(),
+                                        std::atoll(di->path().stem().string().c_str())});
+                }
+            }
+
+            it++;
+        }
+
         NetworkBuffer net_buf(GET_CONTACT_REQUEST_LIST_TYPE);
         net_buf += m_user_id;
+        net_buf += acq_data.size();
+        for (const auto &data : acq_data)
+        {
+            net_buf += data.first;
+            net_buf += data.second;
+        }
 
-        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                std::string json_txt;
-                session->GetResponse().GetData(json_txt);
-
-                boost::json::error_code ec;
-                boost::json::value json_data = boost::json::parse(json_txt, ec);
-                auto contact_request_arrray = json_data.as_object()["contact_request_init_data"].as_array();
-
-                for (int i = 0; i < contact_request_arrray.size(); i++)
-                {
-                    auto requester_data = contact_request_arrray[i].as_object();
-
-                    QVariantMap qvm;
-                    qvm.insert("userId", requester_data["user_id"].as_string().c_str());
-                    qvm.insert("userName", requester_data["user_name"].as_string().c_str());
-                    qvm.insert("userInfo", requester_data["user_info"].as_string().c_str());
-
-                    std::filesystem::path img_path = boost::dll::program_location().parent_path().string() +
-                                                     "/minigram_cache/" +
-                                                     m_user_id.toStdString() +
-                                                     "/contact_request/" +
-                                                     requester_data["user_id"].as_string().c_str();
-
-                    if (!std::filesystem::exists(img_path))
-                        std::filesystem::create_directory(img_path);
-
-                    if (requester_data["user_img"].as_string().empty())
-                        qvm.insert("userImg", "");
-                    else
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
                     {
-                        std::vector<unsigned char> img_data;
-                        session->GetResponse().GetData(img_data);
-
-                        img_path /= requester_data["user_img"].as_string().c_str();
-                        std::ofstream of(img_path, std::ios::binary);
-                        if (of.is_open())
-                            of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
-
-                        qvm.insert("userImg", img_path.string().c_str());
+                        is_ready.store(true);
+                        return;
                     }
 
-                    // qvm으로 requester 추가하는 로직
-                }
+                    std::string json_txt;
+                    session->GetResponse().GetData(json_txt);
 
-                central_server.CloseRequest(session->GetID());
-                is_ready.store(true);
+                    boost::json::error_code ec;
+                    boost::json::value json_data = boost::json::parse(json_txt, ec);
+                    auto request_array = json_data.as_object()["contact_request_init_data"].as_array();
+
+                    for (int i = 0; i < request_array.size(); i++)
+                    {
+                        auto requester_data = request_array[i].as_object();
+
+                        QVariantMap qvm;
+                        qvm.insert("userId", requester_data["user_id"].as_string().c_str());
+                        qvm.insert("userName", requester_data["user_name"].as_string().c_str());
+                        qvm.insert("userInfo", requester_data["user_info"].as_string().c_str());
+
+                        std::filesystem::path requester_dir{file_path + "/" + requester_data["user_id"].as_string().c_str()};
+
+                        if (!std::filesystem::exists(requester_dir))
+                            std::filesystem::create_directory(requester_dir);
+
+                        std::string profile_img;
+                        std::filesystem::directory_iterator img_dir{requester_dir};
+                        if (img_dir != std::filesystem::end(img_dir))
+                            profile_img = img_dir->path().string().c_str();
+
+                        if (requester_data["user_img"].as_string().empty())
+                            qvm.insert("userImg", profile_img.c_str());
+                        else
+                        {
+                            std::vector<unsigned char> img_data;
+                            session->GetResponse().GetData(img_data);
+
+                            auto profile_img_path = requester_dir / requester_data["user_img"].as_string().c_str();
+                            std::ofstream of(profile_img_path, std::ios::binary);
+                            if (of.is_open())
+                                of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
+
+                            qvm.insert("userImg", profile_img_path.string().c_str());
+                        }
+
+                        // qvm으로 requester 추가하는 로직
+                    }
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
+                });
             });
         });
     });

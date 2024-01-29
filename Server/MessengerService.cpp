@@ -806,13 +806,29 @@ void MessengerService::GetContactListHandling()
                              });
 }
 
+// Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ requester id / requester img date ] 배열 )
+// Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MessengerService::GetContactRequestListHandling()
 {
     std::string user_id;
-    m_client_request.GetData(user_id);
+    std::unordered_map<std::string, int64_t> requester_cache;
+    size_t requester_ary_size;
 
-    boost::json::array contact_request_array;
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(requester_ary_size);
+
+    for (size_t i = 0; i < requester_ary_size; i++)
+    {
+        std::string req_id;
+        int64_t req_img_date;
+        m_client_request.GetData(req_id);
+        m_client_request.GetData(req_img_date);
+        requester_cache[req_id] = req_img_date;
+    }
+
+    boost::json::array request_array;
     std::vector<std::vector<unsigned char>> raw_imgs;
+
     soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id, status from contact_tb where participant_id=:id",
                                   soci::use(user_id));
 
@@ -829,23 +845,37 @@ void MessengerService::GetContactRequestListHandling()
         *m_sql << "select user_nm, user_info, img_path from user_tb where user_id=:uid",
             soci::into(user_name), soci::into(user_info), soci::into(profile_path), soci::use(acq_id);
 
+        requester_info["user_id"] = acq_id;
+        requester_info["user_name"] = user_name;
+        requester_info["user_info"] = user_info;
+
+        int64_t img_update_date = 0;
+        std::filesystem::path path_data;
         if (!profile_path.empty())
+        {
+            path_data = profile_path;
+            img_update_date = std::atoll(path_data.stem().string().c_str());
+        }
+
+        requester_info["user_img"] = "";
+
+        // 이미지 갱신해야 될 때
+        if ((requester_cache.find(acq_id) != requester_cache.end() && img_update_date > requester_cache[acq_id]) ||
+            (requester_cache.find(acq_id) == requester_cache.end() && img_update_date))
         {
             std::ifstream inf(profile_path, std::ios::binary);
             if (inf.is_open())
+            {
+                requester_info["user_img"] = path_data.filename().string();
                 raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
+            }
         }
 
-        requester_info["user_id"] = acq_id;
-        requester_info["user_name"] = user_name;
-        requester_info["user_img"] = profile_path;
-        requester_info["user_info"] = user_info;
-
-        contact_request_array.push_back(requester_info);
+        request_array.push_back(requester_info);
     }
 
     boost::json::object contact_request_init_json;
-    contact_request_init_json["contact_request_init_data"] = contact_request_array;
+    contact_request_init_json["contact_request_init_data"] = request_array;
 
     NetworkBuffer net_buf(GET_CONTACT_REQUEST_LIST_TYPE);
     net_buf += boost::json::serialize(contact_request_init_json);
