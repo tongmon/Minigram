@@ -33,6 +33,27 @@ Rectangle {
         contactRequestModel.append(requester_info)
     }
 
+    function processContactRequest(acceptance, reqInfo)
+    {
+        if (!reqInfo.hasOwnProperty("userId"))
+        {
+            // 실패 문구 출력
+            return
+        }
+
+        contactRequestModel.remove(reqInfo["userId"])
+
+        if(acceptance)
+        {
+            contactModel.append({
+                "userId": reqInfo["userId"],
+                "userName": reqInfo["userName"],
+                "userInfo": reqInfo["userInfo"],
+                "userImg": reqInfo["userImg"]
+            })
+        }
+    }
+
     Button {
         id: contactRequestsViewButton
         anchors {

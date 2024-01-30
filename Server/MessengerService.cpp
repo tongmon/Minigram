@@ -907,6 +907,10 @@ void MessengerService::ProcessContactRequestHandling()
     m_client_request.GetData(req_id);
     m_client_request.GetData(is_accepted);
 
+    NetworkBuffer net_buf(PROCESS_CONTACT_REQUEST_TYPE);
+    net_buf += is_accepted;
+    net_buf += req_id;
+
     if (is_accepted)
     {
         *m_sql << "update contact_tb set status=:st where user_id=:uid and acquaintance_id=:aid",
@@ -914,6 +918,22 @@ void MessengerService::ProcessContactRequestHandling()
 
         *m_sql << "update contact_tb set status=:st where user_id=:uid and acquaintance_id=:aid",
             soci::use(static_cast<int>(RELATION_FRIEND)), soci::use(req_id), soci::use(user_id);
+
+        std::string req_name, req_info, req_img_path;
+
+        *m_sql << "select user_nm, user_info, img_path from user_tb where user_id=:uid",
+            soci::into(req_name), soci::into(req_info), soci::into(req_img_path), soci::use(req_id);
+
+        net_buf += req_name;
+        net_buf += req_info;
+        net_buf += std::filesystem::path(req_img_path).filename().string();
+
+        if (!req_img_path.empty())
+        {
+            std::ifstream inf(req_img_path, std::ios::binary);
+            if (inf.is_open())
+                net_buf += std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {});
+        }
     }
     else
     {
@@ -923,9 +943,6 @@ void MessengerService::ProcessContactRequestHandling()
         *m_sql << "delete from contact_tb where user_id=:uid and acquaintance_id=:aid",
             soci::use(user_id), soci::use(req_id);
     }
-
-    NetworkBuffer net_buf(PROCESS_CONTACT_REQUEST_TYPE);
-    net_buf += true;
 
     m_request = std::move(net_buf);
 

@@ -1235,10 +1235,71 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
                         return;
                     }
 
-                    bool is_success;
-                    session->GetResponse().GetData(is_success);
+                    QVariantMap qvm;
+                    QString user_id;
+                    bool acceptance;
 
-                    // success에 따른 qml 프론트 함수 따로 짜야됨
+                    session->GetResponse().GetData(acceptance);
+                    session->GetResponse().GetData(user_id);
+
+                    if (acceptance)
+                    {
+                        QString user_name, user_info, user_img_name;
+                        std::vector<std::byte> raw_img;
+
+                        session->GetResponse().GetData(user_name);
+                        session->GetResponse().GetData(user_info);
+                        session->GetResponse().GetData(user_img_name);
+
+                        qvm.insert("userId", user_id);
+                        qvm.insert("userName", user_name);
+                        qvm.insert("userInfo", user_info);
+
+                        if (!user_img_name.isEmpty())
+                            session->GetResponse().GetData(raw_img);
+
+                        std::filesystem::path contact_path = boost::dll::program_location().parent_path().string() +
+                                                             "/minigram_cache/" +
+                                                             m_user_id.toStdString() +
+                                                             "/contact/" +
+                                                             user_id.toStdString() +
+                                                             "/profile_img";
+
+                        if (!std::filesystem::exists(contact_path))
+                            std::filesystem::create_directory(contact_path);
+
+                        if (!raw_img.empty())
+                        {
+                            auto img_path = contact_path / user_img_name.toStdString();
+                            std::ofstream of(img_path, std::ios::binary);
+                            if (of.is_open())
+                            {
+                                of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
+                            }
+                            qvm.insert("userImg", img_path.string().c_str());
+                        }
+                        else
+                            qvm.insert("userImg", "");
+                    }
+                    else
+                    {
+                        std::filesystem::path requester_path = boost::dll::program_location().parent_path().string() +
+                                                               "/minigram_cache/" +
+                                                               m_user_id.toStdString() +
+                                                               "/contact_request/" +
+                                                               user_id.toStdString();
+
+                        std::filesystem::remove_all(requester_path);
+                    }
+
+                    // qml에서 request list와 contact list 변경
+                    QMetaObject::invokeMethod(m_contact_view,
+                                              "processContactRequest",
+                                              Q_ARG(bool, acceptance),
+                                              Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
                 });
             });
         });
