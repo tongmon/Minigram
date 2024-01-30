@@ -1068,13 +1068,13 @@ void MainContext::trySendContactRequest(const QString &user_id)
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryGetContactRequestList()
 {
-    auto &central_server = m_window.GetServerHandle();
-
     static std::atomic_bool is_ready = true;
 
     bool old_var = true;
     if (!is_ready.compare_exchange_strong(old_var, false))
         return;
+
+    auto &central_server = m_window.GetServerHandle();
 
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
@@ -1190,8 +1190,59 @@ void MainContext::tryGetContactRequestList()
     });
 }
 
+// Server에 전달하는 버퍼 형식: cur user id | requester id | acceptance
+// Server에서 받는 버퍼 형식: success flag
 void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accepted)
 {
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    auto &central_server = m_window.GetServerHandle();
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, acq_id, is_accepted, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            is_ready.store(true);
+            return;
+        }
+
+        NetworkBuffer net_buf(PROCESS_CONTACT_REQUEST_TYPE);
+        net_buf += m_user_id;
+        net_buf += acq_id;
+        net_buf += is_accepted;
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    is_ready.store(true);
+                    return;
+                }
+
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        is_ready.store(true);
+                        return;
+                    }
+
+                    bool is_success;
+                    session->GetResponse().GetData(is_success);
+
+                    // success에 따른 qml 프론트 함수 따로 짜야됨
+                });
+            });
+        });
+    });
 }
 
 // Server에 전달하는 버퍼 형식: ID | PW | Name | Image(raw data) | Image format
@@ -1240,10 +1291,10 @@ void MainContext::trySignUp(const QVariantMap &qvm)
             }
         }
 
-        m_user_id = qvm["id"].toString();
+        auto user_id = qvm["id"].toString();
 
         NetworkBuffer net_buf(SIGNUP_TYPE);
-        net_buf += m_user_id;
+        net_buf += user_id;
         net_buf += qvm["pw"].toString();
         net_buf += qvm["name"].toString();
 
@@ -1259,7 +1310,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
         net_buf += img_type;
 
-        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, img_data, img_type, user_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_login_page,
@@ -1269,7 +1320,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, img_data, img_type, user_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     QMetaObject::invokeMethod(m_login_page,
@@ -1279,7 +1330,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, img_data, img_type, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, img_data, img_type, user_id, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         QMetaObject::invokeMethod(m_login_page,
@@ -1299,7 +1350,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
                     if (result == REGISTER_SUCCESS)
                     {
-                        std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/minigram_cache/" + m_user_id.toStdString() + "/profile_img";
+                        std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/minigram_cache/" + user_id.toStdString() + "/profile_img";
                         std::filesystem::create_directories(user_cache_path);
 
                         if (img_data)
@@ -1401,6 +1452,41 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
             });
         });
     });
+}
+
+void MainContext::tryLogOut()
+{
+    if (m_user_id.isEmpty()) // 로그인도 안했는데 logout 시도하면 바로 return
+        return;
+
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    auto &central_server = m_window.GetServerHandle();
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            is_ready.store(true);
+            return;
+        }
+
+        NetworkBuffer net_buf(LOGOUT_TYPE);
+        net_buf += m_user_id;
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
+                return;
+            }
+        });
+    });
+
+    return;
 }
 
 // Only for Windows

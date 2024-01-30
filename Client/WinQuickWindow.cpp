@@ -372,7 +372,10 @@ bool WinQuickWindow::nativeEventFilter(const QByteArray &event_type, void *messa
 
     case WM_CLOSE: {
         if (m_is_shutdown_state)
+        {
+            m_main_context->tryLogOut();
             break;
+        }
         else
         {
             onHideButtonClicked();

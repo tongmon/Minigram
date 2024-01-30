@@ -28,7 +28,7 @@ class Session
 
     boost::system::error_code m_ec;
 
-    unsigned int m_id;
+    size_t m_id;
 
     bool m_was_cancelled;
     std::mutex m_cancel_guard;
@@ -37,7 +37,7 @@ class Session
     Session(boost::asio::io_service &ios,
             const std::string &raw_ip_address,
             unsigned short port_num,
-            unsigned int id)
+            size_t id)
         : m_sock(ios),
           m_ep(boost::asio::ip::address::from_string(raw_ip_address), port_num),
           m_id(id),
@@ -55,7 +55,7 @@ class Session
         return m_response;
     }
 
-    unsigned int GetID()
+    size_t GetID()
     {
         return m_id;
     }
@@ -80,7 +80,7 @@ class TCPClient
 
     bool AsyncConnect(const std::string &raw_ip_address,
                       unsigned short port_num,
-                      unsigned int request_id,
+                      size_t request_id,
                       std::function<void(std::shared_ptr<Session>)> on_success_connection = {});
 
     template <typename T>

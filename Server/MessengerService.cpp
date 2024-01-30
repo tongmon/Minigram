@@ -896,6 +896,51 @@ void MessengerService::GetContactRequestListHandling()
                              });
 }
 
+// Server에 전달하는 버퍼 형식: cur user id | requester id | acceptance
+// Server에서 받는 버퍼 형식: success flag
+void MessengerService::ProcessContactRequestHandling()
+{
+    std::string user_id, req_id;
+    bool is_accepted;
+
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(req_id);
+    m_client_request.GetData(is_accepted);
+
+    if (is_accepted)
+    {
+        *m_sql << "update contact_tb set status=:st where user_id=:uid and acquaintance_id=:aid",
+            soci::use(static_cast<int>(RELATION_FRIEND)), soci::use(user_id), soci::use(req_id);
+
+        *m_sql << "update contact_tb set status=:st where user_id=:uid and acquaintance_id=:aid",
+            soci::use(static_cast<int>(RELATION_FRIEND)), soci::use(req_id), soci::use(user_id);
+    }
+    else
+    {
+        *m_sql << "delete from contact_tb where user_id=:uid and acquaintance_id=:aid",
+            soci::use(req_id), soci::use(user_id);
+
+        *m_sql << "delete from contact_tb where user_id=:uid and acquaintance_id=:aid",
+            soci::use(user_id), soci::use(req_id);
+    }
+
+    NetworkBuffer net_buf(PROCESS_CONTACT_REQUEST_TYPE);
+    net_buf += true;
+
+    m_request = std::move(net_buf);
+
+    boost::asio::async_write(*m_sock,
+                             m_request.AsioBuffer(),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
+}
+
 // Client에서 받는 버퍼 형식: ID | PW | Name | Image(raw data) | Image type
 // Client에 전달하는 버퍼 형식: Login Result | Register Date
 void MessengerService::SignUpHandling()
@@ -1213,6 +1258,17 @@ void MessengerService::SendContactRequestHandling()
     //                         });
 }
 
+void MessengerService::LogOutHandling()
+{
+    std::string user_id, none_ip;
+    m_client_request.GetData(user_id);
+
+    *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
+        soci::use(none_ip), soci::use(0), soci::use(user_id);
+
+    delete this;
+}
+
 void MessengerService::StartHandling()
 {
     boost::asio::async_read(*m_sock,
@@ -1227,13 +1283,6 @@ void MessengerService::StartHandling()
 
                                 m_client_request_buf.commit(bytes_transferred);
                                 m_client_request = m_client_request_buf;
-
-                                // std::istream strm(&m_client_request_buf);
-                                // std::getline(strm, m_client_request);
-
-                                // TCPHeader header(m_client_request);
-                                // auto connection_type = header.GetConnectionType();
-                                // auto data_size = header.GetDataSize();
 
                                 boost::asio::async_read(*m_sock,
                                                         m_client_request_buf.prepare(m_client_request.GetDataSize()),
@@ -1280,6 +1329,12 @@ void MessengerService::StartHandling()
                                                                 break;
                                                             case GET_CONTACT_REQUEST_LIST_TYPE:
                                                                 GetContactRequestListHandling();
+                                                                break;
+                                                            case PROCESS_CONTACT_REQUEST_TYPE:
+                                                                ProcessContactRequestHandling();
+                                                                break;
+                                                            case LOGOUT_TYPE:
+                                                                LogOutHandling();
                                                                 break;
                                                             default:
                                                                 break;

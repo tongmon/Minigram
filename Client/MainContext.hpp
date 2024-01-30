@@ -54,6 +54,7 @@ class MainContext : public QObject
     Q_INVOKABLE void tryProcessContactRequest(const QString &acq_id, bool is_accepted);
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);
     Q_INVOKABLE void tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids);
+    Q_INVOKABLE void tryLogOut();
 
     // 유틸 함수
     Q_INVOKABLE QStringList executeFileDialog(const QVariantMap &qvm) const;

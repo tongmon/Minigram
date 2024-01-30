@@ -55,7 +55,7 @@ class Session
         return m_response;
     }
 
-    unsigned int GetID()
+    size_t GetID()
     {
         return m_id;
     }

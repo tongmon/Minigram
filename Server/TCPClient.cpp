@@ -62,7 +62,7 @@ void TCPClient::AsyncConnect(const std::string &raw_ip_address, unsigned short p
 
 bool TCPClient::AsyncConnect(const std::string &raw_ip_address,
                              unsigned short port_num,
-                             unsigned int request_id,
+                             size_t request_id,
                              std::function<void(std::shared_ptr<Session>)> on_finish_connection)
 {
     std::shared_ptr<Session> session;
