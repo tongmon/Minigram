@@ -29,12 +29,17 @@ MainContext::MainContext(WinQuickWindow &window)
 {
     m_contact_model = m_window.GetQuickWindow().findChild<ContactModel *>("contactModel");
     m_chat_session_model = m_window.GetQuickWindow().findChild<ChatSessionModel *>("chatSessionModel");
-
-    getEssentialObjects();
 }
 
 MainContext::~MainContext()
 {
+}
+
+// 해당 함수 호출 안되면 화면 상호작용 아무것도 안됨
+void MainContext::StartScreen()
+{
+    auto main_window_loader = m_window.GetQuickWindow().findChild<QObject *>("mainWindowLoader");
+    main_window_loader->setProperty("source", "qrc:/qml/LoginPage.qml");
 }
 
 // Server에서 받는 버퍼 형식:
@@ -973,7 +978,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
         net_buf += m_user_id;
         net_buf += user_id;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_contact_view,
@@ -983,7 +988,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     QMetaObject::invokeMethod(m_contact_view,
@@ -993,7 +998,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         QMetaObject::invokeMethod(m_contact_view,
@@ -1612,10 +1617,22 @@ QString MainContext::getSessionNameById(const QString &session_id)
     return m_chat_session_model->data(session_id, ChatSessionModel::NAME_ROLE).toString();
 }
 
-void MainContext::getEssentialObjects()
+void MainContext::setContactView(QObject *obj)
 {
-    m_main_page = m_window.GetQuickWindow().findChild<QObject *>("mainPage");
-    m_login_page = m_window.GetQuickWindow().findChild<QObject *>("loginPage");
-    m_contact_view = m_window.GetQuickWindow().findChild<QObject *>("contactView");
-    m_session_list_view = m_window.GetQuickWindow().findChild<QObject *>("sessionListView");
+    m_contact_view = obj;
+}
+
+void MainContext::setSessionListView(QObject *obj)
+{
+    m_session_list_view = obj;
+}
+
+void MainContext::setLoginPage(QObject *obj)
+{
+    m_login_page = obj;
+}
+
+void MainContext::setMainPage(QObject *obj)
+{
+    m_main_page = obj;
 }

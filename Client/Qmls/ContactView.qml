@@ -4,13 +4,13 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.12
 
 Rectangle {
+    id: contactView
     objectName: "contactView"
     color: "#19314F"
     anchors.fill: parent
 
     function processSendContactRequest(result)
     {
-        // 글자 안보이는 버그 수정해야 됨
         switch (result)
         {
         case 0: // CONTACTADD_SUCCESS
@@ -55,6 +55,344 @@ Rectangle {
         }
     }
 
+    Popup {
+        id: contactRequestsViewPopup
+        anchors.centerIn: Overlay.overlay
+        width: 500
+        height: 700
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+        modal: true
+        background: Rectangle {
+            color: "#333366"
+            radius: 5
+        }
+        contentItem: Item {
+            anchors.fill: parent
+
+            Text {
+                id: contactRequestsViewTitle
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    top: parent.top
+                    topMargin: 5
+                }
+                z: 2
+                text: "Contact Requests"
+                font {
+                    bold: true
+                    pointSize: 20
+                }
+            }
+
+            ListView {
+                id: contactRequestsView
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: contactRequestsViewTitle.bottom
+                    topMargin: 5
+                    bottom: contactRequestsViewButtonContainer.top
+                }
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
+
+                model: contactRequestFilterProxyModel
+
+                delegate: Rectangle {
+                    id: requesterInfo
+                    width: contactRequestsView.width
+                    height: 98
+                    objectName: userId
+                    color: Qt.rgba(0.525, 
+                                   0.55, 
+                                   0.58, 
+                                   requesterInfoMouseArea.containsMouse ? 1.0 : 0.6)
+
+                    property int requesterIndex: index
+
+                    // 순서 중요, 얘가 밑에 위치하면 Rectangle속의 Button이 안눌림
+                    MouseArea {
+                        id: requesterInfoMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                    }
+
+                    CustomImageButton {
+                        id: requesterImageButton
+                        anchors {
+                            verticalCenter: parent.verticalCenter
+                            left: parent.left
+                            leftMargin: 5
+                        }
+                        height: parent.height - 20
+                        width: height
+                        rounded: true
+                        source: userImg
+                    }    
+
+                    Item {
+                        anchors {
+                            left: requesterImageButton.right
+                            leftMargin: 5
+                            right: parent.right
+                            top: parent.top
+                            bottom: parent.bottom
+                        }
+
+                        Text {
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                left: parent.left
+                            }
+                            font {
+                                pointSize: 15
+                            }
+                            text: userId
+                        }
+
+                        Button {
+                            id: contactRequestDissmissButton
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                right: contactRequestAcceptButton.left
+                                rightMargin: 5
+                            }
+                            text: "Dismiss"
+                            background: Rectangle {
+                                color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                                radius: 5
+                            }
+
+                            onClicked: {
+                                // contactRequestModel.remove(userId)
+                            }
+                        }
+
+                        Button {
+                            id: contactRequestAcceptButton
+                            anchors {
+                                verticalCenter: parent.verticalCenter
+                                right: parent.right
+                                rightMargin: 5
+                            }
+                            text: "Accept"
+                            background: Rectangle {
+                                color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                                radius: 5
+                            }
+                        }
+                    }
+                }
+            }
+
+            Item {
+                id: contactRequestsViewButtonContainer
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                }
+                height: 50
+
+                Button {
+                    id: contactRequestsViewCloseButton
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        right: contactRequestsViewDismissAllButton.left
+                        rightMargin: 5
+                    }
+                    text: "Close"
+                    background: Rectangle {
+                        color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                        radius: 5
+                    }
+
+                    onClicked: {
+                        contactRequestsViewPopup.close()
+                    }
+                }
+
+                Button {
+                    id: contactRequestsViewDismissAllButton
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        right: contactRequestsViewClaimAllButton.left
+                        rightMargin: 5
+                    }
+                    text: "Dismiss All"
+                    background: Rectangle {
+                        color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                        radius: 5
+                    }
+                }
+
+                Button {
+                    id: contactRequestsViewClaimAllButton
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        right: parent.right
+                        rightMargin: 5
+                    }
+                    text: "Claim All"
+                    background: Rectangle {
+                        color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                        radius: 5
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: contactAddPopup
+        anchors.centerIn: Overlay.overlay
+        width: 500
+        height: 150
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+        modal: true
+        background: Rectangle {
+            color: "#333366"
+            radius: 5
+        }
+        contentItem: Item {
+            anchors.fill: parent
+
+            Item {
+                id: contactAddPopupTitle
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: parent.top
+                    topMargin: 20
+                }
+                height: 20
+
+                Text {
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        left: parent.left
+                        leftMargin: 15
+                    }
+                    font {
+                        bold: true
+                        pointSize: 15
+                    }
+                    text: "Add New Contact"
+                }
+            }
+
+            Item {
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    top: contactAddPopupTitle.bottom
+                    bottom: contactAddButtonContainer.top
+                } 
+
+                CustomImageButton {
+                    id: idInputImage
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        left: parent.left
+                        leftMargin: 5
+                    }
+                    height: idInputTextField.height
+                    width: height
+                    source: "qrc:/icon/UserID.png"
+                }
+
+                CustomTextField {
+                    id: idInputTextField
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        left: idInputImage.right
+                        leftMargin: 5
+                        right: parent.right
+                        rightMargin: 10
+                    }
+                    height: 35
+                    radius: 5
+                    color: "#cccccc"
+                    placeholderText: "Put id on here..."
+
+                    onReturnPressed: {
+                        registerButton.clicked()
+                    }
+                }           
+            }
+
+            Item {
+                id: contactAddButtonContainer
+                anchors {
+                    left: parent.left
+                    right: parent.right
+                    bottom: parent.bottom
+                    margins: 5
+                }
+                height: 30   
+
+                Text {
+                    id: contactAddResultText
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        left: parent.left
+                    }
+                    text: ""
+                    font {
+                        bold: true
+                        pointSize: 15
+                    }
+                    color: "red"
+                }
+
+                Button {
+                    id: cancleButton
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        right: registerButton.left
+                        rightMargin: 5
+                    }
+                    height: parent.height
+                    text: "Cancle"
+                    background: Rectangle {
+                        color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                        radius: 5
+                    }
+
+                    onClicked: {
+                        contactAddPopup.close()
+                    }
+                }
+
+                Button {
+                    id: registerButton
+                    anchors {
+                        verticalCenter: parent.verticalCenter
+                        right: parent.right
+                    }
+                    height: parent.height
+                    text: "Register"
+                    background: Rectangle {
+                        color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
+                        radius: 5
+                    }
+
+                    onClicked: {
+                        mainContext.trySendContactRequest(idInputTextField.text)
+                    }
+                }                    
+            }
+        }
+
+        onClosed: {
+            idInputTextField.text = ""
+        }
+    }
+
     Button {
         id: contactRequestsViewButton
         anchors {
@@ -73,198 +411,6 @@ Rectangle {
 
         onClicked: {
             contactRequestsViewPopup.open()
-        }
-
-        Popup {
-            id: contactRequestsViewPopup
-            anchors.centerIn: Overlay.overlay
-            width: 500
-            height: 700
-            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
-            modal: true
-            background: Rectangle {
-                color: "#333366"
-                radius: 5
-            }
-            contentItem: Item {
-                anchors.fill: parent
-
-                Text {
-                    id: contactRequestsViewTitle
-                    anchors {
-                        horizontalCenter: parent.horizontalCenter
-                        top: parent.top
-                        topMargin: 5
-                    }
-                    z: 2
-                    text: "Contact Requests"
-                    font {
-                        bold: true
-                        pointSize: 20
-                    }
-                }
-
-                ListView {
-                    id: contactRequestsView
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        top: contactRequestsViewTitle.bottom
-                        topMargin: 5
-                        bottom: contactRequestsViewButtonContainer.top
-                    }
-                    clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    ScrollBar.vertical: ScrollBar {
-                        policy: ScrollBar.AsNeeded
-                    }
-
-                    model: contactRequestFilterProxyModel
-
-                    delegate: Rectangle {
-                        id: requesterInfo
-                        width: contactRequestsView.width
-                        height: 98
-                        objectName: userId
-                        color: Qt.rgba(0.525, 
-                                       0.55, 
-                                       0.58, 
-                                       requesterInfoMouseArea.containsMouse ? 1.0 : 0.6)
-
-                        property int requesterIndex: index
-
-                        // 순서 중요, 얘가 밑에 위치하면 Rectangle속의 Button이 안눌림
-                        MouseArea {
-                            id: requesterInfoMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                        }
-
-                        CustomImageButton {
-                            id: requesterImageButton
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                left: parent.left
-                                leftMargin: 5
-                            }
-                            height: parent.height - 20
-                            width: height
-                            rounded: true
-                            source: userImg
-                        }    
-
-                        Item {
-                            anchors {
-                                left: requesterImageButton.right
-                                leftMargin: 5
-                                right: parent.right
-                                top: parent.top
-                                bottom: parent.bottom
-                            }
-
-                            Text {
-                                anchors {
-                                    verticalCenter: parent.verticalCenter
-                                    left: parent.left
-                                }
-                                font {
-                                    pointSize: 15
-                                }
-                                text: userId
-                            }
-
-                            Button {
-                                id: contactRequestDissmissButton
-                                anchors {
-                                    verticalCenter: parent.verticalCenter
-                                    right: contactRequestAcceptButton.left
-                                    rightMargin: 5
-                                }
-                                text: "Dismiss"
-                                background: Rectangle {
-                                    color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                                    radius: 5
-                                }
-
-                                onClicked: {
-                                    // contactRequestModel.remove(userId)
-                                }
-                            }
-
-                            Button {
-                                id: contactRequestAcceptButton
-                                anchors {
-                                    verticalCenter: parent.verticalCenter
-                                    right: parent.right
-                                    rightMargin: 5
-                                }
-                                text: "Accept"
-                                background: Rectangle {
-                                    color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                                    radius: 5
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Item {
-                    id: contactRequestsViewButtonContainer
-                    anchors {
-                        left: parent.left
-                        right: parent.right
-                        bottom: parent.bottom
-                    }
-                    height: 50
-
-                    Button {
-                        id: contactRequestsViewCloseButton
-                        anchors {
-                            verticalCenter: parent.verticalCenter
-                            right: contactRequestsViewDismissAllButton.left
-                            rightMargin: 5
-                        }
-                        text: "Close"
-                        background: Rectangle {
-                            color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                            radius: 5
-                        }
-
-                        onClicked: {
-                            contactRequestsViewPopup.close()
-                        }
-                    }
-
-                    Button {
-                        id: contactRequestsViewDismissAllButton
-                        anchors {
-                            verticalCenter: parent.verticalCenter
-                            right: contactRequestsViewClaimAllButton.left
-                            rightMargin: 5
-                        }
-                        text: "Dismiss All"
-                        background: Rectangle {
-                            color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                            radius: 5
-                        }
-                    }
-
-                    Button {
-                        id: contactRequestsViewClaimAllButton
-                        anchors {
-                            verticalCenter: parent.verticalCenter
-                            right: parent.right
-                            rightMargin: 5
-                        }
-                        text: "Claim All"
-                        background: Rectangle {
-                            color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                            radius: 5
-                        }
-                    }
-                }
-            }
         }
     }
 
@@ -295,197 +441,6 @@ Rectangle {
 
             onClicked: {
                 contactAddPopup.open()
-            }
-
-            Popup {
-                id: contactAddPopup
-                anchors.centerIn: Overlay.overlay
-                width: 500
-                height: 150
-                closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
-                modal: true
-                background: Rectangle {
-                    color: "#333366"
-                    radius: 5
-                }
-                contentItem: Item {
-                    anchors.fill: parent
-
-                    Item {
-                        id: contactAddPopupTitle
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            top: parent.top
-                            topMargin: 20
-                        }
-                        height: 20
-
-                        Text {
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                left: parent.left
-                                leftMargin: 15
-                            }
-                            font {
-                                bold: true
-                                pointSize: 15
-                            }
-                            text: "Add New Contact"
-                        }
-                    }
-
-                    /*
-                    Item {
-                        id: nameInputItemContainer
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            top: contactAddPopupTitle.bottom
-                        }
-                        height: parent.height * 0.35
-
-                        CustomImageButton {
-                            id: nameInputImage
-                            anchors {
-                                left: parent.left
-                                leftMargin: 5
-                                bottom: parent.bottom
-                                bottomMargin: 10
-                            }
-                            height: nameInputTextField.height
-                            width: height
-                            source: "qrc:/icon/UserID.png"
-                        }
-
-                        CustomTextField {
-                            id: nameInputTextField
-                            anchors {
-                                left: nameInputImage.right
-                                leftMargin: 5
-                                right: parent.right
-                                rightMargin: 10
-                                bottom: parent.bottom
-                                bottomMargin: 10
-                            }
-                            height: parent.height / 2
-                            radius: 5
-                            color: "#cccccc"
-                            placeholderText: "Put name on here..."
-
-                            onReturnPressed: {
-                            
-                            }
-                        }
-                    }
-                    */
-
-                    Item {
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            top: contactAddPopupTitle.bottom
-                            bottom: contactAddButtonContainer.top
-                        } 
-
-                        CustomImageButton {
-                            id: idInputImage
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                left: parent.left
-                                leftMargin: 5
-                            }
-                            height: idInputTextField.height
-                            width: height
-                            source: "qrc:/icon/UserID.png"
-                        }
-
-                        CustomTextField {
-                            id: idInputTextField
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                left: idInputImage.right
-                                leftMargin: 5
-                                right: parent.right
-                                rightMargin: 10
-                            }
-                            height: 35
-                            radius: 5
-                            color: "#cccccc"
-                            placeholderText: "Put id on here..."
-
-                            onReturnPressed: {
-                            
-                            }
-                        }           
-                    }
-
-                    Item {
-                        id: contactAddButtonContainer
-                        anchors {
-                            left: parent.left
-                            right: parent.right
-                            bottom: parent.bottom
-                            margins: 5
-                        }
-                        height: 30   
-
-                        Text {
-                            id: contactAddResultText
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                left: parent.left
-                            }
-                            text: ""
-                            font {
-                                bold: true
-                                pointSize: 15
-                            }
-                            color: "red"
-                        }
-
-                        Button {
-                            id: cancleButton
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                right: registerButton.left
-                                rightMargin: 5
-                            }
-                            height: parent.height
-                            text: "Cancle"
-                            background: Rectangle {
-                                color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                                radius: 5
-                            }
-
-                            onClicked: {
-                                contactAddPopup.close()
-                            }
-                        }
-
-                        Button {
-                            id: registerButton
-                            anchors {
-                                verticalCenter: parent.verticalCenter
-                                right: parent.right
-                            }
-                            height: parent.height
-                            text: "Register"
-                            background: Rectangle {
-                                color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
-                                radius: 5
-                            }
-
-                            onClicked: {
-                                mainContext.trySendContactRequest(idInputTextField.text)
-                            }
-                        }                    
-                    }
-                }
-
-                onClosed: {
-                    nameInputTextField.text = idInputTextField.text = ""
-                }
             }
         }
 
@@ -647,6 +602,8 @@ Rectangle {
         }
 
         Component.onCompleted: {
+            mainContext.setContactView(contactView)
+
             //contactModel.append({
             //    "userID": "tongstar",
             //    "userImageSource": "",

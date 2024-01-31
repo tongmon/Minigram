@@ -36,6 +36,9 @@ class MainContext : public QObject
     MainContext(WinQuickWindow &window);
     ~MainContext();
 
+    // qml 초기화 시작
+    void StartScreen();
+
     // 서버에서 클라로 전송할 때 대응하는 함수들
     void RecieveChat(Service *service);
     void RefreshReaderIds(Service *service);
@@ -62,7 +65,12 @@ class MainContext : public QObject
     Q_INVOKABLE QString getUserNameById(const QString &user_id);
     Q_INVOKABLE QString getSessionImgById(const QString &session_id);
     Q_INVOKABLE QString getSessionNameById(const QString &session_id);
-    Q_INVOKABLE void getEssentialObjects();
+
+    // QObject 초기화 함수
+    Q_INVOKABLE void setContactView(QObject *obj);
+    Q_INVOKABLE void setSessionListView(QObject *obj);
+    Q_INVOKABLE void setLoginPage(QObject *obj);
+    Q_INVOKABLE void setMainPage(QObject *obj);
 };
 
 #endif /* HEADER__FILE__MAINCONTEXT */

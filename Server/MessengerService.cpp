@@ -1159,6 +1159,8 @@ void MessengerService::SendContactRequestHandling()
     *m_sql << "select user_id from user_tb where user_id=:uid",
         soci::into(dummy_id), soci::use(user_id_to_add);
 
+    std::cout << "get id from client, id:" << user_id_to_add << std::endl;
+
     // id가 존재하지 않는 경우
     if (!m_sql->got_data())
         contact_add_result = CONTACTADD_ID_NO_EXSIST;

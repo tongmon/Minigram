@@ -743,4 +743,8 @@ Rectangle {
             }
         }
     }
+
+    Component.onCompleted: {
+        mainContext.setSessionListView(sessionListBck)
+    }
 }

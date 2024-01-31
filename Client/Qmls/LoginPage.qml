@@ -5,6 +5,7 @@ import QtQuick.Layouts 1.12
 import QtGraphicalEffects 1.15
 
 Item {
+    id: loginPage
     objectName: "loginPage"
 
     // 비밀번호, 아이디 유효성 검사
@@ -611,7 +612,7 @@ Item {
     }
 
     Component.onCompleted: {
-        // mainContext.getEssentialObjects()
+        mainContext.setLoginPage(loginPage)
     }
 
     Component.onDestruction: {
