@@ -10,6 +10,7 @@ Rectangle {
 
     function processSendContactRequest(result)
     {
+        // 글자 안보이는 버그 수정해야 됨
         switch (result)
         {
         case 0: // CONTACTADD_SUCCESS
@@ -133,6 +134,13 @@ Rectangle {
 
                         property int requesterIndex: index
 
+                        // 순서 중요, 얘가 밑에 위치하면 Rectangle속의 Button이 안눌림
+                        MouseArea {
+                            id: requesterInfoMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                        }
+
                         CustomImageButton {
                             id: requesterImageButton
                             anchors {
@@ -163,7 +171,7 @@ Rectangle {
                                 font {
                                     pointSize: 15
                                 }
-                                text: userName
+                                text: userId
                             }
 
                             Button {
@@ -177,6 +185,10 @@ Rectangle {
                                 background: Rectangle {
                                     color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
                                     radius: 5
+                                }
+
+                                onClicked: {
+                                    // contactRequestModel.remove(userId)
                                 }
                             }
 
@@ -193,12 +205,6 @@ Rectangle {
                                     radius: 5
                                 }
                             }
-                        }
-
-                        MouseArea {
-                            id: requesterInfoMouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
                         }
                     }
                 }
@@ -223,6 +229,10 @@ Rectangle {
                         background: Rectangle {
                             color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
                             radius: 5
+                        }
+
+                        onClicked: {
+                            contactRequestsViewPopup.close()
                         }
                     }
 
@@ -263,7 +273,8 @@ Rectangle {
         anchors {
             left: parent.left
             right: parent.right
-            top: contactRequestViewButton.bottom
+            top: contactRequestsViewButton.bottom
+            margins: 5
         }
         height: 35
         z: 2
@@ -274,9 +285,8 @@ Rectangle {
                 left: parent.left
                 top: parent.top
                 bottom: parent.bottom
-                margins: 5
             }
-            width: parent.width / 2
+            width: parent.width * 0.5 - 2
             text: "Add Contact"
             background: Rectangle {
                 color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
@@ -291,7 +301,7 @@ Rectangle {
                 id: contactAddPopup
                 anchors.centerIn: Overlay.overlay
                 width: 500
-                height: 300
+                height: 150
                 closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
                 modal: true
                 background: Rectangle {
@@ -309,7 +319,7 @@ Rectangle {
                             top: parent.top
                             topMargin: 20
                         }
-                        height: parent.height * 0.1
+                        height: 20
 
                         Text {
                             anchors {
@@ -325,6 +335,7 @@ Rectangle {
                         }
                     }
 
+                    /*
                     Item {
                         id: nameInputItemContainer
                         anchors {
@@ -367,22 +378,22 @@ Rectangle {
                             }
                         }
                     }
+                    */
 
                     Item {
                         anchors {
                             left: parent.left
                             right: parent.right
-                            top: nameInputItemContainer.bottom
-                        }
-                        height: parent.height * 0.35        
+                            top: contactAddPopupTitle.bottom
+                            bottom: contactAddButtonContainer.top
+                        } 
 
                         CustomImageButton {
                             id: idInputImage
                             anchors {
+                                verticalCenter: parent.verticalCenter
                                 left: parent.left
                                 leftMargin: 5
-                                top: parent.top
-                                topMargin: 10
                             }
                             height: idInputTextField.height
                             width: height
@@ -392,14 +403,13 @@ Rectangle {
                         CustomTextField {
                             id: idInputTextField
                             anchors {
+                                verticalCenter: parent.verticalCenter
                                 left: idInputImage.right
                                 leftMargin: 5
                                 right: parent.right
                                 rightMargin: 10
-                                top: parent.top
-                                topMargin: 10
                             }
-                            height: parent.height / 2
+                            height: 35
                             radius: 5
                             color: "#cccccc"
                             placeholderText: "Put id on here..."
@@ -411,19 +421,20 @@ Rectangle {
                     }
 
                     Item {
+                        id: contactAddButtonContainer
                         anchors {
                             left: parent.left
                             right: parent.right
                             bottom: parent.bottom
+                            margins: 5
                         }
-                        height: parent.height * 0.2    
+                        height: 30   
 
                         Text {
                             id: contactAddResultText
                             anchors {
                                 verticalCenter: parent.verticalCenter
                                 left: parent.left
-                                leftMargin: 5
                             }
                             text: ""
                             font {
@@ -440,7 +451,7 @@ Rectangle {
                                 right: registerButton.left
                                 rightMargin: 5
                             }
-                            height: parent.height - 10
+                            height: parent.height
                             text: "Cancle"
                             background: Rectangle {
                                 color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
@@ -457,9 +468,8 @@ Rectangle {
                             anchors {
                                 verticalCenter: parent.verticalCenter
                                 right: parent.right
-                                rightMargin: 5
                             }
-                            height: parent.height - 10
+                            height: parent.height
                             text: "Register"
                             background: Rectangle {
                                 color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
@@ -467,8 +477,6 @@ Rectangle {
                             }
 
                             onClicked: {
-                                // contactAddPopup.close()
-
                                 mainContext.trySendContactRequest(idInputTextField.text)
                             }
                         }                    
@@ -487,9 +495,8 @@ Rectangle {
                 right: parent.right
                 top: parent.top
                 bottom: parent.bottom
-                margins: 5
             }
-            width: parent.width / 2
+            width: parent.width * 0.5 - 2
             text: "Delete Contact"
             background: Rectangle {
                 color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)

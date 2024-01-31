@@ -28,14 +28,14 @@ ApplicationWindow {
 
         Component.onCompleted: {
             // 테스트 코드
-            for(let i = 0; i < 20; i++) {
-                contactModel.append({
-                    "userId": "tongstar_" + i,
-                    "userImg": "qrc:/icon/UserID.png",
-                    "userName": "KyungJoonLee_" + i,
-                    "userInfo": i
-                })
-            }
+            // for(let i = 0; i < 20; i++) {
+            //     contactModel.append({
+            //         "userId": "tongstar_" + i,
+            //         "userImg": "qrc:/icon/UserID.png",
+            //         "userName": "KyungJoonLee_" + i,
+            //         "userInfo": i
+            //     })
+            // }
         }
     }
 
@@ -51,6 +51,18 @@ ApplicationWindow {
     ContactModel {
         id: contactRequestModel
         objectName: "contactRequestModel"
+
+        Component.onCompleted: {
+            // 테스트 코드
+            for(let i = 0; i < 20; i++) {
+                contactRequestModel.append({
+                    "userId": "tongstar_" + i,
+                    "userImg": "qrc:/icon/UserID.png",
+                    "userName": "KyungJoonLee_" + i,
+                    "userInfo": i
+                })
+            }
+        }
     }
 
     ContactSortFilterProxyModel {
@@ -81,7 +93,24 @@ ApplicationWindow {
         id: mainWindowLoader 
         anchors.fill: parent
         objectName: "mainWindowLoader"
-        source: "qrc:/qml/LoginPage.qml" // "qrc:/qml/MainPage.qml" 
+        source: "qrc:/qml/LoginPage.qml" // "qrc:/qml/MainPage.qml" "qrc:/qml/LoginPage.qml"
+
+        // onLoaded: {
+        //     mainContext.getEssentialObjects()
+        // }
+
+        onLoaded: {
+            if (typeof(mainContext) !== "undefined" && mainContext)
+            {
+                mainContext.getEssentialObjects()
+
+                if (source.toString().indexOf('MainPage') < 0) 
+                    return
+
+                mainContext.tryGetContactList()
+                mainContext.tryGetContactList()
+            }
+        }
     }
 
     Component.onCompleted: {

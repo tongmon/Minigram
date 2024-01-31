@@ -249,7 +249,7 @@ Rectangle {
             Loader {
                 id: chatLoader
                 width: parent.width
-                height: (item !== null && typeof(item) !== 'undefined') ? item.height : 0
+                height: (typeof(item) !== 'undefined' && item) ? item.height : 0
                 source: qmlSource
 
                 onLoaded: {

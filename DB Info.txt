@@ -81,8 +81,8 @@ CREATE TABLE participant_tb
 (
     session_id			VARCHAR(65) NOT NULL,
 	participant_id		VARCHAR(32) NOT NULL,
-	message_id			BIGINT
-	CONSTRAINT fk_session_id FOREIGN KEY(session_id) REFERENCES chatroom_tb(session_id) ON DELETE CASCADE ON UPDATE CASCADE,
+	message_id			BIGINT,
+	CONSTRAINT fk_session_id FOREIGN KEY(session_id) REFERENCES session_tb(session_id) ON DELETE CASCADE ON UPDATE CASCADE,
 	CONSTRAINT fk_participant_id FOREIGN KEY(participant_id) REFERENCES user_tb(user_id) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (session_id, participant_id)
 )

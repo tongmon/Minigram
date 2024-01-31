@@ -447,10 +447,11 @@ void MessengerService::RefreshSessionHandling()
         if (participant_id == user_id)
             continue;
 
+        soci::indicator ind;
         *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
-            soci::into(login_ip), soci::into(login_port), soci::use(participant_id);
+            soci::into(login_ip, ind), soci::into(login_port), soci::use(participant_id);
 
-        if (login_ip.empty())
+        if (ind == soci::i_null)
             continue;
 
         // 다른 클라이언트에 reader 업데이트 소식 알림
@@ -744,6 +745,7 @@ void MessengerService::GetContactListHandling()
 
     soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id from contact_tb where user_id=:uid and status=:stat",
                                   soci::use(user_id), soci::use(static_cast<int>(RELATION_FRIEND)));
+
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         boost::json::object acquaintance_data;
@@ -1150,12 +1152,15 @@ void MessengerService::SendContactRequestHandling()
 
     int64_t contact_add_result = CONTACTADD_SUCCESS;
 
-    int cnt = 0;
-    *m_sql << "select count(*) from user_tb where exists(select 1 from user_tb where user_id=:uid)",
-        soci::into(cnt), soci::use(user_id_to_add);
+    // *m_sql << "select count(*) from user_tb where exists(select 1 from user_tb where user_id=:uid)",
+    //     soci::into(cnt), soci::use(user_id_to_add);
+
+    std::string dummy_id;
+    *m_sql << "select user_id from user_tb where user_id=:uid",
+        soci::into(dummy_id), soci::use(user_id_to_add);
 
     // id가 존재하지 않는 경우
-    if (!cnt)
+    if (!m_sql->got_data())
         contact_add_result = CONTACTADD_ID_NO_EXSIST;
     else
     {
@@ -1176,14 +1181,14 @@ void MessengerService::SendContactRequestHandling()
             soci::use(user_id_to_add), soci::use(user_id), soci::use(static_cast<int>(RELATION_TAKE));
 
         // user_id_to_add가 접속 중이면 뭐 보내고 아니면 그냥 끝
-        soci::indicator ind;
+        soci::indicator ip_ind, port_ind;
         std::string login_ip;
         int login_port;
 
         *m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
-            soci::into(login_ip, ind), soci::into(login_port), soci::use(user_id_to_add);
+            soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(user_id_to_add);
 
-        if (ind != soci::i_null)
+        if (ip_ind != soci::i_null)
         {
             // 친구 추가 허락을 맡을 사람에게 보낼 버퍼
             // requester id | requester name | requester info | img name | raw img
@@ -1280,8 +1285,9 @@ void MessengerService::LogOutHandling()
     std::string user_id, none_ip;
     m_client_request.GetData(user_id);
 
+    soci::indicator ind = soci::i_null;
     *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
-        soci::use(none_ip), soci::use(0), soci::use(user_id);
+        soci::use(none_ip, ind), soci::use(0, ind), soci::use(user_id);
 
     delete this;
 }

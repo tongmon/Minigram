@@ -819,18 +819,16 @@ void MainContext::tryGetContactList()
 {
     auto &central_server = m_window.GetServerHandle();
 
-    static std::atomic_int request_id = -1;
-    if (request_id.load() < 0)
-        request_id.store(central_server.MakeRequestID());
-    else
-    {
-        return;
-    }
+    static std::atomic_bool is_ready = true;
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
-            request_id.store(-1);
+            is_ready.store(true);
             return;
         }
 
@@ -872,24 +870,24 @@ void MainContext::tryGetContactList()
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
-                request_id.store(-1);
+                is_ready.store(true);
                 return;
             }
 
             central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
-                    request_id.store(-1);
+                    is_ready.store(true);
                     return;
                 }
 
                 central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
-                        request_id.store(-1);
+                        is_ready.store(true);
                         return;
                     }
 
@@ -942,7 +940,7 @@ void MainContext::tryGetContactList()
                     }
 
                     central_server.CloseRequest(session->GetID());
-                    request_id.store(-1);
+                    is_ready.store(true);
                 });
             });
         });
@@ -955,21 +953,19 @@ void MainContext::trySendContactRequest(const QString &user_id)
 {
     auto &central_server = m_window.GetServerHandle();
 
-    static std::atomic_int request_id = -1;
-    if (request_id.load() < 0)
-        request_id.store(central_server.MakeRequestID());
-    else
-    {
-        return;
-    }
+    static std::atomic_bool is_ready = true;
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             QMetaObject::invokeMethod(m_contact_view,
                                       "processSendContactRequest",
                                       Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
-            request_id.store(-1);
+            is_ready.store(true);
             return;
         }
 
@@ -977,13 +973,13 @@ void MainContext::trySendContactRequest(const QString &user_id)
         net_buf += m_user_id;
         net_buf += user_id;
 
-        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_contact_view,
                                           "processSendContactRequest",
                                           Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
-                request_id.store(-1);
+                is_ready.store(true);
                 return;
             }
 
@@ -993,7 +989,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                     QMetaObject::invokeMethod(m_contact_view,
                                               "processSendContactRequest",
                                               Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
-                    request_id.store(-1);
+                    is_ready.store(true);
                     return;
                 }
 
@@ -1003,7 +999,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                         QMetaObject::invokeMethod(m_contact_view,
                                                   "processSendContactRequest",
                                                   Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
-                        request_id.store(-1);
+                        is_ready.store(true);
                         return;
                     }
 
@@ -1015,7 +1011,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                                               Q_ARG(QVariant, result));
 
                     central_server.CloseRequest(session->GetID());
-                    request_id.store(-1);
+                    is_ready.store(true);
 
                     // auto response = session->GetResponse();
                     // int64_t result;
@@ -1289,7 +1285,8 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
                                                                "/contact_request/" +
                                                                user_id.toStdString();
 
-                        std::filesystem::remove_all(requester_path);
+                        if (std::filesystem::exists(requester_path))
+                            std::filesystem::remove_all(requester_path);
                     }
 
                     // qml에서 request list와 contact list 변경
