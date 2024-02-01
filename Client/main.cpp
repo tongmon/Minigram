@@ -54,8 +54,8 @@ int main(int argc, char *argv[])
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreated,
-        &app, [&](QObject *obj, const QUrl &objUrl) {
-            if ((!obj && url == objUrl) || !win_quick_window.InitWindow(engine))
+        &app, [&](QObject *obj, const QUrl &obj_url) {
+            if ((!obj && url == obj_url) || !win_quick_window.InitWindow(engine))
                 QCoreApplication::exit(-1);
 
             run_guard.SetUniqueHwnd(win_quick_window.GetHandle());

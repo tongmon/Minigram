@@ -84,6 +84,21 @@ class NetworkBuffer
         m_index += data_size + type_size;
     }
 
+    template <>
+    void GetData(QString &val)
+    {
+        size_t data_size;
+        std::memcpy(&data_size, &m_buf[m_index], type_size);
+
+        val.clear();
+        val.reserve(data_size);
+
+        for (size_t i = m_index + type_size, j = 0; j < data_size; i++, j++)
+            val.push_back(static_cast<char>(m_buf[i]));
+
+        m_index += data_size + type_size;
+    }
+
     // template <>
     // void GetData(std::vector<std::byte> &val)
     //{
@@ -110,12 +125,13 @@ class NetworkBuffer
     }
 
     template <typename V, template <typename...> class R>
-    void Append(R<V> &other)
+    void Append(const R<V> &other)
     {
         static_assert(sizeof(V) == 1, "Template argument size in Append() function is not 1.");
 
         size_t len = other.size();
         m_buf.resize(m_index + type_size + len);
+        std::memcpy(&m_buf[m_index], &len, type_size);
         for (size_t i = m_index + type_size, j = 0; i < m_buf.size(); i++)
             m_buf[i] = static_cast<std::byte>(other[j++]);
         m_index = m_buf.size();

@@ -29,6 +29,11 @@ Rectangle {
         }
     }
 
+    function addContact(acqInfo)
+    {
+        contactModel.append(acqInfo)
+    }
+
     function recieveContactRequest(requester_info)
     {
         contactRequestModel.append(requester_info)
@@ -44,15 +49,8 @@ Rectangle {
 
         contactRequestModel.remove(reqInfo["userId"])
 
-        if(acceptance)
-        {
-            contactModel.append({
-                "userId": reqInfo["userId"],
-                "userName": reqInfo["userName"],
-                "userInfo": reqInfo["userInfo"],
-                "userImg": reqInfo["userImg"]
-            })
-        }
+        if (acceptance)
+            contactModel.append(reqInfo)
     }
 
     Popup {
@@ -131,8 +129,8 @@ Rectangle {
                         height: parent.height - 20
                         width: height
                         rounded: true
-                        source: userImg
-                    }    
+                        source: "file:///" + userImg
+                    }
 
                     Item {
                         anchors {
@@ -168,7 +166,7 @@ Rectangle {
                             }
 
                             onClicked: {
-                                // contactRequestModel.remove(userId)
+                                mainContext.tryProcessContactRequest(userId, false)
                             }
                         }
 
@@ -183,6 +181,10 @@ Rectangle {
                             background: Rectangle {
                                 color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
                                 radius: 5
+                            }
+
+                            onClicked: {
+                                mainContext.tryProcessContactRequest(userId, true)
                             }
                         }
                     }
@@ -389,7 +391,7 @@ Rectangle {
         }
 
         onClosed: {
-            idInputTextField.text = ""
+            contactAddResultText.text = idInputTextField.text = ""
         }
     }
 
@@ -537,7 +539,7 @@ Rectangle {
                 height: parent.height - 20
                 width: height
                 rounded: true
-                source: userImg
+                source: "file:///" + userImg
             }    
 
             Item {

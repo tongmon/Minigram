@@ -193,10 +193,10 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 {
     auto &central_server = m_window.GetServerHandle();
 
-    static std::atomic_int request_id = -1;
-    if (request_id.load() < 0)
-        request_id.store(central_server.MakeRequestID());
-    else
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
     {
         QMetaObject::invokeMethod(m_login_page,
                                   "processLogin",
@@ -206,13 +206,13 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
     m_user_id = id, m_user_pw = pw;
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             QMetaObject::invokeMethod(m_login_page,
                                       "processLogin",
                                       Q_ARG(QVariant, LOGIN_CONNECTION_FAIL));
-            request_id.store(-1);
+            is_ready.store(true);
             return;
         }
 
@@ -223,13 +223,13 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
         net_buf += m_user_id;
         net_buf += m_user_pw;
 
-        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_login_page,
                                           "processLogin",
                                           Q_ARG(QVariant, LOGIN_CONNECTION_FAIL));
-                request_id.store(-1);
+                is_ready.store(true);
                 return;
             }
 
@@ -239,7 +239,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                     QMetaObject::invokeMethod(m_login_page,
                                               "processLogin",
                                               Q_ARG(QVariant, LOGIN_CONNECTION_FAIL));
-                    request_id.store(-1);
+                    is_ready.store(true);
                     return;
                 }
 
@@ -249,7 +249,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                         QMetaObject::invokeMethod(m_login_page,
                                                   "processLogin",
                                                   Q_ARG(QVariant, LOGIN_CONNECTION_FAIL));
-                        request_id.store(-1);
+                        is_ready.store(true);
                         return;
                     }
 
@@ -261,8 +261,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                                               Q_ARG(QVariant, result));
 
                     central_server.CloseRequest(session->GetID());
-
-                    request_id.store(-1);
+                    is_ready.store(true);
                 });
             });
         });
@@ -837,7 +836,7 @@ void MainContext::tryGetContactList()
             return;
         }
 
-        std::string file_path = boost::dll::program_location().parent_path().string() + "/minigram_cache/" + m_user_id.toStdString() + "/contact";
+        std::filesystem::path file_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\contact";
         std::vector<std::pair<std::string, int64_t>> acq_data;
 
         if (!std::filesystem::exists(file_path))
@@ -875,21 +874,21 @@ void MainContext::tryGetContactList()
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, &file_path, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -912,7 +911,7 @@ void MainContext::tryGetContactList()
                         qvm.insert("userName", acquaintance_data["user_name"].as_string().c_str());
                         qvm.insert("userInfo", acquaintance_data["user_info"].as_string().c_str());
 
-                        std::filesystem::path acq_dir{file_path + "/" + acquaintance_data["user_id"].as_string().c_str()};
+                        auto acq_dir = file_path / acquaintance_data["user_id"].as_string().c_str();
 
                         // 친구 user에 대한 캐시가 없으면 생성함
                         if (!std::filesystem::exists(acq_dir))
@@ -939,9 +938,9 @@ void MainContext::tryGetContactList()
                         }
 
                         // 실제 채팅방 삽입하는 로직
-                        // QMetaObject::invokeMethod(m_contact_view,
-                        //                           "addContact",
-                        //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                        QMetaObject::invokeMethod(m_contact_view,
+                                                  "addContact",
+                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
                     central_server.CloseRequest(session->GetID());
@@ -1243,6 +1242,10 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
                     session->GetResponse().GetData(acceptance);
                     session->GetResponse().GetData(user_id);
 
+                    std::filesystem::path user_cahe_path = boost::dll::program_location().parent_path().string() +
+                                                           "/minigram_cache/" +
+                                                           m_user_id.toStdString();
+
                     if (acceptance)
                     {
                         QString user_name, user_info, user_img_name;
@@ -1259,15 +1262,10 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
                         if (!user_img_name.isEmpty())
                             session->GetResponse().GetData(raw_img);
 
-                        std::filesystem::path contact_path = boost::dll::program_location().parent_path().string() +
-                                                             "/minigram_cache/" +
-                                                             m_user_id.toStdString() +
-                                                             "/contact/" +
-                                                             user_id.toStdString() +
-                                                             "/profile_img";
+                        auto contact_path = user_cahe_path / "contact" / user_id.toStdString() / "profile_img";
 
                         if (!std::filesystem::exists(contact_path))
-                            std::filesystem::create_directory(contact_path);
+                            std::filesystem::create_directories(contact_path);
 
                         if (!raw_img.empty())
                         {
@@ -1282,22 +1280,15 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
                         else
                             qvm.insert("userImg", "");
                     }
-                    else
-                    {
-                        std::filesystem::path requester_path = boost::dll::program_location().parent_path().string() +
-                                                               "/minigram_cache/" +
-                                                               m_user_id.toStdString() +
-                                                               "/contact_request/" +
-                                                               user_id.toStdString();
 
-                        if (std::filesystem::exists(requester_path))
-                            std::filesystem::remove_all(requester_path);
-                    }
+                    auto requester_path = user_cahe_path / "contact_request" / user_id.toStdString();
+                    if (std::filesystem::exists(requester_path))
+                        std::filesystem::remove_all(requester_path);
 
                     // qml에서 request list와 contact list 변경
                     QMetaObject::invokeMethod(m_contact_view,
                                               "processContactRequest",
-                                              Q_ARG(bool, acceptance),
+                                              Q_ARG(QVariant, acceptance),
                                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
 
                     central_server.CloseRequest(session->GetID());
@@ -1440,78 +1431,79 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 // Server에서 받는 버퍼 형식: 세션 id
 void MainContext::tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids)
 {
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
     auto &central_server = m_window.GetServerHandle();
 
-    int request_id = central_server.MakeRequestID();
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_name, img_path, participant_ids, this](std::shared_ptr<Session> session) -> void {
+        NetworkBuffer net_buf(SESSION_ADD_TYPE);
+        std::string img_base64 = "null";
 
-    // Buffer request(m_user_id + "|" + session_name + "|");
-    NetworkBuffer net_buf(SESSION_ADD_TYPE);
-    std::string img_base64 = "null";
+        net_buf += m_user_id;
+        net_buf += session_name;
 
-    net_buf += m_user_id;
-    net_buf += session_name;
+        if (!img_path.isEmpty())
+        {
+            QBuffer buf;
+            buf.open(QIODevice::WriteOnly);
+            QImage img(img_path);
+            img.save(&buf, "PNG");
+            img_base64 = buf.data().toBase64().toStdString();
+            net_buf += img_base64;
+        }
 
-    if (!img_path.isEmpty())
-    {
-        QBuffer buf;
-        buf.open(QIODevice::WriteOnly);
-        QImage img(img_path);
-        img.save(&buf, "PNG");
-        img_base64 = buf.data().toBase64().toStdString();
-        net_buf += img_base64;
-    }
+        net_buf += participant_ids.size();
+        for (size_t i = 0; i < participant_ids.size(); i++)
+            net_buf += participant_ids[i];
 
-    net_buf += participant_ids.size();
-    for (size_t i = 0; i < participant_ids.size(); i++)
-        net_buf += participant_ids[i];
+        std::shared_ptr<QVariantMap> qvm(new QVariantMap);
 
-    // TCPHeader header(SESSION_ADD_TYPE, request.Size());
-    // request = header.GetHeaderBuffer() + request;
+        (*qvm)["sessionName"] = session_name;
+        (*qvm)["sessionImg"] = img_base64.c_str();
+        (*qvm)["recentSenderId"] = (*qvm)["recentSendDate"] = (*qvm)["recentContentType"] = (*qvm)["recentContent"] = "";
+        (*qvm)["recentMessageId"] = (*qvm)["unreadCnt"] = 0;
 
-    std::shared_ptr<QVariantMap> qvm(new QVariantMap);
-
-    (*qvm)["sessionName"] = session_name;
-    (*qvm)["sessionImg"] = img_base64.c_str();
-    (*qvm)["recentSenderId"] = (*qvm)["recentSendDate"] = (*qvm)["recentContentType"] = (*qvm)["recentContent"] = "";
-    (*qvm)["recentMessageId"] = (*qvm)["unreadCnt"] = 0;
-
-    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
-        if (!session.get() || !session->IsValid())
-            return;
-
-        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                std::string session_id;
-                session->GetResponse().GetData(session_id);
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                        return;
 
-                std::string img_base64 = (*qvm)["sessionImg"].toString().toStdString();
+                    std::string session_id;
+                    session->GetResponse().GetData(session_id);
 
-                std::string session_cache_path = boost::dll::program_location().parent_path().string() + "/sessions/" + session_id;
-                boost::filesystem::create_directories(session_cache_path);
+                    std::string img_base64 = (*qvm)["sessionImg"].toString().toStdString();
 
-                if (img_base64 != "null")
-                {
-                    std::smatch match;
-                    std::regex_search(session_id, match, std::regex("_"));
-                    img_base64 = match.suffix().str() + "|" + img_base64;
+                    std::string session_cache_path = boost::dll::program_location().parent_path().string() + "/sessions/" + session_id;
+                    boost::filesystem::create_directories(session_cache_path);
 
-                    std::ofstream img_file(session_cache_path + "/session_img_info.bck");
-                    if (img_file.is_open())
-                        img_file.write(img_base64.c_str(), img_base64.size());
-                }
+                    if (img_base64 != "null")
+                    {
+                        std::smatch match;
+                        std::regex_search(session_id, match, std::regex("_"));
+                        img_base64 = match.suffix().str() + "|" + img_base64;
 
-                (*qvm)["sessionId"] = session_id.c_str();
+                        std::ofstream img_file(session_cache_path + "/session_img_info.bck");
+                        if (img_file.is_open())
+                            img_file.write(img_base64.c_str(), img_base64.size());
+                    }
 
-                // 여기에 invokeMethod
+                    (*qvm)["sessionId"] = session_id.c_str();
 
-                central_server.CloseRequest(session->GetID());
+                    // 여기에 invokeMethod
+
+                    central_server.CloseRequest(session->GetID());
+                });
             });
         });
     });

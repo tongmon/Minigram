@@ -831,7 +831,7 @@ void MessengerService::GetContactRequestListHandling()
     boost::json::array request_array;
     std::vector<std::vector<unsigned char>> raw_imgs;
 
-    soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id, status from contact_tb where participant_id=:id",
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select acquaintance_id, status from contact_tb where user_id=:id",
                                   soci::use(user_id));
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
@@ -884,7 +884,7 @@ void MessengerService::GetContactRequestListHandling()
     for (const auto &raw_img : raw_imgs)
         net_buf += raw_img;
 
-    m_request = std::move(m_request);
+    m_request = std::move(net_buf);
 
     boost::asio::async_write(*m_sock,
                              m_request.AsioBuffer(),
@@ -908,6 +908,8 @@ void MessengerService::ProcessContactRequestHandling()
     m_client_request.GetData(user_id);
     m_client_request.GetData(req_id);
     m_client_request.GetData(is_accepted);
+
+    std::cout << "user: " << user_id << " req_id: " << req_id << " acceptance: " << is_accepted << std::endl;
 
     NetworkBuffer net_buf(PROCESS_CONTACT_REQUEST_TYPE);
     net_buf += is_accepted;
@@ -1286,6 +1288,8 @@ void MessengerService::LogOutHandling()
 {
     std::string user_id, none_ip;
     m_client_request.GetData(user_id);
+
+    std::cout << "user: " << user_id << " log out" << std::endl;
 
     soci::indicator ind = soci::i_null;
     *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
