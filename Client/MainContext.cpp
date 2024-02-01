@@ -1439,12 +1439,6 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
 
     auto &central_server = m_window.GetServerHandle();
 
-    static std::atomic_bool is_ready = true;
-
-    bool old_var = true;
-    if (!is_ready.compare_exchange_strong(old_var, false))
-        return;
-
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_name, img_path, participant_ids, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
