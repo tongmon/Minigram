@@ -648,7 +648,11 @@ Rectangle {
                         width: parent.width / 2
                         clip: true
                         horizontalAlignment: Text.AlignRight
-                        text: recentSendDate
+                        text: {
+                            var date = new Date(0)
+                            date.setUTCMilliseconds(recentSendDate)
+                            return date.toString()
+                        }
                     } 
                 }
 
@@ -728,19 +732,19 @@ Rectangle {
             sessionListView.currentIndex = -1
 
             // 테스트 코드
-            for(let i = 0; i < 20; i++) {
-                addSession({
-                    "sessionId": "tongstar-20231023 11:21:06.053" + i,
-                    "sessionName": "채팅방_" + i,
-                    "sessionImg": "",
-                    "recentSenderId": "tongstar",
-                    "recentSendDate": "20231215 10:21:06.1211",
-                    "recentContentType": "text",
-                    "recentContent": "Hello Everyone!",
-                    "recentMessageId": 442,
-                    "unreadCnt": 10
-                })  
-            }
+            // for(let i = 0; i < 20; i++) {
+            //     addSession({
+            //         "sessionId": "tongstar-20231023 11:21:06.053" + i,
+            //         "sessionName": "채팅방_" + i,
+            //         "sessionImg": "",
+            //         "recentSenderId": "tongstar",
+            //         "recentSendDate": "20231215 10:21:06.1211",
+            //         "recentContentType": "text",
+            //         "recentContent": "Hello Everyone!",
+            //         "recentMessageId": 442,
+            //         "unreadCnt": 10
+            //     })  
+            // }
         }
     }
 

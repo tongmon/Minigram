@@ -97,7 +97,7 @@ bool ChatSessionModel::setData(const QModelIndex &index, const QVariant &value, 
         chat_session->recent_sender_id = value.toString();
         break;
     case RECENT_SEND_DATE_ROLE:
-        chat_session->recent_send_date = value.toString();
+        chat_session->recent_send_date = value.toUInt();
         break;
     case RECENT_CONTENT_TYPE_ROLE:
         chat_session->recent_content_type = value.toInt();
@@ -126,7 +126,7 @@ void ChatSessionModel::append(const QVariantMap &qvm)
                                                 qvm["sessionName"].toString(),
                                                 qvm["sessionImg"].toString(),
                                                 qvm["recentSenderId"].toString(),
-                                                qvm["recentSendDate"].toString(),
+                                                qvm["recentSendDate"].toUInt(),
                                                 qvm["recentContentType"].toInt(),
                                                 qvm["recentContent"].toString(),
                                                 qvm["recentMessageId"].toInt(),
@@ -153,7 +153,7 @@ Q_INVOKABLE void ChatSessionModel::refreshRecentChat(const QString &session_id, 
     ChatSession *chat_session = m_chat_sessions[m_id_index_map[session_id]];
     chat_session->unread_cnt = qvm["unreadCnt"].toInt();
     chat_session->recent_sender_id = qvm["recentSenderId"].toString();
-    chat_session->recent_send_date = qvm["recentSendDate"].toString();
+    chat_session->recent_send_date = qvm["recentSendDate"].toUInt();
     chat_session->recent_content_type = qvm["recentContentType"].toInt();
     chat_session->recent_content = qvm["recentContent"].toString();
     chat_session->recent_message_id = qvm["recentMessageId"].toInt();

@@ -1436,82 +1436,124 @@ void MainContext::trySignUp(const QVariantMap &qvm)
     });
 }
 
-// Server에 전달하는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(base64) | 배열 개수 | 세션 참가자 id 배열
+// Server에 전달하는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(raw) | 이미지 타입 | 배열 개수 | 세션 참가자 id 배열
 // Server에서 받는 버퍼 형식: 세션 id
 void MainContext::tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids)
 {
     auto &central_server = m_window.GetServerHandle();
 
-    int request_id = central_server.MakeRequestID();
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
+    static std::atomic_bool is_ready = true;
 
-    // Buffer request(m_user_id + "|" + session_name + "|");
-    NetworkBuffer net_buf(SESSION_ADD_TYPE);
-    std::string img_base64 = "null";
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
 
-    net_buf += m_user_id;
-    net_buf += session_name;
-
-    if (!img_path.isEmpty())
-    {
-        QBuffer buf;
-        buf.open(QIODevice::WriteOnly);
-        QImage img(img_path);
-        img.save(&buf, "PNG");
-        img_base64 = buf.data().toBase64().toStdString();
-        net_buf += img_base64;
-    }
-
-    net_buf += participant_ids.size();
-    for (size_t i = 0; i < participant_ids.size(); i++)
-        net_buf += participant_ids[i];
-
-    // TCPHeader header(SESSION_ADD_TYPE, request.Size());
-    // request = header.GetHeaderBuffer() + request;
-
-    std::shared_ptr<QVariantMap> qvm(new QVariantMap);
-
-    (*qvm)["sessionName"] = session_name;
-    (*qvm)["sessionImg"] = img_base64.c_str();
-    (*qvm)["recentSenderId"] = (*qvm)["recentSendDate"] = (*qvm)["recentContentType"] = (*qvm)["recentContent"] = "";
-    (*qvm)["recentMessageId"] = (*qvm)["unreadCnt"] = 0;
-
-    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_name, img_path, participant_ids, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
+        {
+            is_ready.store(true);
             return;
+        }
 
-        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+        std::shared_ptr<QImage> img_data;
+        std::string img_type;
+
+        if (!img_path.isEmpty())
+        {
+            std::wstring img_wpath = img_path.toStdWString();
+            img_data = std::make_shared<QImage>(QString::fromWCharArray(img_wpath.c_str()));
+            img_type = std::filesystem::path(img_wpath).extension().string();
+            if (!img_type.empty())
+                img_type.erase(img_type.begin());
+
+            size_t img_size = img_data->byteCount();
+            while (5242880 < img_size) // 이미지 크기가 5MB를 초과하면 계속 축소함
+            {
+                *img_data = img_data->scaled(img_data->width() * 0.75, img_data->height() * 0.75, Qt::KeepAspectRatio);
+                img_size = img_data->byteCount();
+            }
+        }
+
+        NetworkBuffer net_buf(SESSION_ADD_TYPE);
+        net_buf += m_user_id;
+        net_buf += session_name;
+
+        if (img_data)
+        {
+            QBuffer buf;
+            buf.open(QIODevice::WriteOnly);
+            img_data->save(&buf, img_type.c_str());
+            net_buf += buf.data();
+        }
+        else
+            net_buf += std::string();
+
+        net_buf += img_type;
+
+        net_buf += participant_ids.size();
+        for (size_t i = 0; i < participant_ids.size(); i++)
+            net_buf += participant_ids[i];
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, img_data, img_type, session_name, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
                 return;
+            }
 
-            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, img_data, img_type, session_name, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
-                    return;
-
-                std::string session_id;
-                session->GetResponse().GetData(session_id);
-
-                std::string img_base64 = (*qvm)["sessionImg"].toString().toStdString();
-
-                std::string session_cache_path = boost::dll::program_location().parent_path().string() + "/sessions/" + session_id;
-                boost::filesystem::create_directories(session_cache_path);
-
-                if (img_base64 != "null")
                 {
-                    std::smatch match;
-                    std::regex_search(session_id, match, std::regex("_"));
-                    img_base64 = match.suffix().str() + "|" + img_base64;
-
-                    std::ofstream img_file(session_cache_path + "/session_img_info.bck");
-                    if (img_file.is_open())
-                        img_file.write(img_base64.c_str(), img_base64.size());
+                    is_ready.store(true);
+                    return;
                 }
 
-                (*qvm)["sessionId"] = session_id.c_str();
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, img_data, img_type, session_name, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        is_ready.store(true);
+                        return;
+                    }
 
-                // 여기에 invokeMethod
+                    std::string session_id;
+                    session->GetResponse().GetData(session_id);
 
-                central_server.CloseRequest(session->GetID());
+                    QVariantMap qvm;
+                    qvm.insert("sessionId", session_id.c_str());
+                    qvm.insert("sessionName", session_name);
+                    qvm.insert("recentSenderId", "");
+                    qvm.insert("recentContentType", "");
+                    qvm.insert("recentContent", "");
+                    qvm.insert("sessionImg", "");
+                    qvm.insert("recentSendDate", 0);
+                    qvm.insert("recentMessageId", 0);
+                    qvm.insert("unreadCnt", 0);
+
+                    std::string session_cache_path = boost::dll::program_location().parent_path().string() +
+                                                     "\\minigram_cache\\" +
+                                                     m_user_id.toStdString() +
+                                                     "\\sessions\\" +
+                                                     session_id;
+                    if (!std::filesystem::exists(session_cache_path))
+                        boost::filesystem::create_directories(session_cache_path);
+
+                    if (img_data)
+                    {
+                        std::smatch match;
+                        std::regex_search(session_id, match, std::regex("-"));
+                        std::string img_full_path = session_cache_path + "\\" + match.suffix().str() + "." + img_type;
+
+                        img_data->save(img_full_path.c_str(), img_type.c_str());
+                        qvm.insert("sessionImg", img_full_path.c_str());
+                    }
+
+                    QMetaObject::invokeMethod(m_session_list_view,
+                                              "addSession",
+                                              Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
+                });
             });
         });
     });
