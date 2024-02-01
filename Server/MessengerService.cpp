@@ -991,7 +991,7 @@ void MessengerService::SignUpHandling()
     else
     {
         register_ret = REGISTER_SUCCESS;
-        cur_date = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
+        cur_date = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
         if (!user_img.empty())
         {
