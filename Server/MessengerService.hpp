@@ -20,12 +20,12 @@ class MessengerService : public Service
     void ChatHandling();
     void RefreshSessionHandling(); // reader id 갱신을 위해 각 클라로 정보 갱신 소식을 쏴줘야 함
     void FetchMoreMessageHandling();
-    void SessionListInitHandling();
+    void GetSessionListHandling();
     void GetContactListHandling();
     void GetContactRequestListHandling();
     void ProcessContactRequestHandling();
     void SignUpHandling();
-    void SessionAddHandling();
+    void AddSessionHandling();
     void SendContactRequestHandling();
     void LogOutHandling();
 

@@ -201,7 +201,6 @@ inline std::string DecodeURL(const std::string &str)
     return result;
 }
 
-// fork되는 환경에서 사용하면 localtime_s 수행시 내부적인 lock이 꼬일 수 있으니 해당 함수는 fork 함수가 사용되지 않는 환경에서 사용하기
 inline std::string MillisecondToCurrentDate(long long time_since_epoch, const std::string time_format = "%F %T")
 {
     using namespace std::chrono;
@@ -211,7 +210,7 @@ inline std::string MillisecondToCurrentDate(long long time_since_epoch, const st
     std::size_t f_sec = cur_ms.count() % 1000;
 
     std::tm t;
-    localtime_s(&t, &cur_time_t);
+    localtime_s(&t, &cur_time_t); // Don't use this with fork() function!
 
     char buf[MAX_PATH];
     std::strftime(buf, MAX_PATH, time_format.c_str(), &t);

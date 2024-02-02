@@ -15,7 +15,7 @@ class ChatSession : public QObject
     Q_PROPERTY(QString sessionName MEMBER session_name NOTIFY sessionNameChanged)
     Q_PROPERTY(QString sessionImg MEMBER session_img NOTIFY sessionImgChanged)
     Q_PROPERTY(QString recentSenderId MEMBER recent_sender_id NOTIFY recentSenderIdChanged)
-    Q_PROPERTY(size_t recentSendDate MEMBER recent_send_date NOTIFY recentSendDateChanged)
+    Q_PROPERTY(QString recentSendDate MEMBER recent_send_date NOTIFY recentSendDateChanged)
     Q_PROPERTY(int recentContentType MEMBER recent_content_type NOTIFY recentContentTypeChanged)
     Q_PROPERTY(QString recentContent MEMBER recent_content NOTIFY recentContentChanged)
     Q_PROPERTY(int64_t recentMessageId MEMBER recent_message_id NOTIFY recentMessageIdChanged)
@@ -26,7 +26,7 @@ class ChatSession : public QObject
     QString session_name;
     QString session_img;
     QString recent_sender_id;
-    size_t recent_send_date;
+    QString recent_send_date;
     int recent_content_type;
     QString recent_content;
     int64_t recent_message_id;
@@ -36,7 +36,7 @@ class ChatSession : public QObject
                 const QString &name = "",
                 const QString &base64_img = "",
                 const QString &sender_id = "",
-                const size_t &send_date = 0,
+                const QString &send_date = "",
                 int content_type = UNDEFINED_TYPE,
                 const QString &content = "",
                 const int64_t &message_id = 0,

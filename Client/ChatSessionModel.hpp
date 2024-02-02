@@ -40,6 +40,7 @@ class ChatSessionModel : public QAbstractListModel
     bool setData(const QModelIndex &index, const QVariant &value, int role);
 
     Q_INVOKABLE void append(const QVariantMap &qvm);
+    Q_INVOKABLE void remove(const QString &session_id);
     Q_INVOKABLE void clear();
     Q_INVOKABLE void refreshRecentChat(const QString &session_id, const QVariantMap &qvm);
 };

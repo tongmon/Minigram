@@ -70,8 +70,8 @@ CREATE TABLE session_tb
     PRIMARY KEY (session_id)
 )
 
-session_id 제약: 생성자 ID + '-' + 세션 생성일
-ex) tongstar-20231023 11:21:06.0532 / tongstar 사용자가 2023/10/23 11시 21분 6초 532ms에 첫번째로 만든 채팅방이라는 정보가 담김
+session_id 제약: 생성자 ID + '_' + 세션 생성일
+ex) tongstar_1706838249711 / tongstar 사용자가 1706838249711 since_epoch_time_milli에 첫번째로 만든 채팅방이라는 정보가 담김
 
 
 ### participant_tb
@@ -116,12 +116,12 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 실제 채팅방의 컨텐츠를 모두 가져오진 않고 마지막 채팅 내용과 사용자가 읽지 않은 메시지 개수 정도를 가져옴
 
 {
-	"chatroom_init_data": [
+	"session_init_data": [
 		{
 			"session_id": "세션 id",
 			"session_name": "세션 이름",
-			"session_img": "Base64 인코딩된 세션 이미지, 이미 클라이언트에서 최신 이미지를 가지고 있다면 empty string임",
-			"session_img_date": "YYYY-MM-DD hh:mm:ss.ms 로컬 세션 이미지 파일이 최신인지 알기 위함",
+			"session_img_name": "이미지 이름",
+			"session_info": "",
 			
 			// 클라이언트 사용자가 채팅방 채팅을 읽지 않은 개수, 음수면 채팅방을 상대방이 지우거나 추방된거임
 			"unread_count": 10
@@ -129,9 +129,9 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 			// 마지막으로 생성된 채팅 정보
 			"chat_info": {
 				"sender_id": 	"보낸 사람 USER_ID",
-				"send_date": 	"2023-10-19 13:21:40.125",
+				"send_date": 	since_epoch_time,
 				"message_id":	462,
-				"content_type": "text",
+				"content_type": int형,
 
 				// content_type이 text가 아니라면 content 내용은 간략화됨
 				"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
@@ -140,6 +140,8 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 		...
 	]
 }
+
+해당 json과 함께 raw img 파일 배열 보내야 함
 
 
 #### Session Recieve Chat
@@ -236,16 +238,42 @@ minigram_cache
 
 ## Server Cache 구성
 MinigramServer.exe
-	L users
-		L user_id
-			L profile_img
-				L 날짜.이미지_확장자
-	L sessions
-		L session_id
-			L session_img
-				L 날짜.이미지_확장자
+server_data
+	L user_id
+		L profile_img
+			L 날짜.이미지_확장자
+		L sessions
+			L session_id
+				L session_img
+					L 날짜.이미지_확장자
 
 ## 참고할 만한 글
 https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/
 http://tsfkb.wikidot.com/tips:android:cache
 https://insidetelegram.eu/en/2022/01/20/telegram-what-is-cache-how-to-cancel-it/
+
+
+
+
+        std::filesystem::directory_iterator it{file_path};
+        while (it != std::filesystem::end(it))
+        {
+            int64_t img_update_date = 0;
+            if (std::filesystem::is_directory(it->path()))
+            {
+                auto profile_img_path = it->path() / "profile_img";
+                if (!std::filesystem::exists(profile_img_path))
+                    std::filesystem::create_directories(profile_img_path);
+                else
+                {
+                    std::filesystem::directory_iterator child{profile_img_path};
+                    // 일단 프로필 이미지는 단 하나만 저장한다고 가정
+                    if (child != std::filesystem::end(child))
+                        img_update_date = std::atoll(child->path().stem().string().c_str());
+                }
+
+                if (img_update_date)
+                    acq_data.push_back({it->path().filename().string(), img_update_date});
+            }
+            it++;
+        }

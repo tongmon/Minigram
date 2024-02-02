@@ -107,6 +107,7 @@ ApplicationWindow {
 
                 mainContext.tryGetContactList()
                 mainContext.tryGetContactRequestList()
+                mainContext.tryGetSessionList()
             }
         }
     }

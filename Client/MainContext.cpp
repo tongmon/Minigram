@@ -429,177 +429,170 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
 // 해당 함수에서 각 세션의 리스트를 채우진 않고 각종 세션 정보를 초기화하고 해당 세션에서 읽지 않은 메시지 개수, 가장 최근 메시지 등을 가져옴
 // Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
-void MainContext::tryInitSessionList()
+void MainContext::tryGetSessionList()
 {
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
     auto &central_server = m_window.GetServerHandle();
 
-    int request_id = central_server.MakeRequestID();
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
-
-    NetworkBuffer net_buf(SESSIONLIST_INITIAL_TYPE);
-    net_buf += m_user_id;
-
-    std::string file_path = boost::dll::program_location().parent_path().string() + "/cache/sessions";
-    std::vector<std::pair<std::string, std::string>> session_data;
-
-    // 세션 이미지가 저장되어 있는지 캐시 파일을 찾아봄
-    boost::filesystem::directory_iterator root{file_path};
-    while (root != boost::filesystem::directory_iterator{})
-    {
-        auto dir = *root;
-        std::string img_update_date;
-
-        boost::filesystem::directory_iterator child{dir.path()};
-        while (child != boost::filesystem::directory_iterator{})
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
         {
-            auto file = *child;
-            if (file.path().filename() == "session_img_info.bck")
-            {
-                std::ifstream of(file.path().c_str());
-                // 세션 이미지 캐시 파일이 존재한다면 해당 이미지가 갱신된 최근 날짜를 획득
-                if (of.is_open())
-                    std::getline(of, img_update_date, '|');
-                break;
-            }
+            is_ready.store(true);
+            return;
         }
 
-        session_data.push_back({dir.path().filename().string(), img_update_date});
-    }
+        std::string file_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\sessions";
+        std::vector<std::pair<std::string, int64_t>> session_data;
 
-    net_buf += session_data.size();
-    for (const auto &data : session_data)
-    {
-        net_buf += data.first;
-        net_buf += data.second;
-    }
-
-    central_server.AsyncWrite(request_id, std::move(net_buf), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
-        if (!session.get() || !session->IsValid())
-            return;
-
-        central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
-            if (!session.get() || !session->IsValid())
-                return;
-
-            central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) -> void {
-                if (!session.get() || !session->IsValid())
-                    return;
-
-                std::string json_txt; // = Utf8ToStr(DecodeBase64(session->GetResponse().CStr()));
-                session->GetResponse().GetData(json_txt);
-
-                boost::json::error_code ec;
-                boost::json::value json_data = boost::json::parse(json_txt, ec);
-                auto session_array = json_data.as_object()["chatroom_init_data"].as_array();
-
-                for (int i = 0; i < session_array.size(); i++)
+        // 세션 이미지가 저장되어 있는지 캐시 파일을 찾아봄
+        std::filesystem::directory_iterator it{file_path};
+        while (it != std::filesystem::end(it))
+        {
+            int64_t img_update_date = 0;
+            if (std::filesystem::is_directory(it->path()))
+            {
+                if (!std::filesystem::exists(it->path()))
+                    std::filesystem::create_directories(it->path());
+                else
                 {
-                    auto session_data = session_array[i].as_object();
-
-                    if (session_data["unread_count"].as_int64() < 0)
-                    {
-                        // 채팅방 추방 처리
-                        continue;
-                    }
-
-                    QVariantMap qvm;
-                    qvm.insert("sessionId", session_data["session_id"].as_string().c_str());
-                    qvm.insert("sessionName", session_data["session_name"].as_string().c_str());
-                    qvm.insert("unreadCnt", session_data["unread_count"].as_int64());
-
-                    std::string session_dir = file_path + "/" + session_data["session_id"].as_string().c_str();
-
-                    // 세션 캐시가 없으면 생성함
-                    if (!boost::filesystem::exists(session_dir))
-                    {
-                        boost::filesystem::create_directories(session_dir);
-                    }
-
-                    /// 세션 이미지가 없는 경우
-                    if (session_data["session_img_date"].as_string() == "null")
-                    {
-                        qvm.insert("sessionImg", "");
-                    }
-                    // 서버에서 새로운 세션 이미지를 떨궈주면 로컬 캐시 파일 생성
-                    // 나중에 base64말고 순수 이진 파일로 바꿔서 전송하도록 변경해야 됨
-                    else if (!session_data["session_img"].as_string().empty())
-                    {
-                        std::string_view base64_img = session_data["session_img"].as_string().c_str();
-                        qvm.insert("sessionImg", base64_img.data());
-
-                        std::ofstream img_bck(session_dir + "/session_img_info.bck");
-                        if (img_bck.is_open())
-                        {
-                            std::string img_cache = session_data["session_img_date"].as_string().c_str();
-                            img_cache += "|";
-                            img_cache += base64_img.data();
-                            img_bck.write(img_cache.c_str(), img_cache.size());
-                        }
-                    }
-                    // 캐시 해둔 세션 이미지를 사용할 때
-                    else
-                    {
-                        std::string base64_img;
-                        std::ifstream img_bck(session_dir + "/session_img_info.bck");
-                        if (img_bck.is_open())
-                        {
-                            std::getline(img_bck, base64_img, '|');
-                            // base64_img.clear(); // 필요없을 듯, 확인필요
-                            std::getline(img_bck, base64_img);
-                        }
-
-                        qvm.insert("sessionImg", base64_img.data());
-                    }
-
-                    // 채팅방에 대화가 아무것도 없는 경우
-                    if (session_data["chat_info"].as_object().empty())
-                    {
-                        qvm.insert("recentSendDate", "");
-                        qvm.insert("recentSenderId", "");
-                        qvm.insert("recentContentType", UNDEFINED_TYPE);
-                        qvm.insert("recentContent", "");
-                        qvm.insert("recentMessageId", 0);
-                    }
-                    else
-                    {
-                        auto chat_info = session_data["chat_info"].as_object();
-                        qvm.insert("recentSendDate", chat_info["send_date"].as_string().c_str());
-                        qvm.insert("recentSenderId", chat_info["sender_id"].as_string().c_str());
-                        qvm.insert("recentContentType", chat_info["content_type"].as_int64());
-
-                        switch (chat_info["content_type"].as_int64())
-                        {
-                        case TEXT_CHAT:
-                            qvm.insert("recentContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
-                            break;
-                        case IMG_CHAT:
-                            qvm.insert("recentContent", chat_info["content"].as_string().c_str());
-                            break;
-                        default:
-                            break;
-                        }
-
-                        // if (chat_info["send_date"].as_string() != "text")
-                        //     qvm.insert("recentContent", chat_info["content"].as_string().c_str());
-                        // else
-                        //     qvm.insert("recentContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
-
-                        qvm.insert("recentMessageId", chat_info["message_id"].as_int64());
-                    }
-
-                    // 실제 채팅방 삽입하는 로직
-                    // QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
-                    //                           "addSession",
-                    //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
-
-                    m_chat_session_model->append(qvm);
+                    std::filesystem::directory_iterator child{it->path()};
+                    if (child != std::filesystem::end(child))
+                        img_update_date = std::atoll(child->path().stem().string().c_str());
                 }
-                central_server.CloseRequest(session->GetID());
+
+                if (img_update_date)
+                    session_data.push_back({it->path().filename().string(), img_update_date});
+            }
+            it++;
+        }
+
+        NetworkBuffer net_buf(SESSIONLIST_INITIAL_TYPE);
+        net_buf += m_user_id;
+        net_buf += session_data.size();
+        for (const auto &data : session_data)
+        {
+            net_buf += data.first;
+            net_buf += data.second;
+        }
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    is_ready.store(true);
+                    return;
+                }
+
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        is_ready.store(true);
+                        return;
+                    }
+
+                    std::string json_txt;
+                    session->GetResponse().GetData(json_txt);
+
+                    boost::json::error_code ec;
+                    boost::json::value json_data = boost::json::parse(json_txt, ec);
+                    auto session_array = json_data.as_object()["session_init_data"].as_array();
+
+                    for (int i = 0; i < session_array.size(); i++)
+                    {
+                        auto session_data = session_array[i].as_object();
+
+                        if (session_data["unread_count"].as_int64() < 0)
+                        {
+                            // 채팅방 추방 처리
+                            continue;
+                        }
+
+                        QVariantMap qvm;
+                        qvm.insert("sessionId", session_data["session_id"].as_string().c_str());
+                        qvm.insert("sessionName", session_data["session_name"].as_string().c_str());
+                        qvm.insert("unreadCnt", session_data["unread_count"].as_int64());
+
+                        std::filesystem::path session_dir = file_path + "\\" + session_data["session_id"].as_string().c_str();
+
+                        // 세션 캐시가 없으면 생성함
+                        if (!std::filesystem::exists(session_dir))
+                            std::filesystem::create_directories(session_dir);
+
+                        std::string session_img;
+                        std::filesystem::directory_iterator img_dir{session_dir};
+                        if (img_dir != std::filesystem::end(img_dir))
+                            session_img = img_dir->path().string().c_str();
+
+                        if (session_data["session_img_name"].as_string().empty())
+                            qvm.insert("sessionImg", session_img.c_str());
+                        else
+                        {
+                            std::vector<unsigned char> img_data;
+                            session->GetResponse().GetData(img_data);
+
+                            auto session_img_path = session_dir / session_data["session_img_name"].as_string().c_str();
+                            std::ofstream of(session_img_path, std::ios::binary);
+                            if (of.is_open())
+                                of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
+
+                            qvm.insert("sessionImg", session_img_path.string().c_str());
+                        }
+
+                        // 채팅방에 대화가 아무것도 없는 경우
+                        if (session_data["chat_info"].as_object().empty())
+                        {
+                            qvm.insert("recentSendDate", "");
+                            qvm.insert("recentSenderId", "");
+                            qvm.insert("recentContentType", UNDEFINED_TYPE);
+                            qvm.insert("recentContent", "");
+                            qvm.insert("recentMessageId", -1);
+                        }
+                        else
+                        {
+                            auto chat_info = session_data["chat_info"].as_object();
+                            qvm.insert("recentSendDate", MillisecondToCurrentDate(chat_info["send_date"].as_int64()).c_str());
+                            qvm.insert("recentSenderId", chat_info["sender_id"].as_string().c_str());
+                            qvm.insert("recentContentType", chat_info["content_type"].as_int64());
+
+                            switch (chat_info["content_type"].as_int64())
+                            {
+                            case TEXT_CHAT:
+                                qvm.insert("recentContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
+                                break;
+                            case IMG_CHAT:
+                            case VIDEO_CHAT:
+                                qvm.insert("recentContent", chat_info["content"].as_string().c_str());
+                                break;
+                            default:
+                                break;
+                            }
+                            qvm.insert("recentMessageId", chat_info["message_id"].as_int64());
+                        }
+
+                        QMetaObject::invokeMethod(m_session_list_view,
+                                                  "addSession",
+                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                        m_chat_session_model->append(qvm);
+                    }
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
+                });
             });
         });
     });
-
-    return;
 }
 
 // Server에 전달하는 버퍼 형식: user_id | session_id | 읽어올 메시지 수
@@ -1303,12 +1296,10 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
 // Server에서 받는 버퍼 형식: Login Result | Register Date
 void MainContext::trySignUp(const QVariantMap &qvm)
 {
-    auto &central_server = m_window.GetServerHandle();
+    static std::atomic_bool is_ready = true;
 
-    static std::atomic_int request_id = -1;
-    if (request_id.load() < 0)
-        request_id.store(central_server.MakeRequestID());
-    else
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
     {
         QMetaObject::invokeMethod(m_login_page,
                                   "processSignUp",
@@ -1316,13 +1307,15 @@ void MainContext::trySignUp(const QVariantMap &qvm)
         return;
     }
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id.load(), [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
+    auto &central_server = m_window.GetServerHandle();
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, qvm, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             QMetaObject::invokeMethod(m_login_page,
                                       "processSignUp",
                                       Q_ARG(QVariant, REGISTER_CONNECTION_FAIL));
-            request_id.store(-1);
+            is_ready.store(true);
             return;
         }
 
@@ -1364,13 +1357,13 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
         net_buf += img_type;
 
-        central_server.AsyncWrite(request_id.load(), std::move(net_buf), [&central_server, img_data, img_type, user_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, img_data, img_type, user_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_login_page,
                                           "processSignUp",
                                           Q_ARG(int, REGISTER_CONNECTION_FAIL));
-                request_id.store(-1);
+                is_ready.store(true);
                 return;
             }
 
@@ -1380,7 +1373,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     QMetaObject::invokeMethod(m_login_page,
                                               "processSignUp",
                                               Q_ARG(int, REGISTER_CONNECTION_FAIL));
-                    request_id.store(-1);
+                    is_ready.store(true);
                     return;
                 }
 
@@ -1390,7 +1383,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                         QMetaObject::invokeMethod(m_login_page,
                                                   "processSignUp",
                                                   Q_ARG(int, REGISTER_CONNECTION_FAIL));
-                        request_id.store(-1);
+                        is_ready.store(true);
                         return;
                     }
 
@@ -1419,8 +1412,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                                               Q_ARG(QVariant, result));
 
                     central_server.CloseRequest(session->GetID());
-
-                    request_id.store(-1);
+                    is_ready.store(true);
                 });
             });
         });
@@ -1506,17 +1498,32 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                         return;
                     }
 
+                    QVariantMap qvm;
                     std::string session_id;
                     session->GetResponse().GetData(session_id);
 
-                    QVariantMap qvm;
+                    if (session_id.empty())
+                    {
+                        QMetaObject::invokeMethod(m_session_list_view,
+                                                  "addSession",
+                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                        central_server.CloseRequest(session->GetID());
+                        is_ready.store(true);
+                        return;
+                    }
+
+                    std::smatch match;
+                    std::regex_search(session_id, match, std::regex("_"));
+                    size_t time_since_epoch = atoll(match.suffix().str().c_str());
+
                     qvm.insert("sessionId", session_id.c_str());
                     qvm.insert("sessionName", session_name);
                     qvm.insert("recentSenderId", "");
                     qvm.insert("recentContentType", "");
                     qvm.insert("recentContent", "");
                     qvm.insert("sessionImg", "");
-                    qvm.insert("recentSendDate", 0);
+                    qvm.insert("recentSendDate", MillisecondToCurrentDate(time_since_epoch).c_str());
                     qvm.insert("recentMessageId", 0);
                     qvm.insert("unreadCnt", 0);
 
@@ -1530,8 +1537,6 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
 
                     if (img_data)
                     {
-                        std::smatch match;
-                        std::regex_search(session_id, match, std::regex("-"));
                         std::string img_full_path = session_cache_path + "\\" + match.suffix().str() + "." + img_type;
 
                         img_data->save(img_full_path.c_str(), img_type.c_str());

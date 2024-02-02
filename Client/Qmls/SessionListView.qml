@@ -15,10 +15,18 @@ Rectangle {
     // chat list view 템플릿이 찍어낸 객체
     property var sessionViewMap: ({})
 
+    property var selectedPerson: ({})
+
     property string currentSessionId: ""
 
     function addSession(sessionInfo)
     {
+        if(!sessionInfo.hasOwnProperty("sessionId"))
+        {
+            // 실패 문구 출력
+            return
+        }
+
         chatSessionModel.append(sessionInfo)
         sessionViewMap[sessionInfo["sessionId"]] = sessionViewComponent.createObject(null)
         sessionViewMap[sessionInfo["sessionId"]].sessionId = sessionInfo["sessionId"]
@@ -286,7 +294,7 @@ Rectangle {
 
                         onClicked: {
                             selectedPersonModel.remove(selectedPersonInfo.selectedPersonIndex)
-                            delete sessionAddButton.selectedPerson[selectedPersonInfo.objectName]
+                            delete selectedPerson[selectedPersonInfo.objectName]
                         }
                     }
                 }
@@ -427,14 +435,14 @@ Rectangle {
                         hoverEnabled: true
 
                         onClicked: {
-                            if(!sessionAddButton.selectedPerson.hasOwnProperty(userId))
+                            if(!selectedPerson.hasOwnProperty(userId))
                             {
                                 selectedPersonModel.append({
                                     "userId": userId,
                                     "userName": userName,
                                     "userImg": userImg
                                 })
-                                sessionAddButton.selectedPerson[userId] = true
+                                selectedPerson[userId] = true
                             }
                         }
                     }
@@ -486,13 +494,22 @@ Rectangle {
                     }
 
                     onClicked: {
-                        // cpp 단에서 서버로 세션 정보 전송
-                        mainContext.tryAddSession(sessionNameTextField.text, 
-                                                 sessionImageSelectButton.source, 
-                                                 Object.keys(addedPerson))
+                        var img_path = sessionImageSelectButton.source.toString()
+                        switch (img_path[0])
+                        {
+                        // 파일 선택한 경우
+                        case 'f':
+                            img_path = decodeURIComponent(img_path.replace(/^(file:\/{3})/, ""));
+                            break
+                        // qrc, http 등... 유저가 세션 이미지를 따로 선택하지 않은 경우
+                        default:
+                            img_path = ""
+                            break
+                        }                        
 
-                        // contactChoicePopup.close()
-                        // sessionNameDecisionPopup.close()
+                        mainContext.tryAddSession(sessionNameTextField.text, 
+                                                  img_path, 
+                                                  Object.keys(selectedPerson))
                     }
                 }
             }
@@ -500,7 +517,7 @@ Rectangle {
 
         onClosed: {
             selectedPersonModel.clear()
-            sessionAddButton.selectedPerson = ({})
+            selectedPerson = ({})
         }
     }
 
@@ -519,8 +536,6 @@ Rectangle {
             color: parent.down ? Qt.rgba(0.7, 0.7, 0.7, 1.0) : Qt.rgba(0.7, 0.7, 0.7, 0.4)
             radius: 8
         }
-
-        property var selectedPerson: ({})
 
         onClicked: {
             sessionNameDecisionPopup.open()
@@ -604,7 +619,7 @@ Rectangle {
                 height: parent.height - 20
                 width: height
                 rounded: true
-                source: "qrc:/icon/UserID.png" // sessionImg
+                source: sessionImg.length ? ("file:///" + sessionImg) : "qrc:/icon/UserID.png"
             }            
 
             Item {
@@ -649,11 +664,7 @@ Rectangle {
                         width: parent.width / 2
                         clip: true
                         horizontalAlignment: Text.AlignRight
-                        text: {
-                            var date = new Date(0)
-                            date.setUTCMilliseconds(recentSendDate)
-                            return date.toString()
-                        }
+                        text: recentSendDate
                     } 
                 }
 

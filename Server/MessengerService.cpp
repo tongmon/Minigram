@@ -563,25 +563,13 @@ void MessengerService::FetchMoreMessageHandling()
 
 // Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
-void MessengerService::SessionListInitHandling()
+void MessengerService::GetSessionListHandling()
 {
     using namespace bsoncxx;
     using namespace bsoncxx::builder;
 
-    // std::vector<std::string> parsed;
-    // std::unordered_map<std::string, std::string> session_cache;
-
-    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
-    // const std::string &user_id = parsed[0];
-    //
-    // for (int i = 1; i < parsed.size(); i++)
-    // {
-    //     std::vector<std::string> descendant;
-    //     boost::split(descendant, parsed[i], boost::is_any_of("/"));
-    //     session_cache[descendant[0]] = descendant[1];
-    // }
-
-    std::unordered_map<std::string, std::string> session_cache;
+    std::unordered_map<std::string, int64_t> session_cache;
+    std::vector<std::vector<unsigned char>> raw_imgs;
     std::string user_id;
     size_t session_ary_size;
 
@@ -590,19 +578,19 @@ void MessengerService::SessionListInitHandling()
 
     for (size_t i = 0; i < session_ary_size; i++)
     {
-        std::string session_id, session_img_date;
+        std::string session_id;
+        int64_t session_img_date;
         m_client_request.GetData(session_id);
         m_client_request.GetData(session_img_date);
         session_cache[session_id] = session_img_date;
     }
 
-    soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
-                                  soci::use(user_id, "id"));
-
     auto mongo_client = MongoDBPool::Get().acquire();
     auto mongo_db = (*mongo_client)["Minigram"];
 
     boost::json::array session_array;
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
+                                  soci::use(user_id));
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
@@ -610,16 +598,17 @@ void MessengerService::SessionListInitHandling()
 
         boost::json::object session_data;
 
-        // 클라에는 채팅방이 있는데 서버쪽에 없는 경우... 강퇴나 추방에 해당됨
-        if (session_cache.find(session_id) == session_cache.end())
-        {
-            session_data["session_id"] = session_id;
-            session_data["session_name"] = session_data["session_img"] = session_data["session_img_date"] = session_data["session_info"] = "";
-            session_data["unread_count"] = -1;
-            session_data["chat_info"] = boost::json::object{};
-            session_array.push_back(session_data);
-            continue;
-        }
+        // 강퇴나 추방인데... 세션 캐시로만 따질 수 없음
+        // if (session_cache.find(session_id) == session_cache.end())
+        // {
+        //     session_data["session_id"] = session_id;
+        //     session_data["session_name"] = session_data["session_img"] = session_data["session_info"] = "";
+        //     session_data["session_img_date"] = 0;
+        //     session_data["unread_count"] = -1;
+        //     session_data["chat_info"] = boost::json::object{};
+        //     session_array.push_back(session_data);
+        //     continue;
+        // }
 
         *m_sql << "select session_nm, session_info, img_path from session_tb where session_id=:id",
             soci::into(session_nm), soci::into(session_info), soci::into(img_path), soci::use(session_id);
@@ -627,20 +616,27 @@ void MessengerService::SessionListInitHandling()
         session_data["session_id"] = session_id;
         session_data["session_name"] = session_nm;
         session_data["session_info"] = session_info;
+        session_data["session_img_name"] = "";
+        session_data["unread_count"] = 0;
 
-        boost::filesystem::path path = img_path;
-        if (!img_path.empty() && path.stem() > session_cache[session_id])
+        size_t img_update_date = 0;
+        std::filesystem::path path_data;
+        if (!img_path.empty())
         {
-            int width, height, channels;
-            unsigned char *img = stbi_load(img_path.c_str(), &width, &height, &channels, 0);
-            std::string img_buffer(reinterpret_cast<char const *>(img), width * height);
-            session_data["session_img"] = EncodeBase64(img_buffer);
-            session_data["session_img_date"] = path.stem().string();
+            path_data = img_path;
+            img_update_date = std::stoull(path_data.stem().string());
         }
-        else
+
+        // 이미지 갱신이 필요한 경우
+        if ((session_cache.find(session_id) != session_cache.end() && img_update_date > session_cache[session_id]) ||
+            (session_cache.find(session_id) == session_cache.end() && img_update_date))
         {
-            session_data["session_img"] = "";
-            session_data["session_img_date"] = img_path.empty() ? "null" : "";
+            std::ifstream inf(img_path);
+            if (inf.is_open())
+            {
+                session_data["session_img_name"] = path_data.filename().string();
+                raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
+            }
         }
 
         int64_t msg_id;
@@ -653,10 +649,8 @@ void MessengerService::SessionListInitHandling()
         //                                                                                           basic::make_document(basic::kvp("$gt",
         //                                                                                                                           msg_id)))));
 
-        session_data["unread_count"] = 0;
-
         auto opts = mongocxx::options::find{};
-        opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1);
+        opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1); // 여기서 exception 터짐, 수정 필요
         auto mongo_cursor = mongo_coll.find({}, opts);
 
         boost::json::object descendant;
@@ -664,13 +658,10 @@ void MessengerService::SessionListInitHandling()
         {
             auto doc = *mongo_cursor.begin();
             descendant["sender_id"] = doc["sender_id"].get_string().value;
-
-            std::chrono::system_clock::time_point send_date(doc["send_date"].get_date().value);
-            descendant["send_date"] = std::format("{0:%F %T}", send_date);
+            descendant["send_date"] = doc["send_date"].get_int64().value;
             descendant["message_id"] = doc["message_id"].get_int64().value;
             descendant["content_type"] = doc["content_type"].get_int64().value;
-
-            session_data["unread_count"] = descendant["message_id"].as_int64() - msg_id;
+            session_data["unread_count"] = descendant["message_id"].as_int64() + (msg_id < 0 ? 1 : -msg_id);
 
             // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
             switch (descendant["content_type"].as_int64())
@@ -694,19 +685,15 @@ void MessengerService::SessionListInitHandling()
         session_array.push_back(session_data);
     }
 
-    boost::json::object chatroom_init_json;
-    chatroom_init_json["chatroom_init_data"] = session_array;
+    boost::json::object session_init_json;
+    session_init_json["session_init_data"] = session_array;
 
     NetworkBuffer net_buf(SESSIONLIST_INITIAL_TYPE);
-    net_buf += boost::json::serialize(chatroom_init_json);
+    net_buf += boost::json::serialize(session_init_json);
+    for (const auto &img : raw_imgs)
+        net_buf += img;
 
     m_request = std::move(net_buf);
-
-    // chatroom_init_json에 담긴 json을 client에 전송함
-    // m_request = EncodeBase64(StrToUtf8(boost::json::serialize(chatroom_init_json)));
-    //
-    // TCPHeader header(CHATROOMLIST_INITIAL_TYPE, m_request.size());
-    // m_request = header.GetHeaderBuffer() + m_request;
 
     boost::asio::async_write(*m_sock,
                              m_request.AsioBuffer(),
@@ -759,16 +746,15 @@ void MessengerService::GetContactListHandling()
         acquaintance_data["user_id"] = acquaintance_id;
         acquaintance_data["user_name"] = acquaintance_nm;
         acquaintance_data["user_info"] = acquaintance_info;
+        acquaintance_data["user_img"] = "";
 
-        int64_t img_update_date = 0;
+        size_t img_update_date = 0;
         std::filesystem::path path_data;
         if (!img_path.empty())
         {
             path_data = img_path;
-            img_update_date = std::atoll(path_data.stem().string().c_str());
+            img_update_date = std::stoull(path_data.stem().string());
         }
-
-        acquaintance_data["user_img"] = "";
 
         // 이미지 갱신해야 될 때
         if ((contact_cache.find(acquaintance_id) != contact_cache.end() && img_update_date > contact_cache[acquaintance_id]) ||
@@ -995,7 +981,7 @@ void MessengerService::SignUpHandling()
 
         if (!user_img.empty())
         {
-            img_path = boost::dll::program_location().parent_path().string() + "\\users\\" + user_id + "\\profile_img";
+            img_path = boost::dll::program_location().parent_path().string() + "\\server_data\\" + user_id + "\\profile_img";
             boost::filesystem::create_directories(img_path);
 
             img_path += ("\\" + std::to_string(cur_date) + "." + img_type);
@@ -1061,72 +1047,97 @@ void MessengerService::SignUpHandling()
                              });
 }
 
-// Client에서 받는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(base64) | 배열 개수 | 세션 참가자 id 배열
+// Client에서 받는 버퍼 형식: 로그인 유저 id | 세션 이름 | 세션 이미지(raw) | 이미지 타입 | 배열 개수 | 세션 참가자 id 배열
 // Client에 전달하는 버퍼 형식: 세션 id
-void MessengerService::SessionAddHandling()
+void MessengerService::AddSessionHandling()
 {
-    std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
-
-    // std::vector<std::string> parsed;
-    // boost::split(parsed, m_client_request, boost::is_any_of("|"));
-
-    // const std::string &null_str = "",
-    //                   &user_id = parsed[0],
-    //                   &session_name = parsed[1],
-    //                   &session_img = parsed[2],
-    //                   &cur_date = std::format("{0:%F %T}", tp),
-    //                   &session_id = user_id + "-" + cur_date;
-
-    const std::string null_str = "";
-    std::string user_id, session_name, session_img, cur_date = std::format("{0:%F %T}", tp), session_id = user_id + "-" + cur_date;
-    size_t participant_ary_size;
+    int64_t time_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    std::string user_id, session_name, session_info, img_type, session_id, cur_date = std::to_string(time_since_epoch);
+    int participant_ary_size;
+    std::vector<unsigned char> session_img;
 
     m_client_request.GetData(user_id);
     m_client_request.GetData(session_name);
     m_client_request.GetData(session_img);
+    m_client_request.GetData(img_type);
     m_client_request.GetData(participant_ary_size);
 
-    std::string img_path = boost::dll::program_location().parent_path().string() + "/sessions/" + session_id + "/session_img";
+    std::vector<std::string> participant_ary(participant_ary_size + 1);
+    for (size_t i = 0; i < participant_ary_size; i++)
+        m_client_request.GetData(participant_ary[i]);
+    participant_ary.back() = user_id;
+
+    session_id = user_id + "_" + cur_date;
+
+    NetworkBuffer net_buf(SESSION_ADD_TYPE);
+
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:uid",
+                                  soci::use(user_id, "uid"));
+
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        soci::rowset<soci::row> p_row_set = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
+                                             soci::use(it->get<std::string>(0), "sid"));
+
+        std::set<std::string> p_ids;
+        for (soci::rowset<soci::row>::const_iterator p_it = p_row_set.begin(); p_it != p_row_set.end(); ++p_it)
+            p_ids.insert(it->get<std::string>(0));
+
+        int same_cnt = 0;
+        for (const auto &p_id : participant_ary)
+        {
+            if (p_ids.find(p_id) != p_ids.end())
+                same_cnt++;
+        }
+
+        // 이미 같은 세션이 있으면 바로 종료
+        if (same_cnt == participant_ary.size())
+        {
+            net_buf += std::string();
+            m_request = std::move(net_buf);
+
+            boost::asio::async_write(*m_sock,
+                                     m_request.AsioBuffer(),
+                                     [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                         if (ec != boost::system::errc::success)
+                                         {
+                                             // write에 이상이 있는 경우
+                                         }
+
+                                         delete this;
+                                     });
+            return;
+        }
+    }
+
+    auto img_path = boost::dll::program_location().parent_path().string() + "\\server_data\\" + user_id + "\\sessions\\" + session_id + "\\session_img";
 
     // 세션 이미지 경로 생성
-    boost::filesystem::create_directories(img_path);
+    if (!std::filesystem::exists(img_path))
+        std::filesystem::create_directories(img_path);
 
-    if (session_img != "null")
+    if (!session_img.empty())
     {
-        img_path += ("/" + cur_date + ".txt");
-        std::ofstream img_file(img_path);
+        img_path += ("\\" + cur_date + "." + img_type);
+        std::ofstream img_file(img_path, std::ios::binary);
         if (img_file.is_open())
-            img_file.write(session_img.c_str(), session_img.size());
+            img_file.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
     }
     else
-        img_path = "";
+        img_path.clear();
 
     *m_sql << "insert into session_tb values(:sid, :sname, :sinfo, :simgpath)",
-        soci::use(session_id), soci::use(session_name), soci::use(null_str), soci::use(img_path);
+        soci::use(session_id), soci::use(session_name), soci::use(session_info), soci::use(img_path);
 
-    // for (int i = 3; i < parsed.size(); i++)
-    // {
-    //     *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-    //         soci::use(session_id), soci::use(parsed[i]), soci::use(-1);
-    // }
-
-    for (size_t i = 0; i < participant_ary_size; i++)
-    {
-        std::string participant_id;
-        m_client_request.GetData(participant_id);
+    for (const auto &p_id : participant_ary)
         *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-            soci::use(session_id), soci::use(participant_id), soci::use(-1);
-    }
-
-    *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-        soci::use(session_id), soci::use(user_id), soci::use(-1);
+            soci::use(session_id), soci::use(p_id), soci::use(-1);
 
     // mongo db 컬렉션 생성
     auto mongo_client = MongoDBPool::Get().acquire();
     auto mongo_db = (*mongo_client)["Minigram"];
     mongo_db.create_collection(session_id + "_log");
 
-    NetworkBuffer net_buf(SESSION_ADD_TYPE);
     net_buf += session_id;
 
     m_request = std::move(net_buf);
@@ -1339,7 +1350,7 @@ void MessengerService::StartHandling()
                                                                 ChatHandling();
                                                                 break;
                                                             case SESSIONLIST_INITIAL_TYPE:
-                                                                SessionListInitHandling();
+                                                                GetSessionListHandling();
                                                                 break;
                                                             case CONTACTLIST_INITIAL_TYPE:
                                                                 GetContactListHandling();
@@ -1348,7 +1359,7 @@ void MessengerService::StartHandling()
                                                                 SignUpHandling();
                                                                 break;
                                                             case SESSION_ADD_TYPE:
-                                                                SessionAddHandling();
+                                                                AddSessionHandling();
                                                                 break;
                                                             case SEND_CONTACT_REQUEST_TYPE:
                                                                 SendContactRequestHandling();

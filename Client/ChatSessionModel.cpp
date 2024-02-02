@@ -97,7 +97,7 @@ bool ChatSessionModel::setData(const QModelIndex &index, const QVariant &value, 
         chat_session->recent_sender_id = value.toString();
         break;
     case RECENT_SEND_DATE_ROLE:
-        chat_session->recent_send_date = value.toUInt();
+        chat_session->recent_send_date = value.toString();
         break;
     case RECENT_CONTENT_TYPE_ROLE:
         chat_session->recent_content_type = value.toInt();
@@ -120,13 +120,27 @@ bool ChatSessionModel::setData(const QModelIndex &index, const QVariant &value, 
     return true;
 }
 
+void ChatSessionModel::remove(const QString &session_id)
+{
+    int ind = m_id_index_map[session_id];
+    beginRemoveRows(QModelIndex(), ind, ind);
+    endRemoveRows();
+    delete m_chat_sessions[ind];
+    m_chat_sessions.removeAt(ind);
+
+    m_id_index_map.remove(session_id);
+    for (auto i = m_id_index_map.begin(), end = m_id_index_map.end(); i != end; i++)
+        if (ind < i.value())
+            i.value()--;
+}
+
 void ChatSessionModel::append(const QVariantMap &qvm)
 {
     ChatSession *chat_session = new ChatSession(qvm["sessionId"].toString(),
                                                 qvm["sessionName"].toString(),
                                                 qvm["sessionImg"].toString(),
                                                 qvm["recentSenderId"].toString(),
-                                                qvm["recentSendDate"].toUInt(),
+                                                qvm["recentSendDate"].toString(),
                                                 qvm["recentContentType"].toInt(),
                                                 qvm["recentContent"].toString(),
                                                 qvm["recentMessageId"].toInt(),
