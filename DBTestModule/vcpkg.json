@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "db-test-module",
+  "version": "1.0.0",
+  "dependencies": [
+    {
+      "name": "soci",
+      "features": [
+        "postgresql"
+      ]
+    },
+    {
+      "name": "mongo-cxx-driver"
+    }
+  ],
+  "builtin-baseline": "c3801cf53c614ffc54c94051d124eba097b057b1"
+}
