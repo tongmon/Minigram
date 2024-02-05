@@ -104,6 +104,10 @@ void MongoDBTestZone()
 #pragma region The way to use transaction in mongocxx
     // 일단 mongodb 트랜잭션은 replica set인 경우에만 사용이 가능하다.
     // local machine에서 replica set를 구성하는 방법을 알아야 테스트가 가능한디...
+
+    // replica set을 사용하지 않고 해결하려면... 특정 컬렉션을 따로 만들고 해당 컬랙션에 message_cnt를 카운트하는 도큐먼트를 넣어놓는다.
+    // message_cnt를 읽고 수정할 때 find_one_and_update 함수를 이용하면 해당 message_cnt는 원자성이 지켜진다.
+
     mongocxx::options::transaction transaction_opts; // 옵션 설정을 잘못하면 속도가 느려질 수 있음
 
     mongocxx::read_concern rc;
