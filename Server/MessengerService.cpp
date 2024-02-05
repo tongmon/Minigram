@@ -1,4 +1,5 @@
 ﻿#include "MessengerService.hpp"
+#include "MongoDBClient.hpp"
 #include "MongoDBPool.hpp"
 #include "PostgreDBPool.hpp"
 #include "TCPClient.hpp"
@@ -28,7 +29,7 @@ MessengerService::MessengerService(std::shared_ptr<TCPClient> peer, std::shared_
 {
     m_sql = std::make_unique<soci::session>(PostgreDBPool::Get());
 
-    m_mongo_ent = std::make_unique<mongocxx::pool::entry>(MongoDBPool::Get().acquire());
+    // m_mongo_ent = std::make_unique<mongocxx::pool::entry>(MongoDBPool::Get().acquire());
 }
 
 // 서비스 종료 시 추가적으로 해제해야 할 것들 소멸자에 기입
@@ -587,9 +588,6 @@ void MessengerService::GetSessionListHandling()
         session_cache[session_id] = session_img_date;
     }
 
-    auto &mongo_client = **m_mongo_ent;
-    auto mongo_db = mongo_client["Minigram"];
-
     boost::json::array session_array;
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
                                   soci::use(user_id));
@@ -645,43 +643,51 @@ void MessengerService::GetSessionListHandling()
         *m_sql << "select message_id from participant_tb where participant_id=:pid and session_id=:sid",
             soci::into(msg_id), soci::use(user_id, "pid"), soci::use(session_id, "sid");
 
-        auto mongo_coll = mongo_db[session_id + "_log"];
+        auto &mongo_client = MongoDBClient::Get();
+        auto mongo_db = mongo_client["Minigram"];
+        auto cnt_coll = mongo_db[session_id + "_cnt"];
+        auto log_coll = mongo_db[session_id + "_log"];
 
-        // session_data["unread_count"] = mongo_coll.count_documents(basic::make_document(basic::kvp("send_date",
-        //                                                                                           basic::make_document(basic::kvp("$gt",
-        //                                                                                                                           msg_id)))));
-
-        auto opts = mongocxx::options::find{};
-        opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(1); // 여기서 exception 터짐, 수정 필요
-        auto mongo_cursor = mongo_coll.find({}, opts);
+        mongocxx::options::find opts;
+        opts.limit(1);
+        auto cnt_cursor = cnt_coll.find({}, opts);
+        int64_t message_cnt = (*cnt_cursor.begin())["message_cnt"].get_int64().value;
 
         boost::json::object descendant;
-        if (mongo_cursor.begin() != mongo_cursor.end())
+        if (message_cnt)
         {
-            auto doc = *mongo_cursor.begin();
-            descendant["sender_id"] = doc["sender_id"].get_string().value;
-            descendant["send_date"] = doc["send_date"].get_int64().value;
-            descendant["message_id"] = doc["message_id"].get_int64().value;
-            descendant["content_type"] = doc["content_type"].get_int64().value;
-            session_data["unread_count"] = descendant["message_id"].as_int64() + (msg_id < 0 ? 1 : -msg_id);
+            auto log_cursor = log_coll.find_one(basic::make_document(basic::kvp("message_cnt",
+                                                                                basic::make_document(basic::kvp("$eq",
+                                                                                                                message_cnt - 1)))));
 
-            // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
-            switch (descendant["content_type"].as_int64())
+            if (log_cursor.has_value())
             {
-            case TEXT_CHAT:
-                descendant["content"] = EncodeBase64(doc["content"].get_string().value.data());
-                break;
-            case IMG_CHAT:
-                descendant["content"] = "Image";
-                break;
-            case VIDEO_CHAT:
-                descendant["content"] = "Video";
-                break;
-            default:
-                descendant["content"] = "Undefined!";
-                break;
+                auto doc = log_cursor.value();
+                descendant["sender_id"] = doc["sender_id"].get_string().value;
+                descendant["send_date"] = doc["send_date"].get_int64().value;
+                descendant["message_id"] = doc["message_id"].get_int64().value;
+                descendant["content_type"] = doc["content_type"].get_int64().value;
+                session_data["unread_count"] = descendant["message_id"].as_int64() + (msg_id < 0 ? 1 : -msg_id);
+
+                // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
+                switch (descendant["content_type"].as_int64())
+                {
+                case TEXT_CHAT:
+                    descendant["content"] = EncodeBase64(doc["content"].get_string().value.data());
+                    break;
+                case IMG_CHAT:
+                    descendant["content"] = "Image";
+                    break;
+                case VIDEO_CHAT:
+                    descendant["content"] = "Video";
+                    break;
+                default:
+                    descendant["content"] = "Undefined!";
+                    break;
+                }
             }
         }
+        MongoDBClient::Free();
 
         session_data["chat_info"] = descendant;
         session_array.push_back(session_data);
@@ -1136,9 +1142,21 @@ void MessengerService::AddSessionHandling()
             soci::use(session_id), soci::use(p_id), soci::use(-1);
 
     // mongo db 컬렉션 생성
-    auto &mongo_client = **m_mongo_ent;
+    // auto &mongo_client = **m_mongo_ent;
+    // auto mongo_db = mongo_client["Minigram"];
+    // mongo_db.create_collection(session_id + "_log");
+
+    using namespace bsoncxx;
+    using namespace bsoncxx::builder;
+
+    auto &mongo_client = MongoDBClient::Get();
     auto mongo_db = mongo_client["Minigram"];
+
+    auto cnt_col = mongo_db.create_collection(session_id + "_cnt");
+    cnt_col.insert_one(basic::make_document(basic::kvp("message_cnt", static_cast<int64_t>(0))));
+
     mongo_db.create_collection(session_id + "_log");
+    MongoDBClient::Free();
 
     net_buf += session_id;
 

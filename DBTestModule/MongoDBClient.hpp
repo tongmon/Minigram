@@ -1,5 +1,5 @@
-﻿#ifndef HEADER__FILE__MONGODBPOOL
-#define HEADER__FILE__MONGODBPOOL
+﻿#ifndef HEADER__FILE__MONGODBCLIENT
+#define HEADER__FILE__MONGODBCLIENT
 
 #include <bsoncxx/builder/basic/array.hpp>
 #include <bsoncxx/builder/basic/document.hpp>
@@ -15,29 +15,23 @@
 #include <mongocxx/pool.hpp>
 #include <mongocxx/uri.hpp>
 
-#include <atomic>
-#include <memory>
-#include <mutex>
-
-struct MongoDBPoolInitInfo
+struct MongoConnectionInfo
 {
     std::string db_host;
     std::string db_port;
     std::string db_name;
     std::string db_user;
     std::string db_password;
-    int min_pool_size = 8;
-    int max_pool_size = 8;
 };
 
-class MongoDBPool
+class MongoDBClient
 {
-    static inline std::atomic<std::shared_ptr<MongoDBPool>> instance = nullptr;
+    static inline std::atomic<std::shared_ptr<MongoDBClient>> instance = nullptr;
     static inline std::mutex mut;
 
     struct Deleter
     {
-        void operator()(MongoDBPool *ptr)
+        void operator()(MongoDBClient *ptr)
         {
             delete ptr;
             instance.store(nullptr);
@@ -46,27 +40,34 @@ class MongoDBPool
     friend Deleter;
 
     std::unique_ptr<mongocxx::instance> m_mongo_inst;
-    std::unique_ptr<mongocxx::pool> m_mongo_pool;
+    std::unique_ptr<mongocxx::client> m_mongo_client;
 
-    MongoDBPool(const MongoDBPoolInitInfo &connection_info);
-    ~MongoDBPool();
+    MongoDBClient(const MongoConnectionInfo &connection_info);
+    ~MongoDBClient();
 
   public:
-    static mongocxx::pool &Get(const MongoDBPoolInitInfo &connection_info = {})
+    static mongocxx::client &Get(const MongoConnectionInfo &connection_info = {})
     {
         if (!instance.load(std::memory_order_acquire))
         {
             std::lock_guard<std::mutex> lock(mut);
             if (!instance.load(std::memory_order_relaxed))
-                instance.store(std::shared_ptr<MongoDBPool>(new MongoDBPool(connection_info), Deleter{}), std::memory_order_release);
+                instance.store(std::shared_ptr<MongoDBClient>(new MongoDBClient(connection_info), Deleter{}), std::memory_order_release);
         }
-        return *instance.load(std::memory_order_relaxed)->m_mongo_pool;
+
+        mut.lock();
+        return *instance.load(std::memory_order_relaxed)->m_mongo_client;
     }
 
-    MongoDBPool(MongoDBPool const &) = delete;
-    MongoDBPool(MongoDBPool &&) = delete;
-    MongoDBPool &operator=(MongoDBPool const &) = delete;
-    MongoDBPool &operator=(MongoDBPool &&) = delete;
+    static void Free()
+    {
+        mut.unlock();
+    }
+
+    MongoDBClient(MongoDBClient const &) = delete;
+    MongoDBClient(MongoDBClient &&) = delete;
+    MongoDBClient &operator=(MongoDBClient const &) = delete;
+    MongoDBClient &operator=(MongoDBClient &&) = delete;
 };
 
-#endif /* HEADER__FILE__MONGODBPOOL */
+#endif /* HEADER__FILE__MONGODBCLIENT */

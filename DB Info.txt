@@ -105,6 +105,15 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 	"reader_id" : [ "tongstar", "yellowjam" ... ]
 }
 
+### [SESSION_ID]_cnt
+[SESSION_ID]_log가 생성될 때 같이 생성되는 컬렉션
+sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있음
+{
+	"message_cnt" : 여태껏 메시지 개수
+}
+원자적으로 관리되는 변수로 해당 컬렉션에는 단 하나의 document만 존재함
+find_one_and_update()를 이용하여 원자적 연산을 해야됨
+
 ## Client - Server 통신 규격
 
 ### Server -> Client
@@ -251,29 +260,3 @@ server_data
 https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/
 http://tsfkb.wikidot.com/tips:android:cache
 https://insidetelegram.eu/en/2022/01/20/telegram-what-is-cache-how-to-cancel-it/
-
-
-
-
-        std::filesystem::directory_iterator it{file_path};
-        while (it != std::filesystem::end(it))
-        {
-            int64_t img_update_date = 0;
-            if (std::filesystem::is_directory(it->path()))
-            {
-                auto profile_img_path = it->path() / "profile_img";
-                if (!std::filesystem::exists(profile_img_path))
-                    std::filesystem::create_directories(profile_img_path);
-                else
-                {
-                    std::filesystem::directory_iterator child{profile_img_path};
-                    // 일단 프로필 이미지는 단 하나만 저장한다고 가정
-                    if (child != std::filesystem::end(child))
-                        img_update_date = std::atoll(child->path().stem().string().c_str());
-                }
-
-                if (img_update_date)
-                    acq_data.push_back({it->path().filename().string(), img_update_date});
-            }
-            it++;
-        }

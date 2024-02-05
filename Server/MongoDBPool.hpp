@@ -19,7 +19,7 @@
 #include <memory>
 #include <mutex>
 
-struct MongoConnectionInfo
+struct MongoDBPoolInitInfo
 {
     std::string db_host;
     std::string db_port;
@@ -30,6 +30,7 @@ struct MongoConnectionInfo
     int max_pool_size = 8;
 };
 
+// I don't know why this pool is too slow...
 class MongoDBPool
 {
     static inline std::atomic<std::shared_ptr<MongoDBPool>> instance = nullptr;
@@ -48,11 +49,11 @@ class MongoDBPool
     std::unique_ptr<mongocxx::instance> m_mongo_inst;
     std::unique_ptr<mongocxx::pool> m_mongo_pool;
 
-    MongoDBPool(const MongoConnectionInfo &connection_info);
+    MongoDBPool(const MongoDBPoolInitInfo &connection_info);
     ~MongoDBPool();
 
   public:
-    static mongocxx::pool &Get(const MongoConnectionInfo &connection_info = {})
+    static mongocxx::pool &Get(const MongoDBPoolInitInfo &connection_info = {})
     {
         if (!instance.load(std::memory_order_acquire))
         {
