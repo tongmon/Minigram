@@ -19,6 +19,9 @@
 #include <memory>
 #include <mutex>
 
+std::string EncodeURL(const std::string &s);
+std::string DecodeURL(const std::string &str);
+
 struct MongoConnectionInfo
 {
     std::string db_host;

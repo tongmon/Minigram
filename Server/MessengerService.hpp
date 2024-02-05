@@ -4,6 +4,8 @@
 #include <soci/postgresql/soci-postgresql.h>
 #include <soci/soci.h>
 
+#include <mongocxx/pool.hpp>
+
 #include "NetworkBuffer.hpp"
 #include "Service.hpp"
 
@@ -14,6 +16,8 @@ class MessengerService : public Service
     boost::asio::streambuf m_client_request_buf;
 
     std::unique_ptr<soci::session> m_sql;
+
+    std::unique_ptr<mongocxx::pool::entry> m_mongo_ent;
 
     void LoginHandling();
     // void TextMessageHandling();

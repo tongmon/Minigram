@@ -1,48 +1,170 @@
 ﻿#include "MongoDBPool.hpp"
 #include "PostgreDBPool.hpp"
 
-int main(int argc, char *argv[])
+#include <chrono>
+#include <iostream>
+#include <regex>
+
+void PostgreDBTestZone()
+{
+    PostgreDBPool::Get({"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213", 4});
+    auto postgre = std::make_unique<soci::session>(PostgreDBPool::Get());
+}
+
+void MongoDBTestZone()
 {
     using namespace bsoncxx;
     using namespace bsoncxx::builder;
 
-    // MongoDB 연결 정보 초기화
-    MongoDBPool::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213", 4, 4});
+    /*
+        MongoDBPool::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213", 4, 4});
 
-    // PostgreDB 연결 정보 초기화
-    PostgreDBPool::Get({"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213", 4});
+        auto ent = std::make_unique<mongocxx::pool::entry>(MongoDBPool::Get().acquire());
+        mongocxx::client &client = *(*(ent));
 
-    auto postgre = std::make_unique<soci::session>(PostgreDBPool::Get());
+        auto db = client["Minigram"];
+        auto col = db["test_collection"];
+        stream::document sort_doc{};
+        sort_doc << "message_id" << -1;
+        mongocxx::options::find opts;
+        opts.sort(sort_doc.view()).limit(1);
 
-    auto mongo = MongoDBPool::Get().acquire();
-    auto mongo_db = (*mongo)["Minigram"];
-    auto mongo_coll = mongo_db["test_collection"];
+        auto mongo_cursor = col.find({}, opts);
+        if (mongo_cursor.begin() != mongo_cursor.end())
+        {
+            auto doc = *mongo_cursor.begin();
+            auto t = doc["message_id"];
+        }
+    */
 
-    // auto opts = mongocxx::options::find{};
-    // opts.sort(basic::make_document(basic::kvp("message_id", 1)).view()).limit(1);
-    // auto mongo_cursor = mongo_coll.find({}, opts);
+    // mongocxx::instance ints{};
+    //
+    // std::string session_info = "mongodb://%DB_USER%:%DB_PASSWORD%@%DB_HOST%:%DB_PORT%/%DB_NAME%?minPoolSize=%MIN_POOL_SIZE%&maxPoolSize=%MAX_POOL_SIZE%";
+    // session_info = std::regex_replace(session_info, std::regex("%DB_HOST%"), "localhost");
+    // session_info = std::regex_replace(session_info, std::regex("%DB_PORT%"), "27017");
+    // session_info = std::regex_replace(session_info, std::regex("%DB_NAME%"), "Minigram");
+    // session_info = std::regex_replace(session_info, std::regex("%DB_USER%"), "tongstar");
+    // session_info = std::regex_replace(session_info, std::regex("%DB_PASSWORD%"), EncodeURL("@Lsy12131213"));
+    // session_info = std::regex_replace(session_info, std::regex("%MIN_POOL_SIZE%"), std::to_string(4));
+    // session_info = std::regex_replace(session_info, std::regex("%MAX_POOL_SIZE%"), std::to_string(4));
+    //
+    // mongocxx::uri uri(session_info);
+    //
+    // mongocxx::options::client client_options;
+    // auto api = mongocxx::options::server_api{mongocxx::options::server_api::version::k_version_1};
+    // client_options.server_api_opts(api);
+    //
+    // mongocxx::client client(uri, client_options);
+    //
+    // auto db = client["Minigram"];
+    // auto col = db["test_collection"];
+    //
+    // stream::document sort_doc{};
+    // sort_doc << "message_id" << -1;
+    // mongocxx::options::find opts;
+    // opts.sort(sort_doc.view()).limit(1);
+    //
+    // auto mongo_cursor = col.find({}, opts);
+    // auto start_t = std::chrono::high_resolution_clock::now();
+    // if (mongo_cursor.begin() != mongo_cursor.end())
+    //{
+    //    auto doc = *mongo_cursor.begin();
+    //    auto t = doc["message_id"];
+    //    int tt = 0;
+    //}
+    // auto end_t = std::chrono::high_resolution_clock::now();
+    // auto ret = std::chrono::duration_cast<std::chrono::seconds>(end_t - start_t);
+    // std::cout << ret.count() << "s\n";
 
-    stream::document sort_doc{};
-    sort_doc << "message_id" << -1;
-    mongocxx::options::find opts;
-    opts.sort(sort_doc.view()).limit(1);
-    auto mongo_cursor = mongo_coll.find({}, opts);
+    mongocxx::instance ints{};
 
-    if (mongo_cursor.begin() != mongo_cursor.end())
+    std::string session_info = "mongodb://%DB_USER%:%DB_PASSWORD%@%DB_HOST%:%DB_PORT%/%DB_NAME%?minPoolSize=%MIN_POOL_SIZE%&maxPoolSize=%MAX_POOL_SIZE%";
+    session_info = std::regex_replace(session_info, std::regex("%DB_HOST%"), "localhost");
+    session_info = std::regex_replace(session_info, std::regex("%DB_PORT%"), "27017");
+    session_info = std::regex_replace(session_info, std::regex("%DB_NAME%"), "Minigram");
+    session_info = std::regex_replace(session_info, std::regex("%DB_USER%"), "tongstar");
+    session_info = std::regex_replace(session_info, std::regex("%DB_PASSWORD%"), EncodeURL("@Lsy12131213"));
+    session_info = std::regex_replace(session_info, std::regex("%MIN_POOL_SIZE%"), std::to_string(8));
+    session_info = std::regex_replace(session_info, std::regex("%MAX_POOL_SIZE%"), std::to_string(8));
+
+    mongocxx::uri uri(session_info);
+
+    mongocxx::options::client client_options;
+    auto api = mongocxx::options::server_api{mongocxx::options::server_api::version::k_version_1};
+    client_options.server_api_opts(api);
+
+    mongocxx::pool pool(uri, client_options);
+
+    auto ent = pool.acquire();
+    mongocxx::client &client = *ent;
+
+    auto db = client["Minigram"];
+    auto col = db["test_collection"];
+
+#pragma region The way to use transaction in mongocxx
+    // 일단 mongodb 트랜잭션은 replica set인 경우에만 사용이 가능하다.
+    // local machine에서 replica set를 구성하는 방법을 알아야 테스트가 가능한디...
+    mongocxx::options::transaction transaction_opts; // 옵션 설정을 잘못하면 속도가 느려질 수 있음
+
+    mongocxx::read_concern rc;
+    mongocxx::write_concern wc;
+    mongocxx::read_preference rp;
+
+    rp.mode(mongocxx::read_preference::read_mode::k_primary);
+    rc.acknowledge_level(mongocxx::read_concern::level::k_snapshot);
+    wc.acknowledge_level(mongocxx::write_concern::level::k_majority);
+
+    transaction_opts.read_preference(rp);
+    transaction_opts.read_concern(rc);
+    transaction_opts.write_concern(wc);
+
+    auto session = client.start_session();
+    session.start_transaction(); // transaction_opts이 있다면 여기 넣으면 됨
+
+    try
     {
-        auto doc = *mongo_cursor.begin();
-        auto t = doc["message_id"];
-        int tt = 0;
-    }
+        int32_t message_cnt = col.count_documents(session, basic::document().view());
 
-    // int64_t cur_date = cur_date = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    // auto sender_ary = basic::make_array("tongstar");
-    // mongo_coll.insert_one(basic::make_document(basic::kvp("message_id", 0),
-    //                                            basic::kvp("sender_id", "tongstar"),
-    //                                            basic::kvp("send_date", cur_date),
-    //                                            basic::kvp("content_type", 1),
-    //                                            basic::kvp("content", "helloworld"),
-    //                                            basic::kvp("reader_id", sender_ary)));
+        basic::array readers;
+        readers.append("tongstar");
+        readers.append("yellowjam");
+        col.insert_one(session, basic::make_document(basic::kvp("message_id", message_cnt),
+                                                     basic::kvp("sender_id", "tongstar"),
+                                                     basic::kvp("send_date", 1707098027701),
+                                                     basic::kvp("content_type", 1),
+                                                     basic::kvp("content", "Ok~ I can hear u."),
+                                                     basic::kvp("reader_id", readers)));
+
+        session.commit_transaction();
+    }
+    catch (mongocxx::exception &e)
+    {
+        std::wcerr << e.what() << std::endl;
+    }
+#pragma endregion
+
+    // stream::document sort_doc{};
+    // sort_doc << "message_id" << -1;
+    // mongocxx::options::find opts;
+    // opts.sort(sort_doc.view()).limit(2);
+    //
+    // auto start_t = std::chrono::high_resolution_clock::now();
+    // auto mongo_cursor = col.find({}, opts);
+    // auto cur_it = ++mongo_cursor.begin();
+    // if (cur_it != mongo_cursor.end())
+    // {
+    //     auto doc = *mongo_cursor.begin();
+    //     auto t = doc["message_id"].get_int32();
+    //     int tt = 0;
+    // }
+    // auto end_t = std::chrono::high_resolution_clock::now();
+    // auto ret = std::chrono::duration_cast<std::chrono::seconds>(end_t - start_t);
+    // std::cout << ret.count() << "s\n";
+}
+
+int main(int argc, char *argv[])
+{
+    MongoDBTestZone();
 
     return 0;
 }

@@ -27,6 +27,8 @@ MessengerService::MessengerService(std::shared_ptr<TCPClient> peer, std::shared_
     : Service(peer, sock)
 {
     m_sql = std::make_unique<soci::session>(PostgreDBPool::Get());
+
+    m_mongo_ent = std::make_unique<mongocxx::pool::entry>(MongoDBPool::Get().acquire());
 }
 
 // 서비스 종료 시 추가적으로 해제해야 할 것들 소멸자에 기입
@@ -216,8 +218,8 @@ void MessengerService::ChatHandling()
     using namespace bsoncxx;
     using namespace bsoncxx::builder;
 
-    auto mongo_client = MongoDBPool::Get().acquire();
-    auto mongo_db = (*mongo_client)["Minigram"];
+    auto &mongo_client = **m_mongo_ent;
+    auto mongo_db = mongo_client["Minigram"];
     auto mongo_coll = mongo_db[session_id];
 
     std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
@@ -365,8 +367,8 @@ void MessengerService::RefreshSessionHandling()
     m_client_request.GetData(session_id);
     m_client_request.GetData(fetch_cnt);
 
-    auto mongo_client = MongoDBPool::Get().acquire();
-    auto mongo_db = (*mongo_client)["Minigram"];
+    auto &mongo_client = **m_mongo_ent;
+    auto mongo_db = mongo_client["Minigram"];
     auto mongo_coll = mongo_db[session_id + "_log"];
 
     *m_sql << "select message_id from participant_tb where participant_id=:pid, sessioin_id=:sid",
@@ -506,8 +508,8 @@ void MessengerService::FetchMoreMessageHandling()
     m_client_request.GetData(message_id);
     m_client_request.GetData(fetch_cnt);
 
-    auto mongo_client = MongoDBPool::Get().acquire();
-    auto mongo_db = (*mongo_client)["Minigram"];
+    auto &mongo_client = **m_mongo_ent;
+    auto mongo_db = mongo_client["Minigram"];
     auto mongo_coll = mongo_db[session_id + "_log"];
 
     auto opts = mongocxx::options::find{};
@@ -585,8 +587,8 @@ void MessengerService::GetSessionListHandling()
         session_cache[session_id] = session_img_date;
     }
 
-    auto mongo_client = MongoDBPool::Get().acquire();
-    auto mongo_db = (*mongo_client)["Minigram"];
+    auto &mongo_client = **m_mongo_ent;
+    auto mongo_db = mongo_client["Minigram"];
 
     boost::json::array session_array;
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
@@ -1134,8 +1136,8 @@ void MessengerService::AddSessionHandling()
             soci::use(session_id), soci::use(p_id), soci::use(-1);
 
     // mongo db 컬렉션 생성
-    auto mongo_client = MongoDBPool::Get().acquire();
-    auto mongo_db = (*mongo_client)["Minigram"];
+    auto &mongo_client = **m_mongo_ent;
+    auto mongo_db = mongo_client["Minigram"];
     mongo_db.create_collection(session_id + "_log");
 
     net_buf += session_id;

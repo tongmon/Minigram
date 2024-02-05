@@ -12,7 +12,7 @@
             "hidden": true,
             "binaryDir": "${sourceDir}/Build/${presetName}",
             "installDir": "${sourceDir}/Installed/${presetName}",
-            "toolchainFile": "D:/ProgramFiles/vcpkg/scripts/buildsystems/vcpkg.cmake",
+            "toolchainFile": "C:/vcpkg/scripts/buildsystems/vcpkg.cmake",
             "condition": {
                 "type": "equals",
                 "lhs": "${hostSystemName}",
