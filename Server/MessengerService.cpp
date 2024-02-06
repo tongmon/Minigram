@@ -1062,11 +1062,12 @@ void MessengerService::AddSessionHandling()
     int64_t time_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::string user_id, session_name, session_info, img_type, session_id, cur_date = std::to_string(time_since_epoch);
     int participant_ary_size;
-    std::vector<unsigned char> session_img;
+    // std::vector<unsigned char> session_img;
+    std::shared_ptr<std::vector<unsigned char>> session_img(new std::vector<unsigned char>());
 
     m_client_request.GetData(user_id);
     m_client_request.GetData(session_name);
-    m_client_request.GetData(session_img);
+    m_client_request.GetData(*session_img);
     m_client_request.GetData(img_type);
     m_client_request.GetData(participant_ary_size);
 
@@ -1124,12 +1125,12 @@ void MessengerService::AddSessionHandling()
     if (!std::filesystem::exists(img_path))
         std::filesystem::create_directories(img_path);
 
-    if (!session_img.empty())
+    if (!session_img->empty())
     {
         img_path += ("\\" + cur_date + "." + img_type);
         std::ofstream img_file(img_path, std::ios::binary);
         if (img_file.is_open())
-            img_file.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
+            img_file.write(reinterpret_cast<char *>(&(*session_img)[0]), session_img->size());
     }
     else
         img_path.clear();
@@ -1138,8 +1139,39 @@ void MessengerService::AddSessionHandling()
         soci::use(session_id), soci::use(session_name), soci::use(session_info), soci::use(img_path);
 
     for (const auto &p_id : participant_ary)
+    {
         *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
             soci::use(session_id), soci::use(p_id), soci::use(-1);
+
+        // user_id_to_add가 접속 중이면 뭐 보내고 아니면 그냥 끝
+        soci::indicator ip_ind, port_ind;
+        std::string login_ip;
+        int login_port;
+
+        *m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
+            soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(p_id);
+
+        if (ip_ind != soci::i_null)
+        {
+            // session_id | session_name | session_info | session_img
+            m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, session_id, session_name, session_info, session_img, img_path](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                NetworkBuffer net_buf(RECEIVE_ADD_SESSION_TYPE);
+                net_buf += session_id;
+                net_buf += session_name;
+                net_buf += session_info;
+                net_buf += *session_img;
+                net_buf += img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
+
+                peer->AsyncWrite(session->GetID(), std::move(net_buf), [](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                        return;
+                });
+            });
+        }
+    }
 
     // mongo db 컬렉션 생성
     // auto &mongo_client = **m_mongo_ent;
@@ -1247,7 +1279,7 @@ void MessengerService::SendContactRequestHandling()
                 net_buf += user_id_to_add;
                 net_buf += user_name;
                 net_buf += user_info;
-                net_buf += profile_path.empty() ? "" : std::filesystem::path(profile_path).filename().string();
+                net_buf += profile_path.empty() ? std::string() : std::filesystem::path(profile_path).filename().string();
                 net_buf += raw_img;
 
                 peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {

@@ -187,6 +187,54 @@ void MainContext::RecieveContactRequest(Service *service)
     delete service;
 }
 
+void MainContext::RecieveAddSession(Service *service)
+{
+    std::string session_id;
+    QString session_name, session_info, img_name;
+    std::vector<unsigned char> session_img;
+
+    service->server_response.GetData(session_id);
+    service->server_response.GetData(session_name);
+    service->server_response.GetData(session_info);
+    service->server_response.GetData(session_img);
+    service->server_response.GetData(img_name);
+
+    std::smatch match;
+    std::regex_search(session_id, match, std::regex("_"));
+    size_t time_since_epoch = atoll(match.suffix().str().c_str());
+
+    QVariantMap qvm;
+    qvm.insert("sessionId", session_id.c_str());
+    qvm.insert("sessionName", session_name);
+    qvm.insert("recentSenderId", "");
+    qvm.insert("recentContentType", "");
+    qvm.insert("recentContent", "");
+    qvm.insert("recentSendDate", MillisecondToCurrentDate(time_since_epoch).c_str());
+    qvm.insert("recentMessageId", -1);
+    qvm.insert("unreadCnt", 0);
+    qvm.insert("sessionImg", "");
+
+    if (!session_img.empty())
+    {
+        std::string file_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\sessions\\" + session_id,
+                    img_path = file_path + "\\" + img_name.toStdString();
+        if (!std::filesystem::exists(file_path))
+            std::filesystem::create_directories(file_path);
+
+        std::ofstream of(img_path, std::ios::binary);
+        if (of.is_open())
+            of.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
+
+        qvm.insert("sessionImg", img_path.c_str());
+    }
+
+    QMetaObject::invokeMethod(m_session_list_view,
+                              "addSession",
+                              Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+    delete service;
+}
+
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
 // Server에서 받는 버퍼 형식: 로그인 성공 여부
 void MainContext::tryLogin(const QString &id, const QString &pw)
@@ -448,6 +496,9 @@ void MainContext::tryGetSessionList()
 
         std::string file_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\sessions";
         std::vector<std::pair<std::string, int64_t>> session_data;
+
+        if (!std::filesystem::exists(file_path))
+            std::filesystem::create_directories(file_path);
 
         // 세션 이미지가 저장되어 있는지 캐시 파일을 찾아봄
         std::filesystem::directory_iterator it{file_path};
@@ -1524,7 +1575,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                     qvm.insert("recentContent", "");
                     qvm.insert("sessionImg", "");
                     qvm.insert("recentSendDate", MillisecondToCurrentDate(time_since_epoch).c_str());
-                    qvm.insert("recentMessageId", 0);
+                    qvm.insert("recentMessageId", -1);
                     qvm.insert("unreadCnt", 0);
 
                     std::string session_cache_path = boost::dll::program_location().parent_path().string() +

@@ -43,6 +43,7 @@ class MainContext : public QObject
     void RecieveChat(Service *service);
     void RefreshReaderIds(Service *service);
     void RecieveContactRequest(Service *service);
+    void RecieveAddSession(Service *service);
 
     // 클라에서 서버로 전송하기 위한 함수들
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
