@@ -30,5 +30,6 @@
         <file alias="CustomTextField.qml">Qmls/CustomTextField.qml</file>
         <file alias="SessionListView.qml">Qmls/SessionListView.qml</file>
         <file alias="SessionView.qml">Qmls/SessionView.qml</file>
+        <file alias="LoadingPage.qml">Qmls/LoadingPage.qml</file>
     </qresource>
 </RCC>

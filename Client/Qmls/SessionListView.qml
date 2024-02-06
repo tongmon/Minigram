@@ -30,6 +30,9 @@ Rectangle {
         chatSessionModel.append(sessionInfo)
         sessionViewMap[sessionInfo["sessionId"]] = sessionViewComponent.createObject(null)
         sessionViewMap[sessionInfo["sessionId"]].sessionId = sessionInfo["sessionId"]
+
+        contactChoicePopup.close()
+        sessionNameDecisionPopup.close()
     }
 
     function addChat(chatInfo)

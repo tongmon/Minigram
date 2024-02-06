@@ -1062,7 +1062,6 @@ void MessengerService::AddSessionHandling()
     int64_t time_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::string user_id, session_name, session_info, img_type, session_id, cur_date = std::to_string(time_since_epoch);
     int participant_ary_size;
-    // std::vector<unsigned char> session_img;
     std::shared_ptr<std::vector<unsigned char>> session_img(new std::vector<unsigned char>());
 
     m_client_request.GetData(user_id);
@@ -1138,10 +1137,13 @@ void MessengerService::AddSessionHandling()
     *m_sql << "insert into session_tb values(:sid, :sname, :sinfo, :simgpath)",
         soci::use(session_id), soci::use(session_name), soci::use(session_info), soci::use(img_path);
 
-    for (const auto &p_id : participant_ary)
+    *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
+        soci::use(session_id), soci::use(participant_ary.back()), soci::use(-1);
+
+    for (int i = 0; i < participant_ary.size() - 1; i++)
     {
         *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-            soci::use(session_id), soci::use(p_id), soci::use(-1);
+            soci::use(session_id), soci::use(participant_ary[i]), soci::use(-1);
 
         // user_id_to_add가 접속 중이면 뭐 보내고 아니면 그냥 끝
         soci::indicator ip_ind, port_ind;
@@ -1149,7 +1151,7 @@ void MessengerService::AddSessionHandling()
         int login_port;
 
         *m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
-            soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(p_id);
+            soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(participant_ary[i]);
 
         if (ip_ind != soci::i_null)
         {

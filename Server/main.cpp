@@ -1,4 +1,5 @@
 ﻿#include "MessengerService.hpp"
+#include "MongoDBClient.hpp"
 #include "MongoDBPool.hpp"
 #include "NetworkDefinition.hpp"
 #include "PostgreDBPool.hpp"
@@ -20,7 +21,10 @@ int main(int argc, char *argv[])
     try
     {
         // MongoDB 연결 정보 초기화
-        MongoDBPool::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213", 4, 4});
+        // MongoDBPool::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213", 4, 4});
+
+        MongoDBClient::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213"});
+        MongoDBClient::Free();
 
         // PostgreDB 연결 정보 초기화
         PostgreDBPool::Get({"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213", 4});

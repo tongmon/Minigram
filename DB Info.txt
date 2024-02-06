@@ -251,10 +251,10 @@ server_data
 	L user_id
 		L profile_img
 			L 날짜.이미지_확장자
-		L sessions
-			L session_id
-				L session_img
-					L 날짜.이미지_확장자
+	L sessions
+		L session_id
+			L session_img
+				L 날짜.이미지_확장자
 
 ## 참고할 만한 글
 https://marketsplash.com/tutorials/cpp/how-to-create-a-messenger-application-cplusplus/

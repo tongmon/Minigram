@@ -93,7 +93,7 @@ ApplicationWindow {
         id: mainWindowLoader 
         anchors.fill: parent
         objectName: "mainWindowLoader"
-        // source: "qrc:/qml/LoginPage.qml" // "qrc:/qml/MainPage.qml" "qrc:/qml/LoginPage.qml"
+        source: "qrc:/qml/LoadingPage.qml"
 
         // onLoaded: {
         //     mainContext.getEssentialObjects()

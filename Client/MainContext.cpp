@@ -633,9 +633,8 @@ void MainContext::tryGetSessionList()
 
                         QMetaObject::invokeMethod(m_session_list_view,
                                                   "addSession",
+                                                  // Qt::QueuedConnection,
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
-
-                        m_chat_session_model->append(qvm);
                     }
 
                     central_server.CloseRequest(session->GetID());
