@@ -279,7 +279,7 @@ void MessengerService::ChatHandling()
 
         m_peer->AsyncConnect(login_ip, login_port, request_id);
 
-        NetworkBuffer request_buf(CHAT_RECIEVE_TYPE), send_buf(CHAT_SEND_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
+        NetworkBuffer request_buf(CHAT_RECEIVE_TYPE), send_buf(CHAT_SEND_TYPE); // 클라이언트에 보낼 때 타입 바꿔야 할 수도...?
         request_buf += message_id;
         request_buf += session_id;
         request_buf += sender_id;
@@ -320,7 +320,7 @@ void MessengerService::ChatHandling()
                     {
                         for (const auto &req_id : *req_ids)
                         {
-                            NetworkBuffer buf(CHAT_RECIEVE_TYPE);
+                            NetworkBuffer buf(CHAT_RECEIVE_TYPE);
                             buf += reader_ids->size();
                             for (const auto &reader_id : *reader_ids)
                                 buf += reader_id;
@@ -1070,10 +1070,11 @@ void MessengerService::AddSessionHandling()
     m_client_request.GetData(img_type);
     m_client_request.GetData(participant_ary_size);
 
-    std::vector<std::string> participant_ary(participant_ary_size + 1);
+    // std::vector<std::string> participant_ary(participant_ary_size + 1);
+    std::shared_ptr<std::vector<UserData>> participant_ary(new std::vector<UserData>(participant_ary_size + 1));
     for (size_t i = 0; i < participant_ary_size; i++)
-        m_client_request.GetData(participant_ary[i]);
-    participant_ary.back() = user_id;
+        m_client_request.GetData(participant_ary->at(i).user_id);
+    participant_ary->back().user_id = user_id;
 
     session_id = user_id + "_" + cur_date;
 
@@ -1092,14 +1093,13 @@ void MessengerService::AddSessionHandling()
             p_ids.insert(it->get<std::string>(0));
 
         int same_cnt = 0;
-        for (const auto &p_id : participant_ary)
-        {
-            if (p_ids.find(p_id) != p_ids.end())
-                same_cnt++;
-        }
+        if (participant_ary->size() == p_ids.size())
+            for (const auto &p_data : *participant_ary)
+                if (p_ids.find(p_data.user_id) != p_ids.end())
+                    same_cnt++;
 
         // 이미 같은 세션이 있으면 바로 종료
-        if (same_cnt == participant_ary.size())
+        if (same_cnt == participant_ary->size())
         {
             net_buf += std::string();
             m_request = std::move(net_buf);
@@ -1118,7 +1118,7 @@ void MessengerService::AddSessionHandling()
         }
     }
 
-    auto img_path = boost::dll::program_location().parent_path().string() + "\\server_data\\" + user_id + "\\sessions\\" + session_id + "\\session_img";
+    auto img_path = boost::dll::program_location().parent_path().string() + "\\server_data\\sessions\\" + session_id + "\\session_img";
 
     // 세션 이미지 경로 생성
     if (!std::filesystem::exists(img_path))
@@ -1137,42 +1137,121 @@ void MessengerService::AddSessionHandling()
     *m_sql << "insert into session_tb values(:sid, :sname, :sinfo, :simgpath)",
         soci::use(session_id), soci::use(session_name), soci::use(session_info), soci::use(img_path);
 
-    *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-        soci::use(session_id), soci::use(participant_ary.back()), soci::use(-1);
+    std::vector<LoginData> login_data(participant_ary->size());
 
-    for (int i = 0; i < participant_ary.size() - 1; i++)
+    for (int i = 0; i < participant_ary->size(); i++)
     {
         *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-            soci::use(session_id), soci::use(participant_ary[i]), soci::use(-1);
+            soci::use(session_id), soci::use(participant_ary->at(i).user_id), soci::use(-1);
 
-        // user_id_to_add가 접속 중이면 뭐 보내고 아니면 그냥 끝
         soci::indicator ip_ind, port_ind;
-        std::string login_ip;
-        int login_port;
+        *m_sql << "select user_nm, user_info, img_path, login_ip, login_port from user_tb where user_id=:uid",
+            soci::into(participant_ary->at(i).user_name),
+            soci::into(participant_ary->at(i).user_info),
+            soci::into(participant_ary->at(i).user_img_path),
+            soci::into(login_data[i].ip, ip_ind),
+            soci::into(login_data[i].port, port_ind),
+            soci::use(participant_ary->at(i).user_id);
 
-        *m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
-            soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(participant_ary[i]);
+        if (ip_ind == soci::i_null)
+            login_data[i].ip.clear();
+    }
 
-        if (ip_ind != soci::i_null)
-        {
-            // session_id | session_name | session_info | session_img
-            m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, session_id, session_name, session_info, session_img, img_path](std::shared_ptr<Session> session) -> void {
+    for (int i = 0; i < login_data.size() - 1; i++)
+    {
+        if (login_data[i].ip.empty())
+            continue;
+
+        m_peer->AsyncConnect(login_data[i].ip, login_data[i].port, [peer = m_peer, session_id, session_name, session_info, session_img, img_path, participant_ary](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            boost::json::object session_data;
+            boost::json::array p_ary;
+
+            session_data["session_id"] = session_id;
+            session_data["session_name"] = session_name;
+            session_data["session_info"] = session_info;
+            session_data["session_img_name"] = img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
+
+            for (const auto &p_data : *participant_ary)
+            {
+                boost::json::object p_obj;
+                p_obj["user_id"] = p_data.user_id;
+                p_obj["user_name"] = p_data.user_name;
+                p_obj["user_info"] = p_data.user_info;
+                p_obj["user_img_name"] = p_data.user_img_path.empty() ? p_data.user_img_path : std::filesystem::path(p_data.user_img_path).filename().string();
+                p_ary.push_back(p_obj);
+            }
+
+            session_data["participant_ids"] = p_ary;
+
+            std::vector<std::vector<unsigned char>> raw_imgs(participant_ary->size());
+            for (int i = 0; i < raw_imgs.size(); i++)
+            {
+            }
+
+            // NetworkBuffer net_buf(RECEIVE_ADD_SESSION_TYPE);
+            // net_buf += session_id;
+            // net_buf += session_name;
+            // net_buf += session_info;
+            // net_buf += *session_img;
+            // net_buf += img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
+
+            peer->AsyncWrite(session->GetID(), std::move(net_buf), [](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
-
-                NetworkBuffer net_buf(RECEIVE_ADD_SESSION_TYPE);
-                net_buf += session_id;
-                net_buf += session_name;
-                net_buf += session_info;
-                net_buf += *session_img;
-                net_buf += img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
-
-                peer->AsyncWrite(session->GetID(), std::move(net_buf), [](std::shared_ptr<Session> session) -> void {
-                    if (!session.get() || !session->IsValid())
-                        return;
-                });
             });
-        }
+        });
+
+        //*m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
+        //    soci::use(session_id), soci::use(participant_ary->at(i).user_id), soci::use(-1);
+        //
+        //// user_id_to_add가 접속 중이면 뭐 보내고 아니면 그냥 끝
+        // soci::indicator ip_ind, port_ind;
+        // std::string login_ip;
+        // int login_port;
+        //
+        //*m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
+        //    soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(participant_ary->at(i).user_id);
+        //
+        // if (ip_ind != soci::i_null)
+        //{
+        //    // DB Info 참고
+        //    m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, session_id, session_name, session_info, session_img, img_path, participant_ary](std::shared_ptr<Session> session) -> void {
+        //        if (!session.get() || !session->IsValid())
+        //            return;
+        //
+        //        boost::json::object session_data;
+        //        boost::json::array p_ary;
+        //
+        //        session_data["session_id"] = session_id;
+        //        session_data["session_name"] = session_name;
+        //        session_data["session_info"] = session_info;
+        //        session_data["session_img_name"] = img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
+        //
+        //        for (const auto &p_id : *participant_ary)
+        //        {
+        //            boost::json::object p_data;
+        //            p_data["user_id"] = p_id.user_id;
+        //            p_data["user_name"] = p_id.user_name;
+        //            p_data["user_info"] = p_id.user_info;
+        //            p_data["user_img_name"] = p_id.user_img_path.empty() ? p_id.user_img_path : std::filesystem::path(p_id.user_img_path).filename().string();
+        //        }
+        //
+        //        NetworkBuffer net_buf(RECEIVE_ADD_SESSION_TYPE);
+        //        net_buf += session_id;
+        //        net_buf += session_name;
+        //        net_buf += session_info;
+        //        net_buf += *session_img;
+        //        net_buf += img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
+        //
+        //        peer->AsyncWrite(session->GetID(), std::move(net_buf), [](std::shared_ptr<Session> session) -> void {
+        //            if (!session.get() || !session->IsValid())
+        //                return;
+        //        });
+        //    });
+        //}
     }
 
     // mongo db 컬렉션 생성
