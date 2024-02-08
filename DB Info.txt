@@ -120,7 +120,7 @@ find_one_and_update()를 이용하여 원자적 연산을 해야됨
 
 #### 
 
-#### Session Init (구버전 바뀌어야 함)
+#### Get Session List
 채팅방 초기화시 밑과 같은 형식을 서버와 클라이언트가 주고 받음
 실제 채팅방의 컨텐츠를 모두 가져오진 않고 마지막 채팅 내용과 사용자가 읽지 않은 메시지 개수 정도를 가져옴
 
@@ -152,65 +152,6 @@ find_one_and_update()를 이용하여 원자적 연산을 해야됨
 
 해당 json과 함께 raw img 파일 배열 보내야 함
 
-#### Get Session List (신버전)
-Session Init 함수는 Get Session List로 대체됨
-
-- 클라이언트에서 보내는 경우
-{
-	"session_datas": [
-		{
-			"session_id": "세션 id",
-			"session_img_update_date": 세션 이미지 갱신 날짜,
-			
-			"participant_infos": [
-				{
-					"user_id": "참가자 id",
-					"user_img_update_date": 참가자 이미지 갱신 날짜
-				},
-				...
-			]
-		},
-		...
-	]
-}	
-
-- 클라이언트에서 받는 경우
-{
-	"session_datas": [
-		{
-			"session_id": "세션 id",
-			"session_name": "세션 이름",
-			"session_img_name": "이미지 이름",
-			"session_info": "",
-			"unread_count": 10,
-			
-			"chat_info": {
-				"sender_id": 	"보낸 사람 USER_ID",
-				"send_date": 	since_epoch_time,
-				"message_id":	462,
-				"content_type": int형,
-
-				// content_type이 text가 아니라면 content 내용은 간략화됨
-				"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
-			},
-			
-			"participant_info": [
-				{
-					"user_id": "참가자 ID",
-					"user_name": "참가자 이름",
-					"user_info": "참가자 정보", 
-					"user_img_name": "참가자 이미지 이름", 
-				},
-				...
-			]
-		},
-		...
-	]
-}
-
-raw data: session 01 img | participant that in session 01 img 01 | participant that in session 01 img 02 ... | session 02 img ...
-
-
 #### Session Recieve Chat
 클라이언트에서 채팅 받는 경우
 
@@ -236,6 +177,16 @@ raw data: session 01 img | participant that in session 01 img 01 | participant t
 			"message_id":	462,
 			"content_type": "text",
 			"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4"
+		},
+		...
+	],
+
+	"participant_infos": [
+		{
+			"user_id": "참가자 id",
+			"user_name": "참가자 이름",
+			"user_info": "참가자 정보", 
+			"user_img_name": "참가자 이미지 이름", 
 		},
 		...
 	]

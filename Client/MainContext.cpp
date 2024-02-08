@@ -513,7 +513,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
     return;
 }
 
-// Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 ) -> 변경됨, DB Info.txt 참고
+// Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryGetSessionList()
 {
@@ -683,10 +683,98 @@ void MainContext::tryGetSessionList()
     });
 }
 
-// Server에 전달하는 버퍼 형식: user_id | session_id | 읽어올 메시지 수
+// Server에 전달하는 버퍼 형식: user_id | session_id | 읽어올 메시지 수 | 배열 수 | [ participant id, img date ]
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
 {
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    auto &central_server = m_window.GetServerHandle();
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            is_ready.store(true);
+            return;
+        }
+
+        NetworkBuffer net_buf(SESSION_REFRESH_TYPE);
+        net_buf += m_user_id;
+        net_buf += session_id;
+
+        QObject *chat_model = nullptr;
+        QMetaObject::invokeMethod(m_session_list_view,
+                                  "getChatModel",
+                                  Q_RETURN_ARG(QObject *, chat_model),
+                                  Q_ARG(QString, session_id));
+
+        int unread_cnt = m_chat_session_model->data(session_id, ChatSessionModel::UNREAD_CNT_ROLE).toInt(),
+            recent_message_id = m_chat_session_model->data(session_id, ChatSessionModel::RECENT_MESSAGEID_ROLE).toInt(),
+            chat_cnt = qobject_cast<ChatModel *>(chat_model)->rowCount();
+
+        // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 최대 100개 채팅만 가져옴
+        // 메신저 사용자가 해당 세션을 처음 입장하는 경우 최대 100개 채팅만 가져옴
+        if (!chat_cnt || recent_message_id < 0)
+            net_buf += static_cast<int64_t>(100);
+        // 읽지 않은 메시지가 500개 이하면 그 내역을 서버에서 모두 가져옴
+        else if (unread_cnt < 500)
+            net_buf += static_cast<int64_t>(-1);
+        // 500개가 넘으면 해당 세션의 채팅 기록 초기화 후 최대 100개 채팅만 서버에서 가져와서 채움
+        else
+        {
+            // qobject_cast<ChatModel *>(chat_model)->clear(); // 얘 쓰레드 다른 곳에서 수행하기에 안될 수도 있음...
+            QMetaObject::invokeMethod(m_session_list_view, "clearChatModel", Q_ARG(QString, session_id));
+            net_buf += static_cast<int64_t>(100);
+        }
+
+        std::string p_path = boost::dll::program_location().parent_path().string() +
+                             "\\minigram_cache\\" +
+                             m_user_id.toStdString() +
+                             "\\sessions" +
+                             session_id.toStdString() +
+                             "\\participant_data";
+        std::vector<std::pair<std::string, int64_t>> p_data;
+
+        if (!std::filesystem::exists(p_path))
+            std::filesystem::create_directories(p_path);
+
+        std::filesystem::directory_iterator it{p_path};
+        while (it != std::filesystem::end(it))
+        {
+            int64_t img_update_date = 0;
+            if (std::filesystem::is_directory(it->path()))
+            {
+                std::filesystem::directory_iterator child{it->path() / "profile_img"};
+                if (child != std::filesystem::end(child))
+                    img_update_date = std::stoull(child->path().stem().string());
+
+                if (img_update_date)
+                    p_data.push_back({it->path().filename().string(), img_update_date});
+            }
+            it++;
+        }
+
+        net_buf += p_data.size();
+        for (const auto &data : p_data)
+        {
+            net_buf += data.first;
+            net_buf += data.second;
+        }
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
+                return;
+            }
+        });
+    });
+
+    /*
     auto unread_cnt = m_chat_session_model->data(session_id, ChatSessionModel::UNREAD_CNT_ROLE).toInt();
 
     if (!unread_cnt)
@@ -811,6 +899,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
             });
         });
     });
+    */
 }
 
 // Server에 전달하는 버퍼 형식: session_id | message_id | fetch_cnt

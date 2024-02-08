@@ -41,6 +41,16 @@ Rectangle {
         sessionViewMap[chatInfo["sessionId"]].sessionViewModel.append(chatInfo)
     }
 
+    function getChatModel(sessionId)
+    {
+        return sessionViewMap[sessionId].children[2].model
+    }
+
+    function clearChatModel(sessionId)
+    {
+        sessionViewMap[sessionId].children[2].model.clear()
+    }
+
     Popup {
         id: sessionNameDecisionPopup
         anchors.centerIn: Overlay.overlay

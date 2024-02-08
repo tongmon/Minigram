@@ -120,6 +120,11 @@ bool ChatSessionModel::setData(const QModelIndex &index, const QVariant &value, 
     return true;
 }
 
+const ChatSession &ChatSessionModel::operator[](const QString &session_id)
+{
+    return *m_chat_sessions[m_id_index_map[session_id]];
+}
+
 void ChatSessionModel::remove(const QString &session_id)
 {
     int ind = m_id_index_map[session_id];

@@ -354,7 +354,7 @@ void MessengerService::ChatHandling()
     }
 }
 
-// Client에서 받는 버퍼 형식: user_id | session_id | 읽어올 메시지 수
+// Client에서 받는 버퍼 형식: user_id | session_id | 읽어올 메시지 수 | 배열 수 | [ participant id, img date ]
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::RefreshSessionHandling()
 {
