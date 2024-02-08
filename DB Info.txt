@@ -227,10 +227,10 @@ raw img file이 담긴 배열을 함께 전송함
 	"session_name": "세션 이름",
 	"session_info": "세션 각종 정보",
 	"session_img_name": "세션 이미지 이름",
-	"participant_ids": [
+	"participant_infos": [
 		{
 			"user_id": "참가자 ID",
-			"user_name": "",
+			"user_name": "참가자 이름",
 			"user_info": "참가자 정보", 
 			"user_img_name": "참가자 이미지 이름", 
 		},
@@ -256,10 +256,11 @@ minigram_cache
 		L sessions
 			L session_id
 				L 날짜.이미지_확장자
-			L participant_data
-				L participant_id
-					L profile_img
-						L 날짜.이미지_확장자
+				L participant_data
+					L participant_id
+						L profile_img
+							L 날짜.이미지_확장자
+						L profile_info.txt -> 사용자 이름, 상태 메시지 등...
 		L contact
 			L acquaintance_id
 				L profile_img

@@ -74,6 +74,7 @@ void Service::StartHandling()
                                                                 window.GetMainContext().RecieveContactRequest(this);
                                                                 break;
                                                             case RECEIVE_ADD_SESSION_TYPE:
+                                                            case SESSION_ADD_TYPE:
                                                                 window.GetMainContext().RecieveAddSession(this);
                                                                 break;
                                                             default:

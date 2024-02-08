@@ -1062,24 +1062,22 @@ void MessengerService::AddSessionHandling()
     int64_t time_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     std::string user_id, session_name, session_info, img_type, session_id, cur_date = std::to_string(time_since_epoch);
     int participant_ary_size;
-    std::shared_ptr<std::vector<unsigned char>> session_img(new std::vector<unsigned char>());
+    std::vector<unsigned char> session_img;
 
     m_client_request.GetData(user_id);
     m_client_request.GetData(session_name);
-    m_client_request.GetData(*session_img);
+    m_client_request.GetData(session_img);
     m_client_request.GetData(img_type);
     m_client_request.GetData(participant_ary_size);
 
-    // std::vector<std::string> participant_ary(participant_ary_size + 1);
-    std::shared_ptr<std::vector<UserData>> participant_ary(new std::vector<UserData>(participant_ary_size + 1));
+    std::vector<UserData> participant_ary(participant_ary_size + 1);
     for (size_t i = 0; i < participant_ary_size; i++)
-        m_client_request.GetData(participant_ary->at(i).user_id);
-    participant_ary->back().user_id = user_id;
+        m_client_request.GetData(participant_ary[i].user_id);
+    participant_ary.back().user_id = user_id;
 
     session_id = user_id + "_" + cur_date;
 
-    NetworkBuffer net_buf(SESSION_ADD_TYPE);
-
+    std::shared_ptr<NetworkBuffer> net_buf(new NetworkBuffer(SESSION_ADD_TYPE));
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:uid",
                                   soci::use(user_id, "uid"));
 
@@ -1093,16 +1091,16 @@ void MessengerService::AddSessionHandling()
             p_ids.insert(it->get<std::string>(0));
 
         int same_cnt = 0;
-        if (participant_ary->size() == p_ids.size())
-            for (const auto &p_data : *participant_ary)
+        if (participant_ary.size() == p_ids.size())
+            for (const auto &p_data : participant_ary)
                 if (p_ids.find(p_data.user_id) != p_ids.end())
                     same_cnt++;
 
         // 이미 같은 세션이 있으면 바로 종료
-        if (same_cnt == participant_ary->size())
+        if (same_cnt == participant_ary.size())
         {
-            net_buf += std::string();
-            m_request = std::move(net_buf);
+            *net_buf += std::string();
+            m_request = std::move(*net_buf);
 
             boost::asio::async_write(*m_sock,
                                      m_request.AsioBuffer(),
@@ -1124,12 +1122,12 @@ void MessengerService::AddSessionHandling()
     if (!std::filesystem::exists(img_path))
         std::filesystem::create_directories(img_path);
 
-    if (!session_img->empty())
+    if (!session_img.empty())
     {
         img_path += ("\\" + cur_date + "." + img_type);
         std::ofstream img_file(img_path, std::ios::binary);
         if (img_file.is_open())
-            img_file.write(reinterpret_cast<char *>(&(*session_img)[0]), session_img->size());
+            img_file.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
     }
     else
         img_path.clear();
@@ -1137,24 +1135,56 @@ void MessengerService::AddSessionHandling()
     *m_sql << "insert into session_tb values(:sid, :sname, :sinfo, :simgpath)",
         soci::use(session_id), soci::use(session_name), soci::use(session_info), soci::use(img_path);
 
-    std::vector<LoginData> login_data(participant_ary->size());
+    std::vector<LoginData> login_data(participant_ary.size());
 
-    for (int i = 0; i < participant_ary->size(); i++)
+    for (int i = 0; i < participant_ary.size(); i++)
     {
         *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-            soci::use(session_id), soci::use(participant_ary->at(i).user_id), soci::use(-1);
+            soci::use(session_id), soci::use(participant_ary[i].user_id), soci::use(-1);
 
         soci::indicator ip_ind, port_ind;
         *m_sql << "select user_nm, user_info, img_path, login_ip, login_port from user_tb where user_id=:uid",
-            soci::into(participant_ary->at(i).user_name),
-            soci::into(participant_ary->at(i).user_info),
-            soci::into(participant_ary->at(i).user_img_path),
+            soci::into(participant_ary[i].user_name),
+            soci::into(participant_ary[i].user_info),
+            soci::into(participant_ary[i].user_img_path),
             soci::into(login_data[i].ip, ip_ind),
             soci::into(login_data[i].port, port_ind),
-            soci::use(participant_ary->at(i).user_id);
+            soci::use(participant_ary[i].user_id);
 
         if (ip_ind == soci::i_null)
             login_data[i].ip.clear();
+    }
+
+    boost::json::object session_data;
+    boost::json::array p_ary;
+
+    session_data["session_id"] = session_id;
+    session_data["session_name"] = session_name;
+    session_data["session_info"] = session_info;
+    session_data["session_img_name"] = img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
+
+    for (const auto &p_data : participant_ary)
+    {
+        boost::json::object p_obj;
+        p_obj["user_id"] = p_data.user_id;
+        p_obj["user_name"] = p_data.user_name;
+        p_obj["user_info"] = p_data.user_info;
+        p_obj["user_img_name"] = p_data.user_img_path.empty() ? p_data.user_img_path : std::filesystem::path(p_data.user_img_path).filename().string();
+        p_ary.push_back(p_obj);
+    }
+
+    session_data["participant_infos"] = p_ary;
+    *net_buf += boost::json::serialize(session_data);
+    *net_buf += session_img;
+
+    for (const auto &p_data : participant_ary)
+    {
+        if (p_data.user_img_path.empty())
+            continue;
+
+        std::ifstream inf(p_data.user_img_path);
+        if (inf.is_open())
+            *net_buf += std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {});
     }
 
     for (int i = 0; i < login_data.size() - 1; i++)
@@ -1162,96 +1192,15 @@ void MessengerService::AddSessionHandling()
         if (login_data[i].ip.empty())
             continue;
 
-        m_peer->AsyncConnect(login_data[i].ip, login_data[i].port, [peer = m_peer, session_id, session_name, session_info, session_img, img_path, participant_ary](std::shared_ptr<Session> session) -> void {
+        m_peer->AsyncConnect(login_data[i].ip, login_data[i].port, [peer = m_peer, net_buf](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            boost::json::object session_data;
-            boost::json::array p_ary;
-
-            session_data["session_id"] = session_id;
-            session_data["session_name"] = session_name;
-            session_data["session_info"] = session_info;
-            session_data["session_img_name"] = img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
-
-            for (const auto &p_data : *participant_ary)
-            {
-                boost::json::object p_obj;
-                p_obj["user_id"] = p_data.user_id;
-                p_obj["user_name"] = p_data.user_name;
-                p_obj["user_info"] = p_data.user_info;
-                p_obj["user_img_name"] = p_data.user_img_path.empty() ? p_data.user_img_path : std::filesystem::path(p_data.user_img_path).filename().string();
-                p_ary.push_back(p_obj);
-            }
-
-            session_data["participant_ids"] = p_ary;
-
-            std::vector<std::vector<unsigned char>> raw_imgs(participant_ary->size());
-            for (int i = 0; i < raw_imgs.size(); i++)
-            {
-            }
-
-            // NetworkBuffer net_buf(RECEIVE_ADD_SESSION_TYPE);
-            // net_buf += session_id;
-            // net_buf += session_name;
-            // net_buf += session_info;
-            // net_buf += *session_img;
-            // net_buf += img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
-
-            peer->AsyncWrite(session->GetID(), std::move(net_buf), [](std::shared_ptr<Session> session) -> void {
+            peer->AsyncWrite(session->GetID(), *net_buf, [](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
             });
         });
-
-        //*m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
-        //    soci::use(session_id), soci::use(participant_ary->at(i).user_id), soci::use(-1);
-        //
-        //// user_id_to_add가 접속 중이면 뭐 보내고 아니면 그냥 끝
-        // soci::indicator ip_ind, port_ind;
-        // std::string login_ip;
-        // int login_port;
-        //
-        //*m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
-        //    soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(participant_ary->at(i).user_id);
-        //
-        // if (ip_ind != soci::i_null)
-        //{
-        //    // DB Info 참고
-        //    m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, session_id, session_name, session_info, session_img, img_path, participant_ary](std::shared_ptr<Session> session) -> void {
-        //        if (!session.get() || !session->IsValid())
-        //            return;
-        //
-        //        boost::json::object session_data;
-        //        boost::json::array p_ary;
-        //
-        //        session_data["session_id"] = session_id;
-        //        session_data["session_name"] = session_name;
-        //        session_data["session_info"] = session_info;
-        //        session_data["session_img_name"] = img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
-        //
-        //        for (const auto &p_id : *participant_ary)
-        //        {
-        //            boost::json::object p_data;
-        //            p_data["user_id"] = p_id.user_id;
-        //            p_data["user_name"] = p_id.user_name;
-        //            p_data["user_info"] = p_id.user_info;
-        //            p_data["user_img_name"] = p_id.user_img_path.empty() ? p_id.user_img_path : std::filesystem::path(p_id.user_img_path).filename().string();
-        //        }
-        //
-        //        NetworkBuffer net_buf(RECEIVE_ADD_SESSION_TYPE);
-        //        net_buf += session_id;
-        //        net_buf += session_name;
-        //        net_buf += session_info;
-        //        net_buf += *session_img;
-        //        net_buf += img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
-        //
-        //        peer->AsyncWrite(session->GetID(), std::move(net_buf), [](std::shared_ptr<Session> session) -> void {
-        //            if (!session.get() || !session->IsValid())
-        //                return;
-        //        });
-        //    });
-        //}
     }
 
     // mongo db 컬렉션 생성
@@ -1271,9 +1220,7 @@ void MessengerService::AddSessionHandling()
     mongo_db.create_collection(session_id + "_log");
     MongoDBClient::Free();
 
-    net_buf += session_id;
-
-    m_request = std::move(net_buf);
+    m_request = *net_buf;
 
     boost::asio::async_write(*m_sock,
                              m_request.AsioBuffer(),

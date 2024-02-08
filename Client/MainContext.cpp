@@ -168,7 +168,7 @@ void MainContext::RecieveContactRequest(Service *service)
     if (!requester_img_name.isEmpty())
     {
         img_path = req_cache_path / requester_img_name.toStdString();
-        std::ofstream of(img_path);
+        std::ofstream of(img_path, std::ios::binary);
         if (of.is_open())
             of.write(reinterpret_cast<char *>(&requester_img[0]), requester_img.size());
     }
@@ -189,43 +189,84 @@ void MainContext::RecieveContactRequest(Service *service)
 
 void MainContext::RecieveAddSession(Service *service)
 {
-    std::string session_id;
-    QString session_name, session_info, img_name;
-    std::vector<unsigned char> session_img;
+    std::string json_txt;
+    service->server_response.GetData(json_txt);
 
-    service->server_response.GetData(session_id);
-    service->server_response.GetData(session_name);
-    service->server_response.GetData(session_info);
-    service->server_response.GetData(session_img);
-    service->server_response.GetData(img_name);
+    boost::json::error_code ec;
+    boost::json::value json_data = boost::json::parse(json_txt, ec);
+    auto session_data = json_data.as_object();
+
+    std::string session_id = session_data["session_id"].as_string().c_str();
+    std::string session_img_path = session_data["session_img_name"].as_string().c_str();
+    std::vector<unsigned char> session_img;
 
     std::smatch match;
     std::regex_search(session_id, match, std::regex("_"));
-    size_t time_since_epoch = atoll(match.suffix().str().c_str());
+    size_t time_since_epoch = std::stoull(match.suffix().str());
 
     QVariantMap qvm;
     qvm.insert("sessionId", session_id.c_str());
-    qvm.insert("sessionName", session_name);
+    qvm.insert("sessionName", session_data["session_name"].as_string().c_str());
     qvm.insert("recentSenderId", "");
     qvm.insert("recentContentType", "");
     qvm.insert("recentContent", "");
+    qvm.insert("sessionImg", "");
     qvm.insert("recentSendDate", MillisecondToCurrentDate(time_since_epoch).c_str());
     qvm.insert("recentMessageId", -1);
     qvm.insert("unreadCnt", 0);
-    qvm.insert("sessionImg", "");
 
-    if (!session_img.empty())
+    std::string session_cache_path = boost::dll::program_location().parent_path().string() +
+                                     "\\minigram_cache\\" +
+                                     m_user_id.toStdString() +
+                                     "\\sessions\\" +
+                                     session_id;
+
+    if (!std::filesystem::exists(session_cache_path))
+        boost::filesystem::create_directories(session_cache_path);
+
+    if (!session_img_path.empty())
     {
-        std::string file_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\sessions\\" + session_id,
-                    img_path = file_path + "\\" + img_name.toStdString();
-        if (!std::filesystem::exists(file_path))
-            std::filesystem::create_directories(file_path);
+        std::vector<unsigned char> session_img;
+        service->server_response.GetData(session_img);
 
-        std::ofstream of(img_path, std::ios::binary);
+        std::string img_full_path = session_cache_path + "\\" + session_img_path;
+        std::ofstream of(img_full_path, std::ios::binary);
         if (of.is_open())
+        {
             of.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
+            qvm.insert("sessionImg", img_full_path.c_str());
+        }
+    }
 
-        qvm.insert("sessionImg", img_path.c_str());
+    auto p_ary = session_data["participant_infos"].as_array();
+    for (int i = 0; i < p_ary.size(); i++)
+    {
+        auto p_data = p_ary[i].as_object();
+        std::string p_info_path = session_cache_path + "\\participant_data\\" + p_data["user_id"].as_string().c_str(),
+                    p_img_path = p_info_path + "\\profile_img",
+                    p_img_name = p_data["user_img_name"].as_string().c_str();
+
+        if (!std::filesystem::exists(p_img_path))
+            boost::filesystem::create_directories(p_img_path);
+
+        if (!p_img_name.empty())
+        {
+            std::vector<unsigned char> user_img;
+            service->server_response.GetData(user_img);
+
+            std::ofstream of(p_img_path + "\\" + p_img_name, std::ios::binary);
+            if (of.is_open())
+                of.write(reinterpret_cast<char *>(&user_img[0]), user_img.size());
+        }
+
+        std::ofstream of(p_info_path + "\\profile_info.txt");
+        if (of.is_open())
+        {
+            std::string user_info = p_data["user_name"].as_string().c_str();
+            user_info += "|";
+            user_info += p_data["user_info"].as_string().c_str();
+            of.write(user_info.c_str(), user_info.size());
+        }
     }
 
     QMetaObject::invokeMethod(m_session_list_view,
@@ -233,6 +274,51 @@ void MainContext::RecieveAddSession(Service *service)
                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
 
     delete service;
+
+    // std::string session_id;
+    // QString session_name, session_info, img_name;
+    // std::vector<unsigned char> session_img;
+    //
+    // service->server_response.GetData(session_id);
+    // service->server_response.GetData(session_name);
+    // service->server_response.GetData(session_info);
+    // service->server_response.GetData(session_img);
+    // service->server_response.GetData(img_name);
+    //
+    // std::smatch match;
+    // std::regex_search(session_id, match, std::regex("_"));
+    // size_t time_since_epoch = atoll(match.suffix().str().c_str());
+    //
+    // QVariantMap qvm;
+    // qvm.insert("sessionId", session_id.c_str());
+    // qvm.insert("sessionName", session_name);
+    // qvm.insert("recentSenderId", "");
+    // qvm.insert("recentContentType", "");
+    // qvm.insert("recentContent", "");
+    // qvm.insert("recentSendDate", MillisecondToCurrentDate(time_since_epoch).c_str());
+    // qvm.insert("recentMessageId", -1);
+    // qvm.insert("unreadCnt", 0);
+    // qvm.insert("sessionImg", "");
+    //
+    // if (!session_img.empty())
+    //{
+    //    std::string file_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\sessions\\" + session_id,
+    //                img_path = file_path + "\\" + img_name.toStdString();
+    //    if (!std::filesystem::exists(file_path))
+    //        std::filesystem::create_directories(file_path);
+    //
+    //    std::ofstream of(img_path, std::ios::binary);
+    //    if (of.is_open())
+    //        of.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
+    //
+    //    qvm.insert("sessionImg", img_path.c_str());
+    //}
+    //
+    // QMetaObject::invokeMethod(m_session_list_view,
+    //                          "addSession",
+    //                          Q_ARG(QVariant, QVariant::fromValue(qvm)));
+    //
+    // delete service;
 }
 
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
@@ -1488,22 +1574,22 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
             return;
         }
 
-        std::shared_ptr<QImage> img_data;
+        QImage img_data;
         std::string img_type;
 
         if (!img_path.isEmpty())
         {
             std::wstring img_wpath = img_path.toStdWString();
-            img_data = std::make_shared<QImage>(QString::fromWCharArray(img_wpath.c_str()));
+            img_data.load(QString::fromWCharArray(img_wpath.c_str())); // = std::make_shared<QImage>(QString::fromWCharArray(img_wpath.c_str()));
             img_type = std::filesystem::path(img_wpath).extension().string();
             if (!img_type.empty())
                 img_type.erase(img_type.begin());
 
-            size_t img_size = img_data->byteCount();
+            size_t img_size = img_data.byteCount();
             while (5242880 < img_size) // 이미지 크기가 5MB를 초과하면 계속 축소함
             {
-                *img_data = img_data->scaled(img_data->width() * 0.75, img_data->height() * 0.75, Qt::KeepAspectRatio);
-                img_size = img_data->byteCount();
+                img_data = img_data.scaled(img_data.width() * 0.75, img_data.height() * 0.75, Qt::KeepAspectRatio);
+                img_size = img_data.byteCount();
             }
         }
 
@@ -1511,11 +1597,11 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
         net_buf += m_user_id;
         net_buf += session_name;
 
-        if (img_data)
+        if (!img_data.isNull())
         {
             QBuffer buf;
             buf.open(QIODevice::WriteOnly);
-            img_data->save(&buf, img_type.c_str());
+            img_data.save(&buf, img_type.c_str());
             net_buf += buf.data();
         }
         else
@@ -1527,21 +1613,21 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
         for (size_t i = 0; i < participant_ids.size(); i++)
             net_buf += participant_ids[i];
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, img_data, img_type, session_name, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, img_data, img_type, session_name, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, img_data, img_type, session_name, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -1549,26 +1635,33 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                     }
 
                     QVariantMap qvm;
-                    std::string session_id;
-                    session->GetResponse().GetData(session_id);
+                    std::string json_txt;
+                    session->GetResponse().GetData(json_txt);
 
-                    if (session_id.empty())
+                    if (json_txt.empty())
                     {
                         QMetaObject::invokeMethod(m_session_list_view,
                                                   "addSession",
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
-
                         central_server.CloseRequest(session->GetID());
                         is_ready.store(true);
                         return;
                     }
 
+                    boost::json::error_code ec;
+                    boost::json::value json_data = boost::json::parse(json_txt, ec);
+                    auto session_data = json_data.as_object();
+
+                    std::string session_id = session_data["session_id"].as_string().c_str();
+                    std::string session_img_path = session_data["session_img_name"].as_string().c_str();
+                    std::vector<unsigned char> session_img;
+
                     std::smatch match;
                     std::regex_search(session_id, match, std::regex("_"));
-                    size_t time_since_epoch = atoll(match.suffix().str().c_str());
+                    size_t time_since_epoch = std::stoull(match.suffix().str());
 
                     qvm.insert("sessionId", session_id.c_str());
-                    qvm.insert("sessionName", session_name);
+                    qvm.insert("sessionName", session_data["session_name"].as_string().c_str());
                     qvm.insert("recentSenderId", "");
                     qvm.insert("recentContentType", "");
                     qvm.insert("recentContent", "");
@@ -1582,15 +1675,53 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                                                      m_user_id.toStdString() +
                                                      "\\sessions\\" +
                                                      session_id;
+
                     if (!std::filesystem::exists(session_cache_path))
                         boost::filesystem::create_directories(session_cache_path);
 
-                    if (img_data)
+                    if (!session_img_path.empty())
                     {
-                        std::string img_full_path = session_cache_path + "\\" + match.suffix().str() + "." + img_type;
+                        std::vector<unsigned char> session_img;
+                        session->GetResponse().GetData(session_img);
 
-                        img_data->save(img_full_path.c_str(), img_type.c_str());
-                        qvm.insert("sessionImg", img_full_path.c_str());
+                        std::string img_full_path = session_cache_path + "\\" + session_img_path;
+                        std::ofstream of(img_full_path, std::ios::binary);
+                        if (of.is_open())
+                        {
+                            of.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
+                            qvm.insert("sessionImg", img_full_path.c_str());
+                        }
+                    }
+
+                    auto p_ary = session_data["participant_infos"].as_array();
+                    for (int i = 0; i < p_ary.size(); i++)
+                    {
+                        auto p_data = p_ary[i].as_object();
+                        std::string p_info_path = session_cache_path + "\\participant_data\\" + p_data["user_id"].as_string().c_str(),
+                                    p_img_path = p_info_path + "\\profile_img",
+                                    p_img_name = p_data["user_img_name"].as_string().c_str();
+
+                        if (!std::filesystem::exists(p_img_path))
+                            boost::filesystem::create_directories(p_img_path);
+
+                        if (!p_img_name.empty())
+                        {
+                            std::vector<unsigned char> user_img;
+                            session->GetResponse().GetData(user_img);
+
+                            std::ofstream of(p_img_path + "\\" + p_img_name, std::ios::binary);
+                            if (of.is_open())
+                                of.write(reinterpret_cast<char *>(&user_img[0]), user_img.size());
+                        }
+
+                        std::ofstream of(p_info_path + "\\profile_info.txt");
+                        if (of.is_open())
+                        {
+                            std::string user_info = p_data["user_name"].as_string().c_str();
+                            user_info += "|";
+                            user_info += p_data["user_info"].as_string().c_str();
+                            of.write(user_info.c_str(), user_info.size());
+                        }
                     }
 
                     QMetaObject::invokeMethod(m_session_list_view,
