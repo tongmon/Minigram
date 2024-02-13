@@ -771,6 +771,25 @@ void MainContext::tryRefreshSession(const QString &session_id)
                 is_ready.store(true);
                 return;
             }
+
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    is_ready.store(true);
+                    return;
+                }
+
+                central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        is_ready.store(true);
+                        return;
+                    }
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
+                });
+            });
         });
     });
 

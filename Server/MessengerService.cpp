@@ -362,6 +362,96 @@ void MessengerService::RefreshSessionHandling()
     using namespace bsoncxx::builder;
 
     std::string user_id, session_id;
+    int64_t fetch_cnt, p_ary_size, past_recent_message_id, recent_message_id;
+    std::map<std::string, int64_t> p_img_cache;
+
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(session_id);
+    m_client_request.GetData(fetch_cnt);
+    m_client_request.GetData(p_ary_size);
+
+    for (size_t i = 0; i < p_ary_size; i++)
+    {
+        std::string p_id;
+        int64_t p_img_date;
+        m_client_request.GetData(p_id);
+        m_client_request.GetData(p_img_date);
+        p_img_cache[p_id] = p_img_date;
+    }
+
+    auto &mongo_client = MongoDBClient::Get();
+    auto mongo_db = mongo_client["Minigram"];
+    auto mongo_coll = mongo_db[session_id + "_log"];
+
+    *m_sql << "select message_id from participant_tb where participant_id=:pid, sessioin_id=:sid",
+        soci::into(past_recent_message_id), soci::use(user_id), soci::use(session_id);
+
+    // 해당 유저 메시지 읽음 처리
+    auto update_result = mongo_coll.update_many(basic::make_document(basic::kvp("message_id",
+                                                                                basic::make_document(basic::kvp("$gt",
+                                                                                                                past_recent_message_id)))),
+                                                basic::make_document(basic::kvp("$push",
+                                                                                basic::make_document(basic::kvp("reader_id",
+                                                                                                                user_id)))));
+
+    std::unique_ptr<mongocxx::cursor> mongo_cursor;
+    mongocxx::options::find opts;
+    stream::document sort_order{};
+    sort_order << "message_id" << -1;
+    opts.sort(sort_order.view());
+
+    // 주어진 메시지 id보다 큰 채팅은 모두 땡겨옴
+    if (fetch_cnt < 0)
+    {
+        mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find(basic::make_document(basic::kvp("message_id",
+                                                                                                          basic::make_document(basic::kvp("$gt",
+                                                                                                                                          past_recent_message_id)))),
+                                                                          opts));
+    }
+    // 최신 fetch_cnt 개의 채팅만 땡겨옴
+    else
+    {
+        opts.limit(fetch_cnt);
+        mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find({}, opts));
+    }
+
+    boost::json::array fetched_chat_ary;
+    for (auto &&doc : *mongo_cursor)
+    {
+        boost::json::object chat_info;
+        chat_info["sender_id"] = doc["sender_id"].get_string().value;
+        chat_info["send_date"] = doc["send_date"].get_int64().value;
+        chat_info["message_id"] = doc["message_id"].get_int64().value;
+        chat_info["content_type"] = doc["content_type"].get_int64().value;
+
+        // 가장 최신 message_id로 설정
+        recent_message_id = chat_info["message_id"].as_int64();
+
+        switch (chat_info["content_type"].as_int64())
+        {
+        case TEXT_CHAT: // 인코딩이 되어서 mongodb에 들어가면... 딱히 따로 인코딩 안해도 될듯
+            chat_info["content"] = EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
+            break;
+        case IMG_CHAT:
+            chat_info["content"] = EncodeBase64(doc["content"].get_string().value.data());
+            break;
+        default:
+            break;
+        }
+
+        boost::json::array readers;
+        auto ary_view = doc["reader_id"].get_array().value;
+        for (auto &&sub_doc : ary_view)
+            readers.push_back(sub_doc.get_string().value.data());
+        chat_info["reader_id"] = readers;
+
+        fetched_chat_ary.push_back(std::move(chat_info));
+    }
+
+    // ***
+    // 밑 부분은 다시 리모델링해야 하는 부분...
+    // ***
+    std::string user_id, session_id;
     int64_t past_recent_message_id, recent_message_id, fetch_cnt;
 
     m_client_request.GetData(user_id);
