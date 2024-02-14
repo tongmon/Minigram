@@ -448,6 +448,15 @@ void MessengerService::RefreshSessionHandling()
         fetched_chat_ary.push_back(std::move(chat_info));
     }
 
+    boost::json::array participant_ary;
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
+                                  soci::use(session_id, "sid"));
+
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        std::string participant_id = it->get<std::string>(0);
+    }
+
     // ***
     // 밑 부분은 다시 리모델링해야 하는 부분...
     // ***
