@@ -83,7 +83,7 @@ Item {
                     var context = getContext("2d")
                     context.beginPath()
 
-                    if(!isOpponent) {
+                    if (!isOpponent) {
                         context.moveTo(width - chatBubbleStemSize.width, 0)
                         context.lineTo(width - chatBubbleStemSize.width, 5)
                         context.lineTo(width, 5)

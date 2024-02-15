@@ -868,7 +868,14 @@ void MainContext::tryRefreshSession(const QString &session_id)
 
                             m_chat_session_model->participant_datas[user_id.c_str()].user_img_path = p_img_path.string();
 
-                            // participant_datas 변경시 어떻게 처리할 지 고려해야 됨
+                            // participant_datas 변경 시 어떻게 처리할 지 고려해야 됨
+                            // 1. user data에 변경점이 있는지 bool 값을 하나 넣어두고 해당 bool 값이 true인 채팅은 바뀐 것
+                            // 따라서 해당 채팅 리스트를 읽으면서 각 채팅의 id를 검사하고 바뀐 id들은 이름, 이미지 경로 변수를 바꾸고 해당 변수에 해당하는 emit을 진행
+                            // 물론 이름, 이미지 경로 프로퍼티가 추가되어야 함, chatsessionmodel의 setdata 함수 참고
+                            // 2. listview 아이템에 내부 함수를 만들어서 어찌 C++로 노출시켜서 bool 값 보고 호출하기..?
+
+                            // 추가적으로 고려할 것
+                            // participant_datas 위치를 chatsession으로 옮기기...
                         }
                     }
 

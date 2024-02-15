@@ -114,5 +114,8 @@ void ChatModel::refreshReaderIds(const QString &reader_id, int message_id)
         return;
 
     for (size_t i = message_id - m_chats[0]->message_id; i < m_chats.size(); i++)
+    {
         m_chats[i]->reader_ids.push_back(reader_id);
+        emit m_chats[i]->readerIdsChanged();
+    }
 }
