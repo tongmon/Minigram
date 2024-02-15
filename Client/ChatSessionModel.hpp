@@ -2,6 +2,7 @@
 #define HEADER__FILE__CHATSESSIONMODEL
 
 #include "ChatSession.hpp"
+#include "NetworkDefinition.hpp"
 
 #include <QAbstractListModel>
 #include <QMetaType>
@@ -15,6 +16,8 @@ class ChatSessionModel : public QAbstractListModel
     QList<ChatSession *> m_chat_sessions;
 
   public:
+    QHash<QString, UserData> participant_datas;
+
     enum ContactRoles
     {
         ID_ROLE = Qt::UserRole + 1,

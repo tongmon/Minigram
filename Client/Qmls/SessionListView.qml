@@ -37,8 +37,8 @@ Rectangle {
 
     function addChat(chatInfo)
     {
-        // sessionViewMap[chatInfo["sessionId"]].children[2].model.append(chatInfo)
-        sessionViewMap[chatInfo["sessionId"]].sessionViewModel.append(chatInfo)
+        sessionViewMap[chatInfo["sessionId"]].children[2].model.append(chatInfo)
+        // sessionViewMap[chatInfo["sessionId"]].sessionViewModel.append(chatInfo)
     }
 
     function getChatModel(sessionId)

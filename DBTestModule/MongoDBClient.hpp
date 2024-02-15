@@ -15,6 +15,10 @@
 #include <mongocxx/pool.hpp>
 #include <mongocxx/uri.hpp>
 
+#include <atomic>
+#include <memory>
+#include <mutex>
+
 struct MongoConnectionInfo
 {
     std::string db_host;

@@ -362,7 +362,7 @@ void MessengerService::RefreshSessionHandling()
     using namespace bsoncxx::builder;
 
     std::string user_id, session_id;
-    int64_t fetch_cnt, p_ary_size, past_recent_message_id, recent_message_id;
+    int64_t fetch_cnt, p_ary_size, past_recent_message_id;
     std::map<std::string, int64_t> p_img_cache;
 
     m_client_request.GetData(user_id);
@@ -415,6 +415,15 @@ void MessengerService::RefreshSessionHandling()
         mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find({}, opts));
     }
 
+    // 가장 최신 message_id로 설정
+    if (mongo_cursor->begin() != mongo_cursor->end())
+    {
+        int64_t recent_message_id = (*mongo_cursor->begin())["message_id"].get_int64().value;
+        *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid",
+            soci::use(recent_message_id), soci::use(user_id);
+    }
+
+    // client에서는 역순으로 순회해야 함
     boost::json::array fetched_chat_ary;
     for (auto &&doc : *mongo_cursor)
     {
@@ -424,13 +433,11 @@ void MessengerService::RefreshSessionHandling()
         chat_info["message_id"] = doc["message_id"].get_int64().value;
         chat_info["content_type"] = doc["content_type"].get_int64().value;
 
-        // 가장 최신 message_id로 설정
-        recent_message_id = chat_info["message_id"].as_int64();
-
         switch (chat_info["content_type"].as_int64())
         {
-        case TEXT_CHAT: // 인코딩이 되어서 mongodb에 들어가면... 딱히 따로 인코딩 안해도 될듯
-            chat_info["content"] = EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
+        // 인코딩이 되어서 mongodb에 들어가면... 딱히 따로 인코딩 안해도 될듯, 텍스트이기에 base64까지 안하고 utf8 인코딩만 하면 될듯?
+        case TEXT_CHAT:
+            chat_info["content"] = doc["content"].get_string().value.data(); // EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
             break;
         case IMG_CHAT:
             chat_info["content"] = EncodeBase64(doc["content"].get_string().value.data());
@@ -449,137 +456,75 @@ void MessengerService::RefreshSessionHandling()
     }
 
     boost::json::array participant_ary;
+    std::vector<std::vector<unsigned char>> p_raw_imgs;
     soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
                                   soci::use(session_id, "sid"));
 
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
-        std::string participant_id = it->get<std::string>(0);
-    }
+        boost::json::object p_obj;
+        soci::indicator ip_ind, port_ind;
+        std::string participant_id = it->get<std::string>(0), p_name, p_info, p_img_path, login_ip;
+        int login_port;
+        *m_sql << "select user_nm, user_info, img_path, login_ip, login_port from user_tb where user_id=:uid",
+            soci::into(p_name), soci::into(p_info), soci::into(p_img_path), soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(participant_id);
 
-    // ***
-    // 밑 부분은 다시 리모델링해야 하는 부분...
-    // ***
-    std::string user_id, session_id;
-    int64_t past_recent_message_id, recent_message_id, fetch_cnt;
+        p_obj["user_id"] = participant_id;
+        p_obj["user_name"] = p_name;
+        p_obj["user_info"] = p_info;
+        p_obj["user_img_name"] = "";
 
-    m_client_request.GetData(user_id);
-    m_client_request.GetData(session_id);
-    m_client_request.GetData(fetch_cnt);
-
-    auto &mongo_client = **m_mongo_ent;
-    auto mongo_db = mongo_client["Minigram"];
-    auto mongo_coll = mongo_db[session_id + "_log"];
-
-    *m_sql << "select message_id from participant_tb where participant_id=:pid, sessioin_id=:sid",
-        soci::into(past_recent_message_id), soci::use(user_id), soci::use(session_id);
-
-    std::unique_ptr<mongocxx::cursor> mongo_cursor;
-    boost::json::array chat_ary;
-
-    // 해당 유저 메시지 읽음 처리
-    auto update_result = mongo_coll.update_many(basic::make_document(basic::kvp("message_id",
-                                                                                basic::make_document(basic::kvp("$gt",
-                                                                                                                past_recent_message_id)))),
-                                                basic::make_document(basic::kvp("$push",
-                                                                                basic::make_document(basic::kvp("reader_id",
-                                                                                                                user_id)))));
-
-    // 주어진 메시지 id보다 큰 채팅은 모두 땡겨옴
-    if (fetch_cnt < 0)
-    {
-        auto opts = mongocxx::options::find{};
-        opts.sort(basic::make_document(basic::kvp("message_id", -1)).view());
-
-        mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find(basic::make_document(basic::kvp("message_id",
-                                                                                                          basic::make_document(basic::kvp("$gt",
-                                                                                                                                          past_recent_message_id)))),
-                                                                          opts));
-    }
-    // 최신 fetch_cnt 개의 채팅만 땡겨옴
-    else
-    {
-        auto opts = mongocxx::options::find{};
-        opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(fetch_cnt);
-
-        mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find({}, opts));
-    }
-
-    for (auto &&doc : *mongo_cursor)
-    {
-        boost::json::object chat_info;
-        std::chrono::system_clock::time_point send_date(doc["send_date"].get_date().value);
-        chat_info["send_date"] = std::format("{0:%F %T}", send_date);
-        chat_info["message_id"] = doc["message_id"].get_string().value;
-        chat_info["sender_id"] = doc["sender_id"].get_string().value;
-        chat_info["content_type"] = doc["content_type"].get_int64().value;
-
-        // 가장 최신 message_id로 설정
-        recent_message_id = chat_info["message_id"].as_int64();
-
-        switch (chat_info["content_type"].as_int64())
+        size_t img_update_date = 0;
+        std::filesystem::path path_data;
+        if (!p_img_path.empty())
         {
-        case TEXT_CHAT:
-            chat_info["content"] = EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
-            break;
-        case IMG_CHAT:
-            chat_info["content"] = EncodeBase64(doc["content"].get_string().value.data());
-            break;
-        default:
-            break;
+            path_data = p_img_path;
+            img_update_date = std::stoull(path_data.stem().string());
         }
 
-        boost::json::array readers;
-        auto ary_view = doc["content_type"].get_array().value;
-        for (auto &&sub_doc : ary_view)
-            readers.push_back(sub_doc.get_string().value.data());
-        chat_info["reader_id"] = readers;
+        if ((p_img_cache.find(participant_id) != p_img_cache.end() && img_update_date > p_img_cache[participant_id]) ||
+            (p_img_cache.find(participant_id) == p_img_cache.end() && img_update_date))
+        {
+            std::ifstream inf(p_img_path);
+            if (inf.is_open())
+            {
+                p_obj["user_img_name"] = path_data.filename().string();
+                p_raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
+            }
+        }
 
-        chat_ary.push_back(std::move(chat_info));
-    }
+        participant_ary.push_back(std::move(p_obj));
 
-    soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
-                                  soci::use(session_id, "sid"));
-
-    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
-    {
-        std::string participant_id = it->get<std::string>(0), login_ip;
-        int login_port;
-
-        if (participant_id == user_id)
-            continue;
-
-        soci::indicator ind;
-        *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
-            soci::into(login_ip, ind), soci::into(login_port), soci::use(participant_id);
-
-        if (ind == soci::i_null)
+        if (ip_ind == soci::i_null)
             continue;
 
         // 다른 클라이언트에 reader 업데이트 소식 알림
-        NetworkBuffer buf(MESSAGE_READER_UPDATE_TYPE);
-        buf += session_id;
-        buf += user_id;
-        buf += (past_recent_message_id + 1);
+        std::shared_ptr<NetworkBuffer> buf = std::make_shared<NetworkBuffer>(MESSAGE_READER_UPDATE_TYPE);
+        *buf += session_id;
+        *buf += participant_id;
+        *buf += (past_recent_message_id + 1); // 해당 mid보다 높은 메시지들의 reader cnt 변경
 
-        auto request_id = m_peer->MakeRequestID();
-        m_peer->AsyncConnect(login_ip, login_port, request_id);
-
-        m_peer->AsyncWrite(request_id, std::move(buf), [peer = m_peer, this](std::shared_ptr<Session> session) -> void {
+        m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, buf](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
                 return;
 
-            peer->CloseRequest(session->GetID());
+            peer->AsyncWrite(session->GetID(), std::move(*buf), [peer](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                peer->CloseRequest(session->GetID());
+            });
         });
     }
 
-    *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid", soci::use(recent_message_id), soci::use(user_id);
-
-    boost::json::object fetched_chat_json;
-    fetched_chat_json["fetched_chat_list"] = chat_ary;
+    boost::json::object refresh_json;
+    refresh_json["fetched_chat_list"] = fetched_chat_ary;
+    refresh_json["participant_infos"] = participant_ary;
 
     NetworkBuffer net_buf(SESSION_REFRESH_TYPE);
-    net_buf += boost::json::serialize(fetched_chat_json);
+    net_buf += boost::json::serialize(refresh_json);
+    for (const auto &img : p_raw_imgs)
+        net_buf += img;
 
     m_request = std::move(net_buf);
 

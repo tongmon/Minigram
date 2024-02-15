@@ -83,9 +83,23 @@ void MongoDBTestZone()
     auto col = db["test_collection"];
 
     mongocxx::options::find opts;
+    stream::document sort_order{};
+    sort_order << "message_id" << -1;
+    opts.sort(sort_order.view());
     opts.limit(1);
-    auto mongo_cursor = col.find({}, opts);
-    auto id = (*mongo_cursor.begin())["message_id"].get_int32();
+
+    mongocxx::cursor mongo_cursor = col.find(basic::make_document(basic::kvp("message_id",
+                                                                             basic::make_document(basic::kvp("$gt",
+                                                                                                             -1)))),
+                                             opts);
+
+    for (auto &&doc : mongo_cursor)
+    {
+        int mid = doc["message_id"].get_int32().value;
+        int tt = 0;
+    }
+
+    int tt = 0;
 
     // stream::document sort_doc{};
     // sort_doc << "message_id" << -1;

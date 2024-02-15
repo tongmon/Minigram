@@ -2,6 +2,7 @@
 #define HEADER__FILE__NETWORKDEFINITION
 
 #include <cstdint>
+#include <string>
 
 constexpr char SERVER_IP[] = "127.0.0.1";
 constexpr std::uint64_t SERVER_PORT = 4000;
@@ -68,6 +69,19 @@ enum ChatType : int64_t
     IMG_CHAT,
     VIDEO_CHAT,
     CHAT_TYPE_CNT
+};
+
+struct UserData
+{
+    std::string user_name;
+    std::string user_info;
+    std::string user_img_path;
+};
+
+struct LoginData
+{
+    std::string ip;
+    int port;
 };
 
 #endif /* HEADER__FILE__NETWORKDEFINITION */
