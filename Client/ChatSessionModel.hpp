@@ -2,7 +2,6 @@
 #define HEADER__FILE__CHATSESSIONMODEL
 
 #include "ChatSession.hpp"
-#include "NetworkDefinition.hpp"
 
 #include <QAbstractListModel>
 #include <QMetaType>
@@ -16,8 +15,6 @@ class ChatSessionModel : public QAbstractListModel
     QList<ChatSession *> m_chat_sessions;
 
   public:
-    QHash<QString, UserData> participant_datas;
-
     enum ContactRoles
     {
         ID_ROLE = Qt::UserRole + 1,
@@ -41,8 +38,9 @@ class ChatSessionModel : public QAbstractListModel
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
     bool setData(const QModelIndex &index, const QVariant &value, int role);
+    bool setData(const QString &session_id, const QVariant &value, int role);
 
-    const ChatSession &operator[](const QString &session_id);
+    ChatSession &operator[](const QString &session_id);
 
     Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void remove(const QString &session_id);

@@ -3,6 +3,8 @@
 Chat::Chat(const int64_t &message_id,
            const QString &session_id,
            const QString &sender_id,
+           const QString &sender_name,
+           const QString &sender_img_path,
            const QStringList &reader_ids,
            const QString &date,
            unsigned char content_type,
@@ -12,6 +14,8 @@ Chat::Chat(const int64_t &message_id,
     : message_id{message_id},
       session_id{session_id},
       sender_id{sender_id},
+      sender_name{sender_name},
+      sender_img_path{sender_img_path},
       reader_ids{reader_ids},
       send_date{date},
       content_type{content_type},
@@ -19,12 +23,7 @@ Chat::Chat(const int64_t &message_id,
       is_oppoent{is_oppoent},
       QObject(parent)
 {
-    if (m_chat_type_component_map[0].isEmpty())
-    {
-        m_chat_type_component_map[TEXT_CHAT] = "qrc:/qml/TextChat.qml";
-    }
-
-    qml_source = m_chat_type_component_map[content_type];
+    qml_source = m_chat_type_component_map[static_cast<ChatType>(content_type)];
     emit qmlSourceChanged();
 }
 

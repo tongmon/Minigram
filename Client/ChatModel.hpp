@@ -7,10 +7,14 @@
 #include <QMetaType>
 #include <QSortFilterProxyModel>
 
+#include <unordered_map>
+
 class ChatModel : public QAbstractListModel
 {
     Q_OBJECT
 
+    // 정렬된 상태로 유지되기에 따로 id_index_map이 필요 없음
+    // 선택된 message_id에서 m_chats[0].message_id를 빼면 인덱스가 나옴
     QList<Chat *> m_chats;
 
   public:
@@ -19,6 +23,8 @@ class ChatModel : public QAbstractListModel
         MESSAGE_ID_ROLE = Qt::UserRole + 1,
         SESSION_ID_ROLE,
         SENDER_ID_ROLE,
+        SENDER_NAME_ROLE,
+        SENDER_IMG_PATH_ROLE,
         READER_IDS_ROLE,
         SEND_DATE_ROLE,
         CONTENT_TYPE_ROLE,
@@ -31,13 +37,16 @@ class ChatModel : public QAbstractListModel
     ~ChatModel();
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
-    QVariant data(const int64_t &id, int role = Qt::DisplayRole) const;
+    QVariant data(const int64_t &msg_id, int role = Qt::DisplayRole) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
+    bool setData(const QModelIndex &index, const QVariant &value, int role);
+    bool setData(const int64_t &msg_id, const QVariant &value, int role);
 
     Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void clear();
-    Q_INVOKABLE void refreshReaderIds(const QString &reader_id, int message_id);
+    Q_INVOKABLE void refreshReaderIds(const QString &reader_id, int start_modify_msg_id);
+    Q_INVOKABLE void refreshParticipantInfo(const QString &sender_id, const QString &sender_name, const QString &sender_img_path);
 };
 
 #endif /* HEADER__FILE__CHATMODEL */

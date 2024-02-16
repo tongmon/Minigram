@@ -22,6 +22,8 @@ class ChatSession : public QObject
     Q_PROPERTY(int unreadCnt MEMBER unread_cnt NOTIFY unreadCntChanged)
 
   public:
+    QHash<QString, UserData> participant_datas;
+
     QString session_id;
     QString session_name;
     QString session_img;

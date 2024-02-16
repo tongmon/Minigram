@@ -765,21 +765,21 @@ void MainContext::tryRefreshSession(const QString &session_id)
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, chat_model, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, chat_model, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, chat_model, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -794,14 +794,72 @@ void MainContext::tryRefreshSession(const QString &session_id)
                     auto fetch_list = json_data.as_object()["fetched_chat_list"].as_array();
                     auto participant_list = json_data.as_object()["participant_infos"].as_array();
 
+                    std::string p_path = boost::dll::program_location().parent_path().string() +
+                                         "\\minigram_cache\\" +
+                                         m_user_id.toStdString() +
+                                         "\\sessions" +
+                                         session_id.toStdString() +
+                                         "\\participant_data";
+                    auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
+                    auto refresh_chat_model = qobject_cast<ChatModel *>(chat_model);
+
+                    for (size_t i = 0; i < participant_list.size(); i++)
+                    {
+                        auto participant_info = participant_list[i].as_object();
+                        std::string user_id = participant_info["user_id"].as_string().c_str(),
+                                    user_name = participant_info["user_name"].as_string().c_str(),
+                                    user_info = participant_info["user_info"].as_string().c_str(),
+                                    user_img_name = participant_info["user_img_name"].as_string().c_str();
+                        std::filesystem::path p_id_path = p_path + "\\" + user_id;
+                        bool changed = false;
+
+                        if (p_datas.find(user_id.c_str()) == p_datas.end())
+                        {
+                            p_datas[user_id.c_str()] = UserData{user_name, user_info, ""};
+                            // changed = true;
+                        }
+                        else
+                        {
+                            if (p_datas[user_id.c_str()].user_name != user_name)
+                            {
+                                p_datas[user_id.c_str()].user_name = user_name;
+                                changed = true;
+                            }
+                            p_datas[user_id.c_str()].user_info = user_info;
+                        }
+
+                        if (!std::filesystem::exists(p_id_path))
+                            std::filesystem::create_directories(p_id_path / "profile_img");
+
+                        if (!user_img_name.empty())
+                        {
+                            std::vector<unsigned char> raw_img;
+                            session->GetResponse().GetData(raw_img);
+
+                            auto p_img_path = p_id_path / "profile_img" / user_img_name;
+                            std::ofstream of(p_img_path);
+                            if (of.is_open())
+                                of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
+
+                            p_datas[user_id.c_str()].user_img_path = p_img_path.string();
+                            changed = true;
+                        }
+
+                        if (changed)
+                            qobject_cast<ChatModel *>(chat_model)->refreshParticipantInfo(user_id.c_str(), user_name.c_str(), p_datas[user_id.c_str()].user_img_path.c_str());
+                    }
+
                     for (auto i = static_cast<int64_t>(fetch_list.size()) - 1; i >= 0; i--)
                     {
                         auto chat_info = fetch_list[i].as_object();
+                        std::string sender_id = chat_info["sender_id"].as_string().c_str();
 
                         QVariantMap qvm;
                         qvm.insert("messageId", chat_info["message_id"].as_int64());
                         qvm.insert("sessionId", session_id);
-                        qvm.insert("senderId", chat_info["sender_id"].as_string().c_str());
+                        qvm.insert("senderId", sender_id.c_str());
+                        qvm.insert("senderName", p_datas[sender_id.c_str()].user_name.c_str());
+                        qvm.insert("senderImgPath", p_datas[sender_id.c_str()].user_img_path.c_str());
                         qvm.insert("contentType", chat_info["content_type"].as_int64());
                         qvm.insert("sendDate", MillisecondToCurrentDate(chat_info["send_date"].as_int64()).c_str());
 
@@ -822,61 +880,11 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             readers.push_back(reader_ids[j].as_string().c_str());
                         qvm.insert("readerIds", readers);
 
-                        qvm.insert("isOpponent", m_user_id == chat_info["sender_id"].as_string().c_str() ? false : true);
+                        qvm.insert("isOpponent", m_user_id == sender_id.c_str() ? false : true);
 
-                        QMetaObject::invokeMethod(m_main_page,
+                        QMetaObject::invokeMethod(m_session_list_view,
                                                   "addChat",
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
-                    }
-
-                    std::string p_path = boost::dll::program_location().parent_path().string() +
-                                         "\\minigram_cache\\" +
-                                         m_user_id.toStdString() +
-                                         "\\sessions" +
-                                         session_id.toStdString() +
-                                         "\\participant_data";
-
-                    for (size_t i = 0; i < participant_list.size(); i++)
-                    {
-                        auto participant_info = participant_list[i].as_object();
-                        std::string user_id = participant_info["user_id"].as_string().c_str(),
-                                    user_name = participant_info["user_name"].as_string().c_str(),
-                                    user_info = participant_info["user_info"].as_string().c_str(),
-                                    user_img_name = participant_info["user_img_name"].as_string().c_str();
-                        std::filesystem::path p_id_path = p_path + "\\" + user_id;
-
-                        if (m_chat_session_model->participant_datas.find(user_id.c_str()) == m_chat_session_model->participant_datas.end())
-                            m_chat_session_model->participant_datas[user_id.c_str()] = UserData{user_name, user_info, ""};
-                        else
-                        {
-                            m_chat_session_model->participant_datas[user_id.c_str()].user_name = user_name;
-                            m_chat_session_model->participant_datas[user_id.c_str()].user_info = user_info;
-                        }
-
-                        if (!std::filesystem::exists(p_id_path))
-                            std::filesystem::create_directories(p_id_path / "profile_img");
-
-                        if (!user_img_name.empty())
-                        {
-                            std::vector<unsigned char> raw_img;
-                            session->GetResponse().GetData(raw_img);
-
-                            auto p_img_path = p_id_path / "profile_img" / user_img_name;
-                            std::ofstream of(p_img_path);
-                            if (of.is_open())
-                                of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
-
-                            m_chat_session_model->participant_datas[user_id.c_str()].user_img_path = p_img_path.string();
-
-                            // participant_datas 변경 시 어떻게 처리할 지 고려해야 됨
-                            // 1. user data에 변경점이 있는지 bool 값을 하나 넣어두고 해당 bool 값이 true인 채팅은 바뀐 것
-                            // 따라서 해당 채팅 리스트를 읽으면서 각 채팅의 id를 검사하고 바뀐 id들은 이름, 이미지 경로 변수를 바꾸고 해당 변수에 해당하는 emit을 진행
-                            // 물론 이름, 이미지 경로 프로퍼티가 추가되어야 함, chatsessionmodel의 setdata 함수 참고
-                            // 2. listview 아이템에 내부 함수를 만들어서 어찌 C++로 노출시켜서 bool 값 보고 호출하기..?
-
-                            // 추가적으로 고려할 것
-                            // participant_datas 위치를 chatsession으로 옮기기...
-                        }
                     }
 
                     central_server.CloseRequest(session->GetID());

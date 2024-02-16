@@ -120,7 +120,12 @@ bool ChatSessionModel::setData(const QModelIndex &index, const QVariant &value, 
     return true;
 }
 
-const ChatSession &ChatSessionModel::operator[](const QString &session_id)
+bool ChatSessionModel::setData(const QString &session_id, const QVariant &value, int role)
+{
+    return m_id_index_map.find(session_id) == m_id_index_map.end() ? false : setData(index(m_id_index_map[session_id]), value, role);
+}
+
+ChatSession &ChatSessionModel::operator[](const QString &session_id)
 {
     return *m_chat_sessions[m_id_index_map[session_id]];
 }
@@ -169,11 +174,10 @@ void ChatSessionModel::clear()
 
 Q_INVOKABLE void ChatSessionModel::refreshRecentChat(const QString &session_id, const QVariantMap &qvm)
 {
-    ChatSession *chat_session = m_chat_sessions[m_id_index_map[session_id]];
-    chat_session->unread_cnt = qvm["unreadCnt"].toInt();
-    chat_session->recent_sender_id = qvm["recentSenderId"].toString();
-    chat_session->recent_send_date = qvm["recentSendDate"].toUInt();
-    chat_session->recent_content_type = qvm["recentContentType"].toInt();
-    chat_session->recent_content = qvm["recentContent"].toString();
-    chat_session->recent_message_id = qvm["recentMessageId"].toInt();
+    setData(session_id, qvm["unreadCnt"], UNREAD_CNT_ROLE);
+    setData(session_id, qvm["recentSenderId"], RECENT_SENDER_ID_ROLE);
+    setData(session_id, qvm["recentSendDate"], RECENT_SEND_DATE_ROLE);
+    setData(session_id, qvm["recentContentType"], RECENT_CONTENT_TYPE_ROLE);
+    setData(session_id, qvm["recentContent"], RECENT_CONTENT_ROLE);
+    setData(session_id, qvm["recentMessageId"], RECENT_MESSAGEID_ROLE);
 }
