@@ -439,9 +439,11 @@ void MessengerService::RefreshSessionHandling()
         case TEXT_CHAT:
             chat_info["content"] = doc["content"].get_string().value.data(); // EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
             break;
-        case IMG_CHAT:
-            chat_info["content"] = EncodeBase64(doc["content"].get_string().value.data());
+        case IMG_CHAT: {
+            std::string img_file_path = doc["content"].get_string().value.data();
+            // std::ifstream if(img_file_path) 이런식으로 파일 경로 읽어서 진행하는 로직을 짜야됨
             break;
+        }
         default:
             break;
         }

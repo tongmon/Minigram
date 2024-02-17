@@ -11,11 +11,16 @@ Rectangle {
     property string sessionId: ""
     property string sessionName: typeof(mainContext) !== "undefined" ? mainContext.getSessionNameById(sessionId) : ""
 
-    // function addChat(chatInfo)
-    // {
-    //     // chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
-    //     sessionView.model.append(chatInfo)
-    // }
+    function refreshParticipantInfo(participantInfo)
+    {
+        sessionView.model.refreshParticipantInfo(participantInfo)
+    }
+
+    function addChat(chatInfo)
+    {
+        // chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
+        sessionView.model.append(chatInfo)
+    }
 
     Rectangle {
         id: sessionHeaderRect

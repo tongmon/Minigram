@@ -18,7 +18,7 @@ Item {
         }
 
         Image {
-            source: "file:///" + mainContext.getUserImgById(senderId)  // "data:image/png;base64," + senderImg
+            source: "file:///" + senderImgPath // mainContext.getUserImgById(senderId)  // "data:image/png;base64," + senderImg
             visible: isOpponent
             Layout.alignment: Qt.AlignTop
             Layout.preferredWidth: 50
@@ -31,7 +31,7 @@ Item {
 
             Text {
                 id: chatSenderText
-                text: mainContext.getUserNameById(senderId) // senderName
+                text: senderName // mainContext.getUserNameById(senderId)
                 font.pixelSize: 15
                 visible: isOpponent
                 Layout.leftMargin: chatBubbleStemSize.width

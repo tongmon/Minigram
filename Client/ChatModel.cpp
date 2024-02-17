@@ -181,17 +181,23 @@ void ChatModel::refreshReaderIds(const QString &reader_id, int start_modify_msg_
     }
 }
 
-void ChatModel::refreshParticipantInfo(const QString &sender_id, const QString &sender_name, const QString &sender_img_path)
+void ChatModel::refreshParticipantInfo(const QVariantMap &qvm)
 {
     if (m_chats.empty())
         return;
+
+    QString sender_id = qvm["participantId"].toString(),
+            sender_name = qvm.find("changedName") != qvm.end() ? qvm["changedName"].toString() : "",
+            sender_img_path = qvm.find("changedImgPath") != qvm.end() ? qvm["changedImgPath"].toString() : "";
 
     for (size_t i = 0; i < m_chats.size(); i++)
     {
         if (sender_id != m_chats[i]->sender_id)
             continue;
 
-        setData(index(i), sender_name, SENDER_NAME_ROLE);
-        setData(index(i), sender_img_path, SENDER_IMG_PATH_ROLE);
+        if (!sender_id.isEmpty())
+            setData(index(i), sender_name, SENDER_NAME_ROLE);
+        if (!sender_img_path.isEmpty())
+            setData(index(i), sender_img_path, SENDER_IMG_PATH_ROLE);
     }
 }

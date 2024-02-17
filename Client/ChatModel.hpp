@@ -46,7 +46,7 @@ class ChatModel : public QAbstractListModel
     Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void clear();
     Q_INVOKABLE void refreshReaderIds(const QString &reader_id, int start_modify_msg_id);
-    Q_INVOKABLE void refreshParticipantInfo(const QString &sender_id, const QString &sender_name, const QString &sender_img_path);
+    Q_INVOKABLE void refreshParticipantInfo(const QVariantMap &qvm);
 };
 
 #endif /* HEADER__FILE__CHATMODEL */

@@ -51,6 +51,11 @@ Rectangle {
         sessionViewMap[sessionId].children[2].model.clear()
     }
 
+    function refreshReaderIds(sessionId, readerId, messageId)
+    {
+        sessionViewMap[sessionId].children[2].model.refreshReaderIds(readerId, messageId)
+    }
+
     Popup {
         id: sessionNameDecisionPopup
         anchors.centerIn: Overlay.overlay

@@ -134,11 +134,11 @@ void MainContext::RefreshReaderIds(Service *service)
     service->server_response.GetData(reader_id);
     service->server_response.GetData(message_id);
 
-    QMetaObject::invokeMethod(m_main_page,
+    QMetaObject::invokeMethod(m_session_list_view,
                               "refreshReaderIds",
                               Q_ARG(QString, session_id),
                               Q_ARG(QString, reader_id),
-                              Q_ARG(int, static_cast<int>(message_id)));
+                              Q_ARG(QVariant, message_id));
 
     delete service;
 }
@@ -811,7 +811,8 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                     user_info = participant_info["user_info"].as_string().c_str(),
                                     user_img_name = participant_info["user_img_name"].as_string().c_str();
                         std::filesystem::path p_id_path = p_path + "\\" + user_id;
-                        bool changed = false;
+                        QVariantMap qvm;
+                        qvm["participantId"] = user_id.c_str();
 
                         if (p_datas.find(user_id.c_str()) == p_datas.end())
                         {
@@ -823,7 +824,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             if (p_datas[user_id.c_str()].user_name != user_name)
                             {
                                 p_datas[user_id.c_str()].user_name = user_name;
-                                changed = true;
+                                qvm["changedName"] = user_name.c_str();
                             }
                             p_datas[user_id.c_str()].user_info = user_info;
                         }
@@ -842,11 +843,13 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                 of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
 
                             p_datas[user_id.c_str()].user_img_path = p_img_path.string();
-                            changed = true;
+                            qvm["changedImgPath"] = p_img_path.string().c_str();
                         }
 
-                        if (changed)
-                            qobject_cast<ChatModel *>(chat_model)->refreshParticipantInfo(user_id.c_str(), user_name.c_str(), p_datas[user_id.c_str()].user_img_path.c_str());
+                        if (qvm.find("changedImgPath") != qvm.end() || qvm.find("changedName") != qvm.end())
+                            QMetaObject::invokeMethod(chat_model,
+                                                      "refreshParticipantInfo",
+                                                      Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
                     for (auto i = static_cast<int64_t>(fetch_list.size()) - 1; i >= 0; i--)
@@ -856,7 +859,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
 
                         QVariantMap qvm;
                         qvm.insert("messageId", chat_info["message_id"].as_int64());
-                        qvm.insert("sessionId", session_id);
+                        // qvm.insert("sessionId", session_id);
                         qvm.insert("senderId", sender_id.c_str());
                         qvm.insert("senderName", p_datas[sender_id.c_str()].user_name.c_str());
                         qvm.insert("senderImgPath", p_datas[sender_id.c_str()].user_img_path.c_str());
@@ -882,7 +885,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
 
                         qvm.insert("isOpponent", m_user_id == sender_id.c_str() ? false : true);
 
-                        QMetaObject::invokeMethod(m_session_list_view,
+                        QMetaObject::invokeMethod(chat_model,
                                                   "addChat",
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
