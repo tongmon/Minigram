@@ -687,6 +687,20 @@ void MainContext::tryGetSessionList()
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
 {
+    auto qvm = m_session_list_view->property("sessionViewMap").toMap();
+    auto object = qvariant_cast<QObject *>(qvm[session_id]);
+
+    // chat object에서 listview model 뜯어오는 법 알아야됨
+    QObject *chat_model = nullptr;
+    QMetaObject::invokeMethod(object,
+                              "getChatModel",
+                              Q_RETURN_ARG(QObject *, chat_model)); // 호출을 안함.. 머임?
+
+    // auto chat_obj_children = object->property("children").toList();
+    // auto chat_listview = qvariant_cast<QObject *>(chat_obj_children[2]);
+
+    return;
+
     static std::atomic_bool is_ready = true;
 
     bool old_var = true;
@@ -710,7 +724,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
         QMetaObject::invokeMethod(m_session_list_view,
                                   "getChatModel",
                                   Q_RETURN_ARG(QObject *, chat_model),
-                                  Q_ARG(QString, session_id));
+                                  Q_ARG(QVariant, session_id));
 
         int unread_cnt = m_chat_session_model->data(session_id, ChatSessionModel::UNREAD_CNT_ROLE).toInt(),
             recent_message_id = m_chat_session_model->data(session_id, ChatSessionModel::RECENT_MESSAGEID_ROLE).toInt(),

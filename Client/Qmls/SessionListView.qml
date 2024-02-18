@@ -43,7 +43,8 @@ Rectangle {
 
     function getChatModel(sessionId)
     {
-        return sessionViewMap[sessionId].children[2].model
+        return sessionViewMap[sessionId]
+        // return sessionViewMap[sessionId].children[2].model
     }
 
     function clearChatModel(sessionId)
@@ -747,8 +748,12 @@ Rectangle {
                 }
 
                 onClicked: {
+                    if (sessionListView.currentIndex === sessionIndex)
+                        return
+                    
                     sessionListView.currentIndex = sessionIndex
                     currentSessionId = sessionInfo.objectName
+                    mainContext.tryRefreshSession(currentSessionId)
 
                     if(mainView.empty)
                         mainView.push(sessionViewMap[currentSessionId], StackView.Immediate)

@@ -51,8 +51,8 @@ Rectangle {
                 source: "qrc:/icon/UserID.png"
 
                 onClicked: {
-                    if (sideBarView.currentView.length === 0 || sideBarView.currentView !== "session")
-                        sideBarView.currentView = "session"
+                    if (sideBarView.currentView.length === 0 || sideBarView.currentView !== "session")                    
+                        sideBarView.currentView = "session"                        
                     else
                         sideBarView.currentView = ""
                 }
@@ -123,7 +123,7 @@ Rectangle {
             property var sideBarViewMap: ({})
 
             onCurrentViewChanged: {
-                if(currentView.length === 0)
+                if (currentView.length === 0)
                     sideBarView.width = 0
                 else
                 {

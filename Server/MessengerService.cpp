@@ -677,7 +677,7 @@ void MessengerService::GetSessionListHandling()
         if ((session_cache.find(session_id) != session_cache.end() && img_update_date > session_cache[session_id]) ||
             (session_cache.find(session_id) == session_cache.end() && img_update_date))
         {
-            std::ifstream inf(img_path);
+            std::ifstream inf(img_path, std::ios::binary);
             if (inf.is_open())
             {
                 session_data["session_img_name"] = path_data.filename().string();
@@ -1228,7 +1228,7 @@ void MessengerService::AddSessionHandling()
         if (p_data.user_img_path.empty())
             continue;
 
-        std::ifstream inf(p_data.user_img_path);
+        std::ifstream inf(p_data.user_img_path, std::ios::binary);
         if (inf.is_open())
             *net_buf += std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {});
     }

@@ -16,6 +16,12 @@ Rectangle {
         sessionView.model.refreshParticipantInfo(participantInfo)
     }
 
+    function getChatModel()
+    {
+        console.log("getChatModel called!")
+        return sessionView.model
+    }
+
     function addChat(chatInfo)
     {
         // chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
