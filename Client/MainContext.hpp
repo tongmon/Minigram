@@ -21,7 +21,7 @@ class MainContext : public QObject
 
     QString m_user_id;
     QString m_user_name;
-    QString m_user_img;
+    QString m_user_img_path;
     QString m_user_pw;
 
     ContactModel *m_contact_model;

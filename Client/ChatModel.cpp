@@ -37,6 +37,10 @@ QVariant ChatModel::data(const QModelIndex &index, int role) const
         return chat->session_id;
     case SENDER_ID_ROLE:
         return chat->sender_id;
+    case SENDER_NAME_ROLE:
+        return chat->sender_name;
+    case SENDER_IMG_PATH_ROLE:
+        return chat->sender_img_path;
     case READER_IDS_ROLE:
         return chat->reader_ids;
     case SEND_DATE_ROLE:
@@ -59,6 +63,9 @@ QHash<int, QByteArray> ChatModel::roleNames() const
     QHash<int, QByteArray> roles;
     roles[MESSAGE_ID_ROLE] = "messageId";
     roles[SESSION_ID_ROLE] = "sessionId";
+    roles[SENDER_ID_ROLE] = "senderId";
+    roles[SENDER_NAME_ROLE] = "senderName";
+    roles[SENDER_IMG_PATH_ROLE] = "senderImgPath";
     roles[SENDER_ID_ROLE] = "senderId";
     roles[READER_IDS_ROLE] = "readerIds";
     roles[SEND_DATE_ROLE] = "sendDate";
@@ -85,6 +92,12 @@ bool ChatModel::setData(const QModelIndex &index, const QVariant &value, int rol
         break;
     case SENDER_ID_ROLE:
         chat->sender_id = value.toString();
+        break;
+    case SENDER_NAME_ROLE:
+        chat->sender_name = value.toString();
+        break;
+    case SENDER_IMG_PATH_ROLE:
+        chat->sender_img_path = value.toString();
         break;
     case READER_IDS_ROLE:
         chat->reader_ids = value.toStringList();

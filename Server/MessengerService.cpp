@@ -41,12 +41,14 @@ MessengerService::~MessengerService()
 // Client에 전달하는 버퍼 형식: 로그인 성공 여부
 void MessengerService::LoginHandling()
 {
-    std::string ip, id, pw;
+    std::string ip, id, pw, img_path, user_info, user_name;
     int port;
+    uint64_t user_img_date;
     m_client_request.GetData(ip);
     m_client_request.GetData(port);
     m_client_request.GetData(id);
     m_client_request.GetData(pw);
+    m_client_request.GetData(user_img_date);
 
     std::cout << "ID: " << id << "  Password: " << pw << "\n";
 
@@ -60,7 +62,8 @@ void MessengerService::LoginHandling()
     {
         soci::indicator ind;
         std::string pw_from_db;
-        *m_sql << "select password from user_tb where user_id=:id", soci::into(pw_from_db, ind), soci::use(id);
+        *m_sql << "select password, user_nm, user_info, img_path from user_tb where user_id=:id",
+            soci::into(pw_from_db, ind), soci::into(user_name), soci::into(user_info), soci::into(img_path), soci::use(id);
 
         if (ind == soci::i_ok)
             login_result = (pw_from_db == pw ? LOGIN_SUCCESS : LOGIN_FAIL);
@@ -72,10 +75,26 @@ void MessengerService::LoginHandling()
 
     net_buf += login_result;
 
-    // 로그인한 사람의 ip, port 정보 갱신
+    // 로그인한 사람의 정보 갱신
     if (login_result == LOGIN_SUCCESS)
+    {
         *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
             soci::use(ip), soci::use(port), soci::use(id);
+
+        std::filesystem::path path_info = img_path;
+        std::vector<unsigned char> raw_img;
+        if (!img_path.empty() && user_img_date < std::stoull(path_info.stem().string()))
+        {
+            std::ifstream inf(path_info, std::ios::binary);
+            if (inf.is_open())
+                raw_img.assign(std::istreambuf_iterator<char>(inf), {});
+        }
+
+        net_buf += user_name;
+        net_buf += user_info;
+        net_buf += raw_img;
+        net_buf += img_path.empty() ? img_path : path_info.filename().string();
+    }
 
     m_request = std::move(net_buf);
 
@@ -383,7 +402,7 @@ void MessengerService::RefreshSessionHandling()
     auto mongo_db = mongo_client["Minigram"];
     auto mongo_coll = mongo_db[session_id + "_log"];
 
-    *m_sql << "select message_id from participant_tb where participant_id=:pid, sessioin_id=:sid",
+    *m_sql << "select message_id from participant_tb where participant_id=:pid and session_id=:sid",
         soci::into(past_recent_message_id), soci::use(user_id), soci::use(session_id);
 
     // 해당 유저 메시지 읽음 처리
@@ -414,6 +433,8 @@ void MessengerService::RefreshSessionHandling()
         opts.limit(fetch_cnt);
         mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find({}, opts));
     }
+
+    MongoDBClient::Free();
 
     // 가장 최신 message_id로 설정
     if (mongo_cursor->begin() != mongo_cursor->end())
@@ -487,7 +508,7 @@ void MessengerService::RefreshSessionHandling()
         if ((p_img_cache.find(participant_id) != p_img_cache.end() && img_update_date > p_img_cache[participant_id]) ||
             (p_img_cache.find(participant_id) == p_img_cache.end() && img_update_date))
         {
-            std::ifstream inf(p_img_path);
+            std::ifstream inf(p_img_path, std::ios::binary);
             if (inf.is_open())
             {
                 p_obj["user_img_name"] = path_data.filename().string();
@@ -497,7 +518,7 @@ void MessengerService::RefreshSessionHandling()
 
         participant_ary.push_back(std::move(p_obj));
 
-        if (ip_ind == soci::i_null)
+        if (ip_ind == soci::i_null || participant_id == user_id)
             continue;
 
         // 다른 클라이언트에 reader 업데이트 소식 알림
@@ -1492,6 +1513,9 @@ void MessengerService::StartHandling()
                                                                 break;
                                                             case FETCH_MORE_MESSAGE_TYPE:
                                                                 FetchMoreMessageHandling();
+                                                                break;
+                                                            case SESSION_REFRESH_TYPE:
+                                                                RefreshSessionHandling();
                                                                 break;
                                                             case GET_CONTACT_REQUEST_LIST_TYPE:
                                                                 GetContactRequestListHandling();

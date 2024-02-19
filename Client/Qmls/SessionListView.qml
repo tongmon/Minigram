@@ -35,27 +35,27 @@ Rectangle {
         sessionNameDecisionPopup.close()
     }
 
-    function addChat(chatInfo)
-    {
-        sessionViewMap[chatInfo["sessionId"]].children[2].model.append(chatInfo)
-        // sessionViewMap[chatInfo["sessionId"]].sessionViewModel.append(chatInfo)
-    }
-
-    function getChatModel(sessionId)
-    {
-        return sessionViewMap[sessionId]
-        // return sessionViewMap[sessionId].children[2].model
-    }
-
-    function clearChatModel(sessionId)
-    {
-        sessionViewMap[sessionId].children[2].model.clear()
-    }
-
-    function refreshReaderIds(sessionId, readerId, messageId)
-    {
-        sessionViewMap[sessionId].children[2].model.refreshReaderIds(readerId, messageId)
-    }
+    //function addChat(chatInfo)
+    //{
+    //    sessionViewMap[chatInfo["sessionId"]].children[2].model.append(chatInfo)
+    //    // sessionViewMap[chatInfo["sessionId"]].sessionViewModel.append(chatInfo)
+    //}
+//
+    //function getChatModel(sessionId)
+    //{
+    //    return sessionViewMap[sessionId]
+    //    // return sessionViewMap[sessionId].children[2].model
+    //}
+//
+    //function clearChatModel(sessionId)
+    //{
+    //    sessionViewMap[sessionId].children[2].model.clear()
+    //}
+//
+    //function refreshReaderIds(sessionId, readerId, messageId)
+    //{
+    //    sessionViewMap[sessionId].children[2].model.refreshReaderIds(readerId, messageId)
+    //}
 
     Popup {
         id: sessionNameDecisionPopup

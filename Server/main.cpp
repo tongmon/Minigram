@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
         MongoDBClient::Free();
 
         // PostgreDB 연결 정보 초기화
-        PostgreDBPool::Get({"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213", 4});
+        PostgreDBPool::Get({"localhost", "5432", "Minigram", "tongstar", "@Lsy12131213", 2});
 
         // TCP 서버 생성
         TCPServer<MessengerService> server(std::make_shared<TCPClient>(2), SERVER_PORT, 2);

@@ -312,7 +312,18 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
         net_buf += m_user_id;
         net_buf += m_user_pw;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        uint64_t user_img_date = 0;
+        std::string profile_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\profile_img";
+        if (std::filesystem::exists(profile_path))
+        {
+            std::filesystem::directory_iterator it{profile_path};
+            if (it != std::filesystem::end(it))
+                user_img_date = std::stoull(it->path().stem().string());
+        }
+
+        net_buf += user_img_date;
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, profile_path, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_login_page,
@@ -322,7 +333,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, profile_path, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     QMetaObject::invokeMethod(m_login_page,
@@ -332,7 +343,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, profile_path, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         QMetaObject::invokeMethod(m_login_page,
@@ -344,6 +355,30 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
                     int64_t result;
                     session->GetResponse().GetData(result);
+
+                    if (result == LOGIN_SUCCESS)
+                    {
+                        std::string img_name, user_info;
+                        std::vector<unsigned char> raw_img;
+                        session->GetResponse().GetData(m_user_name);
+                        session->GetResponse().GetData(user_info);
+                        session->GetResponse().GetData(raw_img);
+                        session->GetResponse().GetData(img_name);
+
+                        if (!std::filesystem::exists(profile_path))
+                            std::filesystem::create_directories(profile_path);
+
+                        if (!raw_img.empty())
+                        {
+                            std::ofstream of(profile_path + "\\" + img_name, std::ios::binary);
+                            if (of.is_open())
+                                of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
+                        }
+
+                        std::filesystem::directory_iterator it{profile_path};
+                        if (it != std::filesystem::end(it))
+                            m_user_img_path = it->path().string().c_str();
+                    }
 
                     QMetaObject::invokeMethod(m_login_page,
                                               "processLogin",
@@ -687,19 +722,35 @@ void MainContext::tryGetSessionList()
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
 {
-    auto qvm = m_session_list_view->property("sessionViewMap").toMap();
-    auto object = qvariant_cast<QObject *>(qvm[session_id]);
-
-    // chat object에서 listview model 뜯어오는 법 알아야됨
-    QObject *chat_model = nullptr;
-    QMetaObject::invokeMethod(object,
-                              "getChatModel",
-                              Q_RETURN_ARG(QObject *, chat_model)); // 호출을 안함.. 머임?
-
-    // auto chat_obj_children = object->property("children").toList();
-    // auto chat_listview = qvariant_cast<QObject *>(chat_obj_children[2]);
-
-    return;
+    // auto qvm = m_session_list_view->property("sessionViewMap").toMap();
+    // auto object = qvariant_cast<QObject *>(qvm[session_id]);
+    // std::string obj_color = object->property("color").toString().toStdString();
+    //
+    // auto session_view = object->findChild<QObject *>("sessionView");
+    // auto session_model = qobject_cast<ChatModel *>(qvariant_cast<QObject *>(session_view->property("model")));
+    //
+    //// chat object에서 listview model 뜯어오는 법 알아야됨
+    // QVariantMap chat_info;
+    // chat_info.insert("messageId", 1);
+    // chat_info.insert("sessionId", session_id);
+    // chat_info.insert("senderId", m_user_id);
+    // chat_info.insert("senderName", m_user_name);
+    // chat_info.insert("senderImgPath", m_user_img_path);
+    // chat_info.insert("contentType", TEXT_CHAT);
+    // chat_info.insert("sendDate", MillisecondToCurrentDate(1708298126167).c_str());
+    // chat_info.insert("content", "Hello World");
+    // chat_info.insert("isOpponent", false);
+    //
+    // QStringList list = {"tongstar", "yellowjam"};
+    // chat_info.insert("readerIds", list);
+    //
+    // QMetaObject::invokeMethod(object,
+    //                          "addChat",
+    //                          Q_ARG(QVariant, QVariant::fromValue(chat_info)));
+    //
+    // int num = session_model->rowCount();
+    //
+    // return;
 
     static std::atomic_bool is_ready = true;
 
@@ -707,9 +758,14 @@ void MainContext::tryRefreshSession(const QString &session_id)
     if (!is_ready.compare_exchange_strong(old_var, false))
         return;
 
+    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
+    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
+    auto chat_list_view = session_view->findChild<QObject *>("sessionView");
+    auto chat_model = qobject_cast<ChatModel *>(qvariant_cast<QObject *>(chat_list_view->property("model")));
+
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, session_view, chat_model, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -720,15 +776,9 @@ void MainContext::tryRefreshSession(const QString &session_id)
         net_buf += m_user_id;
         net_buf += session_id;
 
-        QObject *chat_model = nullptr;
-        QMetaObject::invokeMethod(m_session_list_view,
-                                  "getChatModel",
-                                  Q_RETURN_ARG(QObject *, chat_model),
-                                  Q_ARG(QVariant, session_id));
-
         int unread_cnt = m_chat_session_model->data(session_id, ChatSessionModel::UNREAD_CNT_ROLE).toInt(),
             recent_message_id = m_chat_session_model->data(session_id, ChatSessionModel::RECENT_MESSAGEID_ROLE).toInt(),
-            chat_cnt = qobject_cast<ChatModel *>(chat_model)->rowCount();
+            chat_cnt = chat_model->rowCount();
 
         // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 최대 100개 채팅만 가져옴
         // 메신저 사용자가 해당 세션을 처음 입장하는 경우 최대 100개 채팅만 가져옴
@@ -741,14 +791,14 @@ void MainContext::tryRefreshSession(const QString &session_id)
         else
         {
             // qobject_cast<ChatModel *>(chat_model)->clear(); // 얘 쓰레드 다른 곳에서 수행하기에 안될 수도 있음...
-            QMetaObject::invokeMethod(m_session_list_view, "clearChatModel", Q_ARG(QString, session_id));
+            QMetaObject::invokeMethod(session_view, "clearChat");
             net_buf += static_cast<int64_t>(100);
         }
 
         std::string p_path = boost::dll::program_location().parent_path().string() +
                              "\\minigram_cache\\" +
                              m_user_id.toStdString() +
-                             "\\sessions" +
+                             "\\sessions\\" +
                              session_id.toStdString() +
                              "\\participant_data";
         std::vector<std::pair<std::string, int64_t>> p_data;
@@ -779,21 +829,21 @@ void MainContext::tryRefreshSession(const QString &session_id)
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, chat_model, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, chat_model, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, chat_model, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -811,11 +861,10 @@ void MainContext::tryRefreshSession(const QString &session_id)
                     std::string p_path = boost::dll::program_location().parent_path().string() +
                                          "\\minigram_cache\\" +
                                          m_user_id.toStdString() +
-                                         "\\sessions" +
+                                         "\\sessions\\" +
                                          session_id.toStdString() +
                                          "\\participant_data";
                     auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
-                    auto refresh_chat_model = qobject_cast<ChatModel *>(chat_model);
 
                     for (size_t i = 0; i < participant_list.size(); i++)
                     {
@@ -852,7 +901,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             session->GetResponse().GetData(raw_img);
 
                             auto p_img_path = p_id_path / "profile_img" / user_img_name;
-                            std::ofstream of(p_img_path);
+                            std::ofstream of(p_img_path, std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
 
@@ -861,7 +910,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         }
 
                         if (qvm.find("changedImgPath") != qvm.end() || qvm.find("changedName") != qvm.end())
-                            QMetaObject::invokeMethod(chat_model,
+                            QMetaObject::invokeMethod(session_view,
                                                       "refreshParticipantInfo",
                                                       Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
@@ -873,7 +922,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
 
                         QVariantMap qvm;
                         qvm.insert("messageId", chat_info["message_id"].as_int64());
-                        // qvm.insert("sessionId", session_id);
+                        qvm.insert("sessionId", session_id);
                         qvm.insert("senderId", sender_id.c_str());
                         qvm.insert("senderName", p_datas[sender_id.c_str()].user_name.c_str());
                         qvm.insert("senderImgPath", p_datas[sender_id.c_str()].user_img_path.c_str());
@@ -899,7 +948,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
 
                         qvm.insert("isOpponent", m_user_id == sender_id.c_str() ? false : true);
 
-                        QMetaObject::invokeMethod(chat_model,
+                        QMetaObject::invokeMethod(session_view,
                                                   "addChat",
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
@@ -1892,14 +1941,15 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                                 of.write(reinterpret_cast<char *>(&user_img[0]), user_img.size());
                         }
 
-                        std::ofstream of(p_info_path + "\\profile_info.txt");
-                        if (of.is_open())
-                        {
-                            std::string user_info = p_data["user_name"].as_string().c_str();
-                            user_info += "|";
-                            user_info += p_data["user_info"].as_string().c_str();
-                            of.write(user_info.c_str(), user_info.size());
-                        }
+                        // 굳이 필요 없을듯
+                        // std::ofstream of(p_info_path + "\\profile_info.txt");
+                        // if (of.is_open())
+                        // {
+                        //     std::string user_info = p_data["user_name"].as_string().c_str();
+                        //     user_info += "|";
+                        //     user_info += p_data["user_info"].as_string().c_str();
+                        //     of.write(user_info.c_str(), user_info.size());
+                        // }
                     }
 
                     QMetaObject::invokeMethod(m_session_list_view,

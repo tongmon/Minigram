@@ -16,16 +16,19 @@ Rectangle {
         sessionView.model.refreshParticipantInfo(participantInfo)
     }
 
-    function getChatModel()
+    function refreshReaderIds(readerId, messageId)
     {
-        console.log("getChatModel called!")
-        return sessionView.model
+        sessionView.model.refreshReaderIds(readerId, messageId)
     }
 
     function addChat(chatInfo)
     {
-        // chatListViewMap[chatInfo["sessionId"]].children[0].model.append(chatInfo)
         sessionView.model.append(chatInfo)
+    }
+
+    function clearChat()
+    {
+        sessionView.model.clear()
     }
 
     Rectangle {
@@ -226,6 +229,7 @@ Rectangle {
 
     ListView {
         id: sessionView
+        objectName: "sessionView"
         anchors {
             left: parent.left
             right: parent.right
