@@ -35,6 +35,11 @@ Rectangle {
         sessionNameDecisionPopup.close()
     }
 
+    function refreshRecentChat(refreshInfo)
+    {
+        chatSessionModel.refreshRecentChat(refreshInfo)
+    }
+
     //function addChat(chatInfo)
     //{
     //    sessionViewMap[chatInfo["sessionId"]].children[2].model.append(chatInfo)

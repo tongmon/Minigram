@@ -82,40 +82,34 @@ void MongoDBTestZone()
     auto db = client["Minigram"];
     auto col = db["test_collection"];
 
-    mongocxx::options::find opts;
-    stream::document sort_order{};
-    sort_order << "message_id" << -1;
-    opts.sort(sort_order.view());
-    opts.limit(1);
+    auto ret = col.find_one_and_update(basic::make_document(basic::kvp("message_id",
+                                                                       basic::make_document(basic::kvp("$gt", -1)))),
+                                       basic::make_document(basic::kvp("$inc",
+                                                                       basic::make_document(basic::kvp("message_id", 1)))));
 
-    mongocxx::cursor mongo_cursor = col.find(basic::make_document(basic::kvp("message_id",
-                                                                             basic::make_document(basic::kvp("$gt",
-                                                                                                             -1)))),
-                                             opts);
-
-    for (auto &&doc : mongo_cursor)
+    if (ret.has_value())
     {
-        int mid = doc["message_id"].get_int32().value;
+        auto m_id = ret.value()["message_id"].get_int32();
         int tt = 0;
     }
 
-    int tt = 0;
-
-    // stream::document sort_doc{};
-    // sort_doc << "message_id" << -1;
-    // mongocxx::options::find opts;
-    // opts.sort(sort_doc.view()).limit(1);
     //
-    // auto mongo_cursor = col.find({}, opts);
-    // auto start_t = std::chrono::high_resolution_clock::now();
-    // if (mongo_cursor.begin() != mongo_cursor.end())
+    // mongocxx::options::find opts;
+    // stream::document sort_order{};
+    // sort_order << "message_id" << -1;
+    // opts.sort(sort_order.view());
+    // opts.limit(1);
+    //
+    // mongocxx::cursor mongo_cursor = col.find(basic::make_document(basic::kvp("message_id",
+    //                                                                         basic::make_document(basic::kvp("$gt",
+    //                                                                                                         -1)))),
+    //                                         opts);
+    //
+    // for (auto &&doc : mongo_cursor)
     //{
-    //    auto doc = *mongo_cursor.begin();
-    //    auto t = doc["message_id"];
+    //    int mid = doc["message_id"].get_int32().value;
+    //    int tt = 0;
     //}
-    // auto end_t = std::chrono::high_resolution_clock::now();
-    // auto ret = std::chrono::duration_cast<std::chrono::seconds>(end_t - start_t);
-    // std::cout << ret.count() << "s\n";
 
     MongoDBClient::Free();
 

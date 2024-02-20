@@ -45,40 +45,57 @@ void MainContext::StartScreen()
 // Server에서 받는 버퍼 형식:
 void MainContext::RecieveChat(Service *service)
 {
-    QString sender_id, session_id, send_date, content;
-    int64_t content_type;
+    QString sender_id, session_id, content;
+    int64_t send_date, message_id;
+    unsigned char content_type;
 
-    std::shared_ptr<Chat> chat_info(new Chat());
+    service->server_response.GetData(message_id);
+    service->server_response.GetData(session_id);
+    service->server_response.GetData(sender_id);
+    service->server_response.GetData(send_date);
+    service->server_response.GetData(content_type);
+    service->server_response.GetData(content);
 
-    service->server_response.GetData(chat_info->message_id);
-    service->server_response.GetData(chat_info->session_id);
-    service->server_response.GetData(chat_info->sender_id);
-    service->server_response.GetData(chat_info->send_date);
-    service->server_response.GetData(chat_info->content_type);
-    service->server_response.GetData(chat_info->content);
-
+    // async_write하는 동안 유지되어야 하기에 포인터로 할당
     std::shared_ptr<NetworkBuffer> net_buf(new NetworkBuffer(CHAT_RECIEVE_TYPE));
 
     // top window고 current session이 여기 도착한 session_id와 같으면 읽음 처리
-    bool is_instant_readed_message = GetForegroundWindow() == m_window.GetHandle() && m_main_page->property("currentRoomID").toString() == session_id; // currentRoomID 추후에 currentSessionID로 변경해라
+    bool is_instant_readed_message = GetForegroundWindow() == m_window.GetHandle() && m_session_list_view->property("currentSessionId").toString() == session_id;
 
-    if (is_instant_readed_message)
-        *net_buf += m_user_id;
-    else
-        *net_buf += "<null>"; // id 생성할 때 <, > 이런 문자 못넣게 해야됨
+    *net_buf += (is_instant_readed_message ? m_user_id : "");
+
+    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
+    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
 
     boost::asio::async_write(*service->sock,
                              net_buf->AsioBuffer(),
-                             [this, chat_info, is_instant_readed_message, service, net_buf](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                             [this, is_instant_readed_message, service, net_buf, session_view, message_id, session_id, sender_id, send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
                                  if (ec != boost::system::errc::success)
                                  {
                                      delete service;
                                      return;
                                  }
 
+                                 if (!is_instant_readed_message)
+                                 {
+                                     // 세션의 recent msg 정보를 갱신
+                                     QVariantMap refresh_info;
+                                     session_info.insert();
+                                     session_info.insert();
+                                     session_info.insert();
+                                     session_info.insert();
+
+                                     QMetaObject::invokeMethod(m_session_list_view,
+                                                               "refreshRecentChat",
+                                                               Q_ARG(QVariant, QVariant::fromValue(refresh_info))); // refreshRecentChat 함수 구조 더 간략히 할 수 있는지 조사 필요
+
+                                     delete service;
+                                     return;
+                                 }
+
                                  boost::asio::async_read(*service->sock,
                                                          service->server_response_buf.prepare(service->server_response.GetHeaderSize()),
-                                                         [this, chat_info, is_instant_readed_message, service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                         [this, service, session_view, message_id, session_id, sender_id, send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
                                                              if (ec != boost::system::errc::success)
                                                              {
                                                                  delete service;
@@ -90,7 +107,7 @@ void MainContext::RecieveChat(Service *service)
 
                                                              boost::asio::async_read(*service->sock,
                                                                                      service->server_response_buf.prepare(service->server_response.GetDataSize()),
-                                                                                     [this, chat_info, is_instant_readed_message, service](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                                                     [this, service, session_view, message_id, session_id, sender_id, send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                                                                          if (ec != boost::system::errc::success)
                                                                                          {
                                                                                              delete service;
@@ -102,21 +119,25 @@ void MainContext::RecieveChat(Service *service)
 
                                                                                          size_t reader_cnt;
                                                                                          service->server_response.GetData(reader_cnt);
+
+                                                                                         QStringList reader_ids;
                                                                                          while (reader_cnt--)
                                                                                          {
                                                                                              QString reader_id;
                                                                                              service->server_response.GetData(reader_id);
-                                                                                             chat_info->reader_ids.push_back(reader_id);
+                                                                                             reader_ids.push_back(reader_id);
                                                                                          }
 
-                                                                                         // 바로 읽은 메시지이기에 채팅방에 채팅 바로 추가
-                                                                                         if (is_instant_readed_message)
-                                                                                         {
-                                                                                         }
-                                                                                         // 밖에서 읽은 메시지는 세션 목록에서 추가
-                                                                                         else
-                                                                                         {
-                                                                                         }
+                                                                                         QVariantMap chat_info;
+                                                                                         chat_info.insert();
+                                                                                         chat_info.insert();
+                                                                                         chat_info.insert();
+                                                                                         chat_info.insert();
+                                                                                         chat_info.insert();
+
+                                                                                         QMetaObject::invokeMethod(session_view,
+                                                                                                                   "addChat",
+                                                                                                                   Q_ARG(QVariant, QVariant::fromValue(chat_info)));
 
                                                                                          delete service;
                                                                                      });
@@ -470,7 +491,10 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
 
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
+    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
+    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [session_view, &central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -491,35 +515,70 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
             break;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, content_type, session_id = std::move(session_id), content = std::move(content)](std::shared_ptr<Session> session) mutable -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [session_view, &central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, content_type, session_id = std::move(session_id), content = std::move(content)](std::shared_ptr<Session> session) mutable -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [session_view, &central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, content_type, session_id = std::move(session_id), content = std::move(content)](std::shared_ptr<Session> session) mutable -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [session_view, &central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
                         return;
                     }
 
+                    int64_t message_id, reader_cnt, send_date;
+                    QStringList reader_ids;
+
+                    session->GetResponse().GetData(reader_cnt);
+                    while (reader_cnt--)
+                    {
+                        QString p_id;
+                        session->GetResponse().GetData(p_id);
+                        reader_ids.push_back(p_id);
+                    }
+
+                    session->GetResponse().GetData(message_id);
+                    session->GetResponse().GetData(send_date);
+
+                    QVariantMap chat_info;
+                    chat_info.insert("messageId", message_id);
+                    chat_info.insert("sessionId", session_id);
+                    chat_info.insert("senderId", m_user_id);
+                    chat_info.insert("senderName", m_user_name);
+                    chat_info.insert("senderImgPath", m_user_img_path);
+                    chat_info.insert("sendDate", MillisecondToCurrentDate(send_date).c_str());
+                    chat_info.insert("contentType", static_cast<int>(content_type));
+                    chat_info.insert("readerIds", reader_ids);
+                    chat_info.insert("isOpponent", false);
+
+                    switch (content_type)
+                    {
+                    case TEXT_CHAT:
+                        chat_info.insert("content", content);
+                        break;
+                    default:
+                        break;
+                    }
+
+                    QMetaObject::invokeMethod(session_view,
+                                              "addChat",
+                                              Q_ARG(QVariant, QVariant::fromValue(chat_info)));
+
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
                 });
             });
         });
-
-        // NetworkBuffer net_buf(SEND_CONTACT_REQUEST_TYPE);
-        // central_server.AsyncWrite(session->GetID(), )
     });
 
     //***
