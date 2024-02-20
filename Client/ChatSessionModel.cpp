@@ -172,12 +172,29 @@ void ChatSessionModel::clear()
     m_id_index_map.clear();
 }
 
-Q_INVOKABLE void ChatSessionModel::refreshRecentChat(const QString &session_id, const QVariantMap &qvm)
+Q_INVOKABLE void ChatSessionModel::renewSessionInfo(const QVariantMap &qvm)
 {
-    setData(session_id, qvm["unreadCnt"], UNREAD_CNT_ROLE);
-    setData(session_id, qvm["recentSenderId"], RECENT_SENDER_ID_ROLE);
-    setData(session_id, qvm["recentSendDate"], RECENT_SEND_DATE_ROLE);
-    setData(session_id, qvm["recentContentType"], RECENT_CONTENT_TYPE_ROLE);
-    setData(session_id, qvm["recentContent"], RECENT_CONTENT_ROLE);
-    setData(session_id, qvm["recentMessageId"], RECENT_MESSAGEID_ROLE);
+    QString session_id;
+    if (qvm.find("sessionId") == qvm.end())
+        return;
+    session_id = qvm["sessionId"].toString();
+
+    if (qvm.find("sessionName") != qvm.end())
+        setData(session_id, qvm["sessionName"], NAME_ROLE);
+    if (qvm.find("sessionImg") != qvm.end())
+        setData(session_id, qvm["sessionImg"], IMG_ROLE);
+    if (qvm.find("recentSenderId") != qvm.end())
+        setData(session_id, qvm["recentSenderId"], RECENT_SENDER_ID_ROLE);
+    if (qvm.find("recentSendDate") != qvm.end())
+        setData(session_id, qvm["recentSendDate"], RECENT_SEND_DATE_ROLE);
+    if (qvm.find("recentContentType") != qvm.end())
+        setData(session_id, qvm["recentContentType"], RECENT_CONTENT_TYPE_ROLE);
+    if (qvm.find("recentContent") != qvm.end())
+        setData(session_id, qvm["recentContent"], RECENT_CONTENT_ROLE);
+    if (qvm.find("recentMessageId") != qvm.end())
+        setData(session_id, qvm["recentMessageId"], RECENT_MESSAGEID_ROLE);
+    if (qvm.find("unreadCnt") != qvm.end())
+        setData(session_id, qvm["unreadCnt"], UNREAD_CNT_ROLE);
+    if (qvm.find("unreadCntIncreament") != qvm.end())
+        setData(session_id, data(session_id, UNREAD_CNT_ROLE).toInt() + qvm[""].toInt(), UNREAD_CNT_ROLE);
 }

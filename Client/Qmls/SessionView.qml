@@ -324,7 +324,7 @@ Rectangle {
                     if(!text.length)
                         return
 
-                    // mainContext.trySendChat(sessionId, text)
+                    // mainContext.trySendChat(sessionId, 1, text)
 
                     // 테스트용
                     sessionViewModel.append({
@@ -332,7 +332,7 @@ Rectangle {
                         "sessionId": sessionId,
                         "senderId": "tongstar",
                         "readerIds": ["tongstar", "yellowjam"],
-                        "sendDate": "2024-01-14 04:40",
+                        "sendDate": Qt.formatTime(new Date(), "hh:mm"), // "2024-01-14 04:40",
                         "contentType": 1,
                         "content": text,
                         "isOpponent": false

@@ -69,7 +69,7 @@ void MainContext::RecieveChat(Service *service)
 
     boost::asio::async_write(*service->sock,
                              net_buf->AsioBuffer(),
-                             [this, is_instant_readed_message, service, net_buf, session_view, message_id, session_id, sender_id, send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
+                             [this, is_instant_readed_message, service, net_buf, session_view, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
                                  if (ec != boost::system::errc::success)
                                  {
                                      delete service;
@@ -80,14 +80,26 @@ void MainContext::RecieveChat(Service *service)
                                  {
                                      // 세션의 recent msg 정보를 갱신
                                      QVariantMap refresh_info;
-                                     session_info.insert();
-                                     session_info.insert();
-                                     session_info.insert();
-                                     session_info.insert();
+                                     refresh_info.insert("sessionId", session_id);
+                                     refresh_info.insert("recentSenderId", sender_id);
+                                     refresh_info.insert("recentSendDate", MillisecondToCurrentDate(send_date).c_str());
+                                     refresh_info.insert("recentContentType", static_cast<int>(content_type));
+                                     refresh_info.insert("recentMessageId", message_id);
+                                     refresh_info.insert("unreadCntIncreament", 1);
+
+                                     switch (content_type)
+                                     {
+                                     case TEXT_CHAT:
+                                         refresh_info.insert("recentContent", content);
+                                         break;
+                                     default:
+                                         break;
+                                     }
 
                                      QMetaObject::invokeMethod(m_session_list_view,
-                                                               "refreshRecentChat",
-                                                               Q_ARG(QVariant, QVariant::fromValue(refresh_info))); // refreshRecentChat 함수 구조 더 간략히 할 수 있는지 조사 필요
+                                                               "renewSessionInfo",
+                                                               Qt::QueuedConnection,
+                                                               Q_ARG(QVariant, QVariant::fromValue(refresh_info)));
 
                                      delete service;
                                      return;
@@ -95,7 +107,7 @@ void MainContext::RecieveChat(Service *service)
 
                                  boost::asio::async_read(*service->sock,
                                                          service->server_response_buf.prepare(service->server_response.GetHeaderSize()),
-                                                         [this, service, session_view, message_id, session_id, sender_id, send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
+                                                         [this, service, session_view, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
                                                              if (ec != boost::system::errc::success)
                                                              {
                                                                  delete service;
@@ -107,7 +119,7 @@ void MainContext::RecieveChat(Service *service)
 
                                                              boost::asio::async_read(*service->sock,
                                                                                      service->server_response_buf.prepare(service->server_response.GetDataSize()),
-                                                                                     [this, service, session_view, message_id, session_id, sender_id, send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                                                     [this, service, session_view, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                                                                          if (ec != boost::system::errc::success)
                                                                                          {
                                                                                              delete service;
@@ -128,15 +140,31 @@ void MainContext::RecieveChat(Service *service)
                                                                                              reader_ids.push_back(reader_id);
                                                                                          }
 
+                                                                                         auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
+
                                                                                          QVariantMap chat_info;
-                                                                                         chat_info.insert();
-                                                                                         chat_info.insert();
-                                                                                         chat_info.insert();
-                                                                                         chat_info.insert();
-                                                                                         chat_info.insert();
+                                                                                         chat_info.insert("messageId", message_id);
+                                                                                         chat_info.insert("sessionId", session_id);
+                                                                                         chat_info.insert("senderId", sender_id);
+                                                                                         chat_info.insert("senderName", p_datas[sender_id].user_name.c_str());
+                                                                                         chat_info.insert("senderImgPath", p_datas[sender_id].user_img_path.c_str());
+                                                                                         chat_info.insert("sendDate", MillisecondToCurrentDate(send_date).c_str());
+                                                                                         chat_info.insert("contentType", static_cast<int>(content_type));
+                                                                                         chat_info.insert("readerIds", reader_ids);
+                                                                                         chat_info.insert("isOpponent", true);
+
+                                                                                         switch (content_type)
+                                                                                         {
+                                                                                         case TEXT_CHAT:
+                                                                                             chat_info.insert("content", content);
+                                                                                             break;
+                                                                                         default:
+                                                                                             break;
+                                                                                         }
 
                                                                                          QMetaObject::invokeMethod(session_view,
                                                                                                                    "addChat",
+                                                                                                                   Qt::QueuedConnection,
                                                                                                                    Q_ARG(QVariant, QVariant::fromValue(chat_info)));
 
                                                                                          delete service;

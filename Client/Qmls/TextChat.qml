@@ -83,6 +83,8 @@ Item {
                     var context = getContext("2d")
                     context.beginPath()
 
+                    var noStem = parent.model.count == 1 ? true : false
+
                     if (!isOpponent) {
                         context.moveTo(width - chatBubbleStemSize.width, 0)
                         context.lineTo(width - chatBubbleStemSize.width, 5)

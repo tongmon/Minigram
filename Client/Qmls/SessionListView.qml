@@ -35,9 +35,9 @@ Rectangle {
         sessionNameDecisionPopup.close()
     }
 
-    function refreshRecentChat(refreshInfo)
+    function renewSessionInfo(refreshInfo)
     {
-        chatSessionModel.refreshRecentChat(refreshInfo)
+        chatSessionModel.renewSessionInfo(refreshInfo)
     }
 
     //function addChat(chatInfo)

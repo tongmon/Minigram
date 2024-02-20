@@ -37,7 +37,6 @@ class ChatModel : public QAbstractListModel
     ~ChatModel();
 
     int rowCount(const QModelIndex &parent = QModelIndex()) const;
-    QVariant data(const int64_t &msg_id, int role = Qt::DisplayRole) const;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
     QHash<int, QByteArray> roleNames() const;
     bool setData(const QModelIndex &index, const QVariant &value, int role);
@@ -47,6 +46,7 @@ class ChatModel : public QAbstractListModel
     Q_INVOKABLE void clear();
     Q_INVOKABLE void refreshReaderIds(const QString &reader_id, int start_modify_msg_id);
     Q_INVOKABLE void refreshParticipantInfo(const QVariantMap &qvm);
+    Q_INVOKABLE QVariant data(const int64_t &msg_id, int role = Qt::DisplayRole) const;
 };
 
 #endif /* HEADER__FILE__CHATMODEL */
