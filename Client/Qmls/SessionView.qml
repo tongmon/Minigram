@@ -252,6 +252,8 @@ Rectangle {
             height: chatLoader.height
             objectName: senderId // 어떤 사람이 연속으로 메시지를 보내고 있는지 알기 위함
 
+            property var sendDateStr: sendDate
+
             // 말풍선 꼭다리 부분 크기
             property var chatBubbleStemSize: Qt.size(11, 8)
 
@@ -326,17 +328,36 @@ Rectangle {
 
                     // mainContext.trySendChat(sessionId, 1, text)
 
-                    // 테스트용
-                    sessionViewModel.append({
-                        "messageId": 0,
-                        "sessionId": sessionId,
-                        "senderId": "tongstar",
-                        "readerIds": ["tongstar", "yellowjam"],
-                        "sendDate": Qt.formatTime(new Date(), "hh:mm"), // "2024-01-14 04:40",
-                        "contentType": 1,
-                        "content": text,
-                        "isOpponent": false
-                    })
+                    if (text[0] == '@')
+                    {
+                        sessionViewModel.append({
+                            "messageId": sessionView.count,
+                            "sessionId": sessionId,
+                            "senderId": "yellowjam",
+                            "senderName": "LSY",
+                            "senderImgPath": "C:/Users/DP91-HSK/Documents/GitHub/Minigram/Client/Build/msvc-x64/Debug/minigram_cache/tongstar/profile_img/1708298014521.png",
+                            "readerIds": ["tongstar", "yellowjam"],
+                            "sendDate": Qt.formatTime(new Date(), "yyyy.MM.dd hh:mm"), // "2024-01-14 04:40",
+                            "contentType": 1,
+                            "content": text,
+                            "isOpponent": true
+                        })
+                    }
+                    else
+                    {
+                        sessionViewModel.append({
+                            "messageId": sessionView.count,
+                            "sessionId": sessionId,
+                            "senderId": "tongstar",
+                            "senderName": "LKJ",
+                            "senderImgPath": "C:/Users/DP91-HSK/Documents/GitHub/Minigram/Client/Build/msvc-x64/Debug/minigram_cache/tongstar/profile_img/1708298014521.png",
+                            "readerIds": ["tongstar", "yellowjam"],
+                            "sendDate": Qt.formatTime(new Date(), "yyyy.MM.dd hh:mm"), // "2024-01-14 04:40",
+                            "contentType": 1,
+                            "content": text,
+                            "isOpponent": false
+                        })
+                    }
 
                     text = "" 
                 }

@@ -22,6 +22,11 @@ QVariant ChatModel::data(const int64_t &msg_id, int role) const
     return ind < 0 ? QVariant() : data(index(ind), role);
 }
 
+Q_INVOKABLE int ChatModel::getIndexFromMsgId(const int &msg_id)
+{
+    return msg_id - static_cast<int>(m_chats[0]->message_id);
+}
+
 QVariant ChatModel::data(const QModelIndex &index, int role) const
 {
     if ((index.row() < 0 && index.row() >= rowCount()) ||
