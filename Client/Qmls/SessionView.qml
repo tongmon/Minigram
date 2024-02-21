@@ -238,6 +238,7 @@ Rectangle {
         }
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        spacing: 3
 
         ScrollBar.vertical: ScrollBar {
             policy: ScrollBar.AsNeeded
@@ -262,6 +263,13 @@ Rectangle {
 
             // 말풍선 최소 크기
             property var chatBubbleMinimumSize: Qt.size(10, 10)
+
+            // 말풍선 꼭다리 유무
+            property bool hasStem: {
+                var index = sessionViewModel.getIndexFromMsgId(messageId)
+                return index <= 0 ? true : 
+                       ((senderId === sessionView.itemAtIndex(index - 1).objectName && sendDate === sessionView.itemAtIndex(index - 1).sendDateStr) ? false : true)
+            }
 
             Loader {
                 id: chatLoader
