@@ -64,6 +64,7 @@ enum ContactRelationStatus : int64_t
 
 enum ChatType : int64_t
 {
+    UNDEFINED_TYPE,
     TEXT_CHAT,
     IMG_CHAT,
     VIDEO_CHAT,

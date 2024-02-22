@@ -168,13 +168,28 @@ void ChatModel::append(const QVariantMap &qvm)
             fin = mid;
     }
 
-    beginInsertRows(QModelIndex(), fin, fin);
+    if (fin == m_chats.size())
+    {
+        beginInsertRows(QModelIndex(), fin, fin);
+        m_chats.insert(m_chats.begin() + fin, chat);
+        endInsertRows();
+        return;
+    }
+
+    beginRemoveRows(QModelIndex(), fin, fin);
+    auto front_chat = m_chats[fin];
+    m_chats.removeAt(fin);
+    endRemoveRows();
+
+    beginInsertRows(QModelIndex(), fin, fin + 1);
+    m_chats.insert(m_chats.begin() + fin, front_chat);
     m_chats.insert(m_chats.begin() + fin, chat);
-    // for (auto i = m_id_index_map.begin(), end = m_id_index_map.end(); i != end; i++)
-    //     if (fin >= i.value())
-    //         i.value()++;
-    // m_id_index_map[chat->message_id] = fin;
     endInsertRows();
+}
+
+void ChatModel::remove(const int &msg_id)
+{
+    int ind = msg_id - static_cast<int>(m_chats[0]->message_id);
 }
 
 void ChatModel::clear()

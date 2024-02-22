@@ -82,16 +82,21 @@ void MongoDBTestZone()
     auto db = client["Minigram"];
     auto col = db["test_collection"];
 
-    auto ret = col.find_one_and_update(basic::make_document(basic::kvp("message_id",
-                                                                       basic::make_document(basic::kvp("$gt", -1)))),
-                                       basic::make_document(basic::kvp("$inc",
-                                                                       basic::make_document(basic::kvp("message_id", 1)))));
+    // col.update_one(basic::make_document(basic::kvp("message_cnt",
+    //                                                basic::make_document(basic::kvp("$gt", -1)))),
+    //                basic::make_document(basic::kvp("$inc",
+    //                                                basic::make_document(basic::kvp("message_cnt", -1)))));
 
-    if (ret.has_value())
-    {
-        auto m_id = ret.value()["message_id"].get_int32();
-        int tt = 0;
-    }
+    basic::array reader;
+    reader.append("tongmoon");
+    reader.append("bluejam");
+
+    col.update_one(basic::make_document(basic::kvp("reader_info",
+                                                   "test")),
+                   basic::make_document(basic::kvp("$push",
+                                                   basic::make_document(basic::kvp("reader_id",
+                                                                                   basic::make_document(basic::kvp("$each",
+                                                                                                                   reader)))))));
 
     //
     // mongocxx::options::find opts;

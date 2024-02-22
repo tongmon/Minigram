@@ -334,38 +334,38 @@ Rectangle {
                     if(!text.length)
                         return
 
-                    // mainContext.trySendChat(sessionId, 1, text)
+                    mainContext.trySendChat(sessionId, 1, text)
 
-                    if (text[0] == '@')
-                    {
-                        sessionViewModel.append({
-                            "messageId": sessionView.count,
-                            "sessionId": sessionId,
-                            "senderId": "yellowjam",
-                            "senderName": "LSY",
-                            "senderImgPath": "C:/Users/DP91-HSK/Documents/GitHub/Minigram/Client/Build/msvc-x64/Debug/minigram_cache/tongstar/profile_img/1708298014521.png",
-                            "readerIds": ["tongstar", "yellowjam"],
-                            "sendDate": Qt.formatTime(new Date(), "yyyy.MM.dd hh:mm"), // "2024-01-14 04:40",
-                            "contentType": 1,
-                            "content": text,
-                            "isOpponent": true
-                        })
-                    }
-                    else
-                    {
-                        sessionViewModel.append({
-                            "messageId": sessionView.count,
-                            "sessionId": sessionId,
-                            "senderId": "tongstar",
-                            "senderName": "LKJ",
-                            "senderImgPath": "C:/Users/DP91-HSK/Documents/GitHub/Minigram/Client/Build/msvc-x64/Debug/minigram_cache/tongstar/profile_img/1708298014521.png",
-                            "readerIds": ["tongstar", "yellowjam"],
-                            "sendDate": Qt.formatTime(new Date(), "yyyy.MM.dd hh:mm"), // "2024-01-14 04:40",
-                            "contentType": 1,
-                            "content": text,
-                            "isOpponent": false
-                        })
-                    }
+                    //if (text[0] == '@')
+                    //{
+                    //    sessionViewModel.append({
+                    //        "messageId": sessionView.count,
+                    //        "sessionId": sessionId,
+                    //        "senderId": "yellowjam",
+                    //        "senderName": "LSY",
+                    //        "senderImgPath": "C:/Users/DP91-HSK/Documents/GitHub/Minigram/Client/Build/msvc-x64/Debug/minigram_cache/tongstar/profile_img/1708298014521.png",
+                    //        "readerIds": ["tongstar", "yellowjam"],
+                    //        "sendDate": Qt.formatTime(new Date(), "yyyy.MM.dd hh:mm"), // "2024-01-14 04:40",
+                    //        "contentType": 1,
+                    //        "content": text,
+                    //        "isOpponent": true
+                    //    })
+                    //}
+                    //else
+                    //{
+                    //    sessionViewModel.append({
+                    //        "messageId": sessionView.count,
+                    //        "sessionId": sessionId,
+                    //        "senderId": "tongstar",
+                    //        "senderName": "LKJ",
+                    //        "senderImgPath": "C:/Users/DP91-HSK/Documents/GitHub/Minigram/Client/Build/msvc-x64/Debug/minigram_cache/tongstar/profile_img/1708298014521.png",
+                    //        "readerIds": ["tongstar", "yellowjam"],
+                    //        "sendDate": Qt.formatTime(new Date(), "yyyy.MM.dd hh:mm"), // "2024-01-14 04:40",
+                    //        "contentType": 1,
+                    //        "content": text,
+                    //        "isOpponent": false
+                    //    })
+                    //}
 
                     text = "" 
                 }

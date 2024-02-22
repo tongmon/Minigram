@@ -29,7 +29,7 @@ void TCPClient::AsyncConnect(const std::string &raw_ip_address, unsigned short p
     static size_t request_id = 0;
     do
     {
-        request_id = ++request_id % ULLONG_MAX;
+        request_id = ++request_id % LLONG_MAX;
     } while (m_active_sessions.find(request_id) != m_active_sessions.end());
 
     session = std::make_shared<Session>(m_ios, raw_ip_address, port_num, request_id);

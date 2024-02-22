@@ -537,7 +537,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
         switch (content_type)
         {
         case TEXT_CHAT:
-            net_buf += content;
+            net_buf += StrToUtf8(content.toStdString());
             break;
         default:
             break;
