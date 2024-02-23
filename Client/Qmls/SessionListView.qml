@@ -726,6 +726,7 @@ Rectangle {
                         width: childrenRect.width + 4
                         height: childrenRect.height + 4
                         radius: 5
+                        visible: unreadCnt > 0
                         
                         Text {
                             font {

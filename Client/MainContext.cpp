@@ -8,6 +8,7 @@
 #include "Utility.hpp"
 #include "WinQuickWindow.hpp"
 
+#include <QApplication>
 #include <QBuffer>
 #include <QImage>
 #include <QMetaObject>
@@ -90,7 +91,7 @@ void MainContext::RecieveChat(Service *service)
                                      switch (content_type)
                                      {
                                      case TEXT_CHAT:
-                                         refresh_info.insert("recentContent", content);
+                                         refresh_info.insert("recentContent", Utf8ToStr(DecodeBase64(content.toStdString())).c_str());
                                          break;
                                      default:
                                          break;
@@ -100,6 +101,14 @@ void MainContext::RecieveChat(Service *service)
                                                                "renewSessionInfo",
                                                                Qt::QueuedConnection,
                                                                Q_ARG(QVariant, QVariant::fromValue(refresh_info)));
+
+                                     // 채팅 노티를 띄움
+                                     if (GetForegroundWindow() != m_window.GetHandle())
+                                     {
+                                         // 밑 방식은 굳이 안써도 되고 qml 창을 생성하는 것이 좋아보임
+                                         // QQuickWidget *view = new QQuickWidget;
+                                         // QApplication::alert(view, 1000);
+                                     }
 
                                      delete service;
                                      return;
@@ -506,6 +515,13 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
 // Server에서 받는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MainContext::trySendChat(const QString &session_id, unsigned char content_type, const QString &content)
 {
+    // auto utf_8_str = WStrToUtf8(content.toStdWString());
+    // auto real_str = Utf8ToStr(utf_8_str);
+    // auto real_wstr = StrToWStr(real_str);
+    // auto encoded = EncodeBase64(WStrToUtf8(content.toStdWString()));
+    //
+    // return;
+
     static std::atomic_bool is_ready = true;
 
     bool old_var = true;
@@ -537,7 +553,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
         switch (content_type)
         {
         case TEXT_CHAT:
-            net_buf += StrToUtf8(content.toStdString());
+            net_buf += EncodeBase64(WStrToUtf8(content.toStdWString())); // StrToUtf8(content.toStdString())
             break;
         default:
             break;
@@ -578,21 +594,31 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
                     session->GetResponse().GetData(message_id);
                     session->GetResponse().GetData(send_date);
 
+                    QString sendDate = MillisecondToCurrentDate(send_date).c_str();
+
                     QVariantMap chat_info;
                     chat_info.insert("messageId", message_id);
                     chat_info.insert("sessionId", session_id);
                     chat_info.insert("senderId", m_user_id);
                     chat_info.insert("senderName", m_user_name);
                     chat_info.insert("senderImgPath", m_user_img_path);
-                    chat_info.insert("sendDate", MillisecondToCurrentDate(send_date).c_str());
+                    chat_info.insert("sendDate", sendDate);
                     chat_info.insert("contentType", static_cast<int>(content_type));
                     chat_info.insert("readerIds", reader_ids);
                     chat_info.insert("isOpponent", false);
+
+                    QVariantMap renew_info;
+                    renew_info.insert("sessionId", session_id);
+                    renew_info.insert("recentSenderId", m_user_id);
+                    renew_info.insert("recentSendDate", sendDate);
+                    renew_info.insert("recentContentType", static_cast<int>(content_type));
+                    renew_info.insert("recentMessageId", message_id);
 
                     switch (content_type)
                     {
                     case TEXT_CHAT:
                         chat_info.insert("content", content);
+                        renew_info.insert("recentContent", content);
                         break;
                     default:
                         break;
@@ -600,7 +626,13 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
 
                     QMetaObject::invokeMethod(session_view,
                                               "addChat",
+                                              Qt::QueuedConnection,
                                               Q_ARG(QVariant, QVariant::fromValue(chat_info)));
+
+                    QMetaObject::invokeMethod(m_session_list_view,
+                                              "renewSessionInfo",
+                                              Qt::QueuedConnection,
+                                              Q_ARG(QVariant, QVariant::fromValue(renew_info)));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
@@ -847,11 +879,11 @@ void MainContext::tryGetSessionList()
                             switch (chat_info["content_type"].as_int64())
                             {
                             case TEXT_CHAT:
-                                qvm.insert("recentContent", Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str());
+                                qvm.insert("recentContent", QString::fromWCharArray(Utf8ToWStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str()));
                                 break;
                             case IMG_CHAT:
                             case VIDEO_CHAT:
-                                qvm.insert("recentContent", chat_info["content"].as_string().c_str());
+                                qvm.insert("recentContent", chat_info["content"].as_string().c_str()); // 그냥 보여주기용 텍스트
                                 break;
                             default:
                                 break;
@@ -861,7 +893,7 @@ void MainContext::tryGetSessionList()
 
                         QMetaObject::invokeMethod(m_session_list_view,
                                                   "addSession",
-                                                  // Qt::QueuedConnection,
+                                                  Qt::QueuedConnection,
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
@@ -1063,6 +1095,12 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             p_datas[user_id.c_str()].user_img_path = p_img_path.string();
                             qvm["changedImgPath"] = p_img_path.string().c_str();
                         }
+                        else
+                        {
+                            std::filesystem::directory_iterator it{p_id_path / "profile_img"};
+                            if (it != std::filesystem::end(it))
+                                p_datas[user_id.c_str()].user_img_path = it->path().string();
+                        }
 
                         if (qvm.find("changedImgPath") != qvm.end() || qvm.find("changedName") != qvm.end())
                             QMetaObject::invokeMethod(session_view,
@@ -1087,8 +1125,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         switch (chat_info["content_type"].as_int64())
                         {
                         case TEXT_CHAT: {
-                            std::string decoded = Utf8ToStr(chat_info["content"].as_string().c_str()); // Utf8ToStr(DecodeBase64(chat_info["content"].as_string().c_str()));
-                            qvm.insert("content", decoded.c_str());
+                            qvm.insert("content", QString::fromWCharArray(Utf8ToWStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str()));
                             break;
                         }
                         default:
@@ -1105,8 +1142,17 @@ void MainContext::tryRefreshSession(const QString &session_id)
 
                         QMetaObject::invokeMethod(session_view,
                                                   "addChat",
+                                                  Qt::QueuedConnection,
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
+
+                    QVariantMap renew_info;
+                    renew_info.insert("sessionId", session_id);
+                    renew_info.insert("unreadCnt", 0);
+                    QMetaObject::invokeMethod(m_session_list_view,
+                                              "renewSessionInfo",
+                                              Qt::QueuedConnection,
+                                              Q_ARG(QVariant, QVariant::fromValue(renew_info)));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);

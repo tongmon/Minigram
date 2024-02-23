@@ -90,3 +90,7 @@ tryLogin, trySignUp
 
 - 결함 해결해야 함
 request_id는 asyncconnect 함수 밖으로 꺼낼 필요가 없기 때문에 안쪽에서 해결할 수 있음 (mutex 사용이 더 간결해짐... 시간날때 해결하셈)
+
+- 알림 처리
+https://het.as.utexas.edu/HET/Software/html/declarative-modelviews-webview-alerts-qml-alerts-alerts-qml.html -> 참고
+alert 함수를 이용할 수도 있고 qml 다이얼로그를 변형하여 접근할 수도 있음

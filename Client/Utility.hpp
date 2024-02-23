@@ -19,7 +19,7 @@ inline std::wstring StrToWStr(const std::string &str)
     if (len <= 0)
         return L"";
 
-    std::wstring wstr(len + 1, 0);
+    std::wstring wstr(len, 0);
     MultiByteToWideChar(CP_ACP, 0, str.c_str(), (int)str.size(), &wstr.at(0), len);
     return wstr;
 }
@@ -33,7 +33,7 @@ inline std::string WStrToStr(const std::wstring &wstr)
     if (len <= 0)
         return "";
 
-    std::string str(len + 1, 0);
+    std::string str(len, 0);
     WideCharToMultiByte(CP_ACP, 0, &wstr.at(0), (int)wstr.length(), &str.at(0), len, nullptr, nullptr);
     return str;
 }
@@ -48,7 +48,7 @@ inline std::string StrToUtf8(const std::string &str)
     if (len <= 0)
         return "";
 
-    std::string utf_8(len + 1, 0);
+    std::string utf_8(len, 0);
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), &utf_8.at(0), len, NULL, NULL);
     return utf_8;
 }
@@ -62,7 +62,7 @@ inline std::wstring Utf8ToWStr(const std::string &utf_8)
     if (len <= 0)
         return L"";
 
-    std::wstring wstr(len + 1, 0);
+    std::wstring wstr(len, 0);
     MultiByteToWideChar(CP_UTF8, 0, utf_8.c_str(), (int)utf_8.length(), &wstr.at(0), len);
     return wstr;
 }
@@ -81,7 +81,7 @@ inline std::string WStrToUtf8(const std::wstring &wstr)
     if (len <= 0)
         return "";
 
-    std::string uft_8(len + 1, 0);
+    std::string uft_8(len, 0);
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), &uft_8.at(0), len, NULL, NULL);
     return uft_8;
 }

@@ -725,13 +725,12 @@ void MessengerService::RefreshSessionHandling()
         chat_info["sender_id"] = doc["sender_id"].get_string().value;
         chat_info["send_date"] = doc["send_date"].get_int64().value;
         chat_info["message_id"] = doc["message_id"].get_int64().value;
-        chat_info["content_type"] = doc["content_type"].get_int64().value;
+        chat_info["content_type"] = doc["content_type"].get_int32().value;
 
         switch (chat_info["content_type"].as_int64())
         {
-        // 인코딩이 되어서 mongodb에 들어가면... 딱히 따로 인코딩 안해도 될듯, 텍스트이기에 base64까지 안하고 utf8 인코딩만 하면 될듯?
         case TEXT_CHAT:
-            chat_info["content"] = doc["content"].get_string().value.data(); // EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
+            chat_info["content"] = doc["content"].get_string().value.data();
             break;
         case IMG_CHAT: {
             std::string img_file_path = doc["content"].get_string().value.data();
@@ -798,7 +797,7 @@ void MessengerService::RefreshSessionHandling()
         std::shared_ptr<NetworkBuffer> buf = std::make_shared<NetworkBuffer>(MESSAGE_READER_UPDATE_TYPE);
         *buf += session_id;
         *buf += participant_id;
-        *buf += (past_recent_message_id + 1); // 해당 mid보다 높은 메시지들의 reader cnt 변경
+        *buf += (past_recent_message_id + 1); // past_recent_message_id + 1 이상인 메시지들의 reader cnt 변경
 
         m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, buf](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
@@ -996,7 +995,7 @@ void MessengerService::GetSessionListHandling()
         boost::json::object descendant;
         if (message_cnt)
         {
-            auto log_cursor = log_coll.find_one(basic::make_document(basic::kvp("message_cnt",
+            auto log_cursor = log_coll.find_one(basic::make_document(basic::kvp("message_id",
                                                                                 basic::make_document(basic::kvp("$eq",
                                                                                                                 message_cnt - 1)))));
 
@@ -1006,14 +1005,14 @@ void MessengerService::GetSessionListHandling()
                 descendant["sender_id"] = doc["sender_id"].get_string().value;
                 descendant["send_date"] = doc["send_date"].get_int64().value;
                 descendant["message_id"] = doc["message_id"].get_int64().value;
-                descendant["content_type"] = doc["content_type"].get_int64().value;
+                descendant["content_type"] = doc["content_type"].get_int32().value;
                 session_data["unread_count"] = descendant["message_id"].as_int64() + (msg_id < 0 ? 1 : -msg_id);
 
                 // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
                 switch (descendant["content_type"].as_int64())
                 {
                 case TEXT_CHAT:
-                    descendant["content"] = EncodeBase64(doc["content"].get_string().value.data());
+                    descendant["content"] = doc["content"].get_string().value.data();
                     break;
                 case IMG_CHAT:
                     descendant["content"] = "Image";
