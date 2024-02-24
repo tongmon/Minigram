@@ -95,10 +95,6 @@ ApplicationWindow {
         objectName: "mainWindowLoader"
         source: "qrc:/qml/LoadingPage.qml"
 
-        // onLoaded: {
-        //     mainContext.getEssentialObjects()
-        // }
-
         onLoaded: {
             if (typeof(mainContext) !== "undefined" && mainContext)
             {

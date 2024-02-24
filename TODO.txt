@@ -93,4 +93,5 @@ request_id는 asyncconnect 함수 밖으로 꺼낼 필요가 없기 때문에 �
 
 - 알림 처리
 https://het.as.utexas.edu/HET/Software/html/declarative-modelviews-webview-alerts-qml-alerts-alerts-qml.html -> 참고
+https://gist.github.com/Siecje/13f0a3725cf4b6765b86f3b54b15b1fc -> 참고
 alert 함수를 이용할 수도 있고 qml 다이얼로그를 변형하여 접근할 수도 있음

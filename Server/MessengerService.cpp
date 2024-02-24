@@ -1743,6 +1743,65 @@ void MessengerService::StartHandling()
                                 m_client_request_buf.commit(bytes_transferred);
                                 m_client_request = m_client_request_buf;
 
+                                /*
+                                NONE_TYPE,
+                                LOGIN_CONNECTION_TYPE,
+                                CHAT_SEND_TYPE,
+                                CHAT_RECEIVE_TYPE,
+                                SESSIONLIST_INITIAL_TYPE,
+                                CONTACTLIST_INITIAL_TYPE,
+                                SIGNUP_TYPE,
+                                SESSION_ADD_TYPE,
+                                SEND_CONTACT_REQUEST_TYPE,
+                                RECEIVE_CONTACT_REQUEST_TYPE,
+                                SESSION_REFRESH_TYPE,
+                                FETCH_MORE_MESSAGE_TYPE,
+                                MESSAGE_READER_UPDATE_TYPE,
+                                GET_CONTACT_REQUEST_LIST_TYPE,
+                                PROCESS_CONTACT_REQUEST_TYPE,
+                                LOGOUT_TYPE,
+                                RECEIVE_ADD_SESSION_TYPE,
+                                CONNECTION_TYPE_CNT
+                                */
+
+                                auto ct = m_client_request.GetConnectionType();
+                                std::string ct_str;
+                                switch (ct)
+                                {
+                                case LOGIN_CONNECTION_TYPE:
+                                    ct_str = "LOGIN_CONNECTION_TYPE";
+                                    break;
+                                case CHAT_SEND_TYPE:
+                                    ct_str = "CHAT_SEND_TYPE";
+                                    break;
+                                case CHAT_RECEIVE_TYPE:
+                                    ct_str = "CHAT_RECEIVE_TYPE";
+                                    break;
+                                case SESSIONLIST_INITIAL_TYPE:
+                                    ct_str = "SESSIONLIST_INITIAL_TYPE";
+                                    break;
+                                case CONTACTLIST_INITIAL_TYPE:
+                                    ct_str = "CONTACTLIST_INITIAL_TYPE";
+                                    break;
+                                case SIGNUP_TYPE:
+                                    ct_str = "SIGNUP_TYPE";
+                                    break;
+                                case SESSION_ADD_TYPE:
+                                    ct_str = "SESSION_ADD_TYPE";
+                                    break;
+                                case SESSION_REFRESH_TYPE:
+                                    ct_str = "SESSION_REFRESH_TYPE";
+                                    break;
+                                case LOGOUT_TYPE:
+                                    ct_str = "LOGOUT_TYPE";
+                                    break;
+                                case GET_CONTACT_REQUEST_LIST_TYPE:
+                                    ct_str = "GET_CONTACT_REQUEST_LIST_TYPE";
+                                    break;
+                                }
+                                std::cout << "Connection Type: " << ct_str << "\n"
+                                          << "Data Size : " << m_client_request.GetDataSize() << std::endl;
+
                                 boost::asio::async_read(*m_sock,
                                                         m_client_request_buf.prepare(m_client_request.GetDataSize()),
                                                         [this, connection_type = m_client_request.GetConnectionType()](const boost::system::error_code &ec, std::size_t bytes_transferred) {
@@ -1752,6 +1811,8 @@ void MessengerService::StartHandling()
                                                                 delete this;
                                                                 return;
                                                             }
+
+                                                            std::cout << "Transferred Byte Size: " << bytes_transferred << std::endl;
 
                                                             m_client_request_buf.commit(bytes_transferred);
                                                             m_client_request = m_client_request_buf;
