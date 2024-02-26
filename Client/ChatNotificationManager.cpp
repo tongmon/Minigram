@@ -18,7 +18,7 @@ ChatNotificationManager::~ChatNotificationManager()
         pop();
 }
 
-void ChatNotificationManager::push(QString sender_name, QString content, QString sender_img_path)
+void ChatNotificationManager::push(QString sender_name, QString sender_img_path, QString content)
 {
     // QQuickView *noti_view = new QQuickView(/*&m_main_context->m_window.GetQuickWindow()*/);
     // noti_view->setSource(QUrl(QStringLiteral("qrc:/qml/ChatNotificationWindow.qml")));

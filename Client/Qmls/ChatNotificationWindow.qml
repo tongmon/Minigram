@@ -75,13 +75,72 @@ ApplicationWindow {
             }
         }
 
-        //CustomImageButton {
-        //    anchors {
-        //        verticalCenter: parent.vertical
-//
-//
-        //    }
-        //}
+        CustomImageButton {
+            id: senderImg
+            anchors {
+                left: parent.left
+                top: parent.top
+                bottom: parent.bottom
+                margins: 15
+            }
+            width: height
+            rounded: true
+            source: "file:///" + senderImgPath
+        }
+
+        Item {
+            anchors {
+                left: senderImg.right
+                right: parent.right
+                top: parent.top
+                bottom: parent.bottom
+            }
+
+            Item {
+                anchors {
+                    top: parent.top
+                }
+                width: parent.width
+                height: parent.height * 0.5
+
+                Text {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: 15
+                        verticalCenter: parent.verticalCenter
+                    }
+                    font {
+                        pointSize: 12
+                        bold: true
+                    }
+                    text: senderName
+                    clip: true
+                }
+            }
+
+            Item {
+                anchors {
+                    bottom: parent.bottom
+                }
+                width: parent.width
+                height: parent.height * 0.5
+
+                Text {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        leftMargin: 15
+                        verticalCenter: parent.verticalCenter
+                    }
+                    font {
+                        pointSize: 12
+                    }
+                    text: content
+                    clip: true
+                }
+            }
+        }
 
         onOpacityChanged: { 
             // 밑에꺼 안먹음...
