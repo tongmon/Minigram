@@ -10,11 +10,21 @@ Rectangle {
     color: "#28343f"
     anchors.fill: parent
 
-    function showAlert()
+    function createChatNotification(notiInfo)
     {
         var notiComp = Qt.createComponent("qrc:/qml/ChatNotificationWindow.qml")
-        var notiWindow = notiComp.createObject(applicationWindow)
-        notiWindow.show()
+        var notiWindow = notiComp.createObject(null, 
+                                               {    
+                                                    x: notiInfo["x"], 
+                                                    y: notiInfo["y"], 
+                                                    width: notiInfo["width"],
+                                                    height: notiInfo["height"]
+                                               })
+
+        notiWindow.senderImgPath = notiInfo["senderImgPath"]
+        notiWindow.senderName = notiInfo["senderName"]
+        notiWindow.content = notiInfo["content"]
+        return notiWindow
     }
 
     /*

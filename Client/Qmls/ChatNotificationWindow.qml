@@ -5,11 +5,30 @@ import QtQuick.Layouts 1.12
 
 ApplicationWindow {
     id: chatNotificationWindow
-    flags: Qt.FramelessWindowHint
-    width: 400
-    height: 200
-    x: 0
-    y: 0
+    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+    // width: 400
+    // height: 200
+    // x: 0
+    // y: 0
+    minimumWidth: width
+    minimumHeight: height
+    maximumWidth: width
+    maximumHeight: height
+
+    property var senderImgPath: ""
+    property var senderName: ""
+    property var content: ""
+
+    function closeNotification()
+    {
+        chatNotificationWindow.close()
+    }
+
+    function showNotification()
+    {
+        notificationTimer.start()
+        chatNotificationWindow.show()
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -48,20 +67,32 @@ ApplicationWindow {
 
         Timer {
             id: notificationTimer
-            interval: 1000
+            interval: 6000
 
             onTriggered: {
-                state = "hide"
+                // state = "hide"
+                chatNotificationManager.pop()
             }
         }
 
-        onOpacityChanged: {
-            if (!opacity && state === "hide")
-                chatNotificationWindow.close()
+        //CustomImageButton {
+        //    anchors {
+        //        verticalCenter: parent.vertical
+//
+//
+        //    }
+        //}
+
+        onOpacityChanged: { 
+            // 밑에꺼 안먹음...
+            //if (!opacity && state == "hide")
+            //    console.log("hide")
+            //    chatNotificationManager.pop()
         }
 
         Component.onCompleted: {
-            notificationTimer.start()
+            // console.log("timer start!")
+            // notificationTimer.start()
         }
     }
 

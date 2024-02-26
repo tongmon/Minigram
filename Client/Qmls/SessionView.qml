@@ -336,6 +336,16 @@ Rectangle {
 
                     mainContext.trySendChat(sessionId, 1, text)
 
+                    // var notiInfo = {
+                    //     "x", 0,
+                    //     "y", 0,
+                    //     "senderImgPath" : "",
+                    //     "senderName" : "",
+                    //     "content" : ""
+                    // }
+// 
+                    // createChatNotification(notiInfo)
+
                     //if (text[0] == '@')
                     //{
                     //    sessionViewModel.append({

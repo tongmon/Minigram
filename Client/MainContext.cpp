@@ -1,5 +1,6 @@
 ﻿#include "MainContext.hpp"
 #include "ChatModel.hpp"
+#include "ChatNotificationManager.hpp"
 #include "ChatSessionModel.hpp"
 #include "ContactModel.hpp"
 #include "NetworkBuffer.hpp"
@@ -12,6 +13,8 @@
 #include <QBuffer>
 #include <QImage>
 #include <QMetaObject>
+#include <QQmlContext>
+#include <QQmlEngine>
 
 #include <filesystem>
 #include <fstream>
@@ -28,8 +31,14 @@
 MainContext::MainContext(WinQuickWindow &window)
     : m_window{window}
 {
+    // qml에 mainContext 객체 등록, 해당 객체는 server 통신, ui 변수 등을 다루고 관리함
+    window.GetEngine().rootContext()->setContextProperty("mainContext", this);
+
     m_contact_model = m_window.GetQuickWindow().findChild<ContactModel *>("contactModel");
     m_chat_session_model = m_window.GetQuickWindow().findChild<ChatSessionModel *>("chatSessionModel");
+
+    m_noti_manager = std::make_unique<ChatNotificationManager>(this);
+    window.GetEngine().rootContext()->setContextProperty("chatNotificationManager", m_noti_manager.get());
 }
 
 MainContext::~MainContext()
@@ -521,6 +530,10 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
     // auto encoded = EncodeBase64(WStrToUtf8(content.toStdWString()));
     //
     // return;
+
+    m_noti_manager->push(m_user_id, m_user_name, m_user_img_path);
+
+    return;
 
     static std::atomic_bool is_ready = true;
 

@@ -134,9 +134,7 @@ bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
     // qml에 mainWindowContext 객체 등록, 해당 객체에 minimize, maximize / restore, close 기능 연결되어 있음
     engine.rootContext()->setContextProperty("mainWindowContext", this);
 
-    // qml에 mainContext 객체 등록, 해당 객체는 server 통신, ui 변수 등을 다루고 관리함
     m_main_context = std::make_unique<MainContext>(*this);
-    engine.rootContext()->setContextProperty("mainContext", m_main_context.get());
     m_main_context->StartScreen();
 
     m_central_server = std::make_shared<TCPClient>(2);

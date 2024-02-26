@@ -10,10 +10,12 @@ class ChatModel;
 class ContactModel;
 class ChatSessionModel;
 class Service;
+class ChatNotificationManager;
 
 class MainContext : public QObject
 {
     friend class WinQuickWindow;
+    friend class ChatNotificationManager;
 
     Q_OBJECT
 
@@ -31,6 +33,8 @@ class MainContext : public QObject
     QObject *m_login_page;
     QObject *m_contact_view;
     QObject *m_session_list_view;
+
+    std::unique_ptr<ChatNotificationManager> m_noti_manager;
 
   public:
     MainContext(WinQuickWindow &window);
