@@ -95,19 +95,22 @@ void ChatNotificationManager::push(QString sender_name, QString content, QString
                               Q_ARG(QVariant, QVariant::fromValue(noti_info)));
     noti_window = qvariant_cast<QObject *>(noti_var);
 
-    // while (m_noti_queue.size() > m_max_queue_size)
-    //     pop();
-
-    m_noti_mut.lock();
+    std::unique_lock<std::mutex> ul(m_noti_mut);
+    int hide_cnt = m_noti_queue.size() - m_max_queue_size + 1;
     for (auto &noti : m_noti_queue)
     {
-        int noti_y = noti->property("y").toInt();
-        noti->setProperty("y", noti_y - m_noti_size.height() - noti_y_padding);
+        if (hide_cnt > 0)
+            noti->setProperty("visible", false);
+        else
+        {
+            int noti_y = noti->property("y").toInt();
+            noti->setProperty("y", noti_y - m_noti_size.height() - noti_y_padding);
+        }
+        hide_cnt--;
     }
     m_noti_queue.push_back(noti_window);
     QMetaObject::invokeMethod(noti_window,
                               "showNotification");
-    m_noti_mut.unlock();
 
     // monitor_height - taskbar_height - (m_noti_queue.size() + 1) * (m_noti_size.height() + noti_y_padding);
 }
