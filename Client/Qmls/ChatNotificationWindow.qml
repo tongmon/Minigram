@@ -6,10 +6,6 @@ import QtQuick.Layouts 1.12
 ApplicationWindow {
     id: chatNotificationWindow
     flags: Qt.WindowStaysOnTopHint
-    // width: 400
-    // height: 200
-    // x: 0
-    // y: 0
     minimumWidth: width
     minimumHeight: height
     maximumWidth: width
@@ -127,7 +123,7 @@ ApplicationWindow {
             anchors.fill: parent
 
             onClicked: {
-                chatNotificationManager.processNotificationClick()
+                chatNotificationManager.processClickedNotification(sessionId)
             }
         }
 

@@ -86,37 +86,42 @@ void MainContext::RecieveChat(Service *service)
                                      return;
                                  }
 
+                                 // 세션의 recent msg 정보를 갱신
+                                 QVariantMap refresh_info;
+                                 refresh_info.insert("sessionId", session_id);
+                                 refresh_info.insert("recentSenderId", sender_id);
+                                 refresh_info.insert("recentSendDate", MillisecondToCurrentDate(send_date).c_str());
+                                 refresh_info.insert("recentContentType", static_cast<int>(content_type));
+                                 refresh_info.insert("recentMessageId", message_id);
+                                 refresh_info.insert("unreadCntIncreament", 1);
+
+                                 switch (content_type)
+                                 {
+                                 case TEXT_CHAT:
+                                     refresh_info.insert("recentContent", QString::fromWCharArray(Utf8ToWStr(DecodeBase64(content.toStdString())).c_str()));
+                                     break;
+                                 default:
+                                     break;
+                                 }
+
+                                 QMetaObject::invokeMethod(m_session_list_view,
+                                                           "renewSessionInfo",
+                                                           Qt::QueuedConnection,
+                                                           Q_ARG(QVariant, QVariant::fromValue(refresh_info)));
+
                                  if (!is_instant_readed_message)
                                  {
-                                     // 세션의 recent msg 정보를 갱신
-                                     QVariantMap refresh_info;
-                                     refresh_info.insert("sessionId", session_id);
-                                     refresh_info.insert("recentSenderId", sender_id);
-                                     refresh_info.insert("recentSendDate", MillisecondToCurrentDate(send_date).c_str());
-                                     refresh_info.insert("recentContentType", static_cast<int>(content_type));
-                                     refresh_info.insert("recentMessageId", message_id);
-                                     refresh_info.insert("unreadCntIncreament", 1);
-
-                                     switch (content_type)
-                                     {
-                                     case TEXT_CHAT:
-                                         refresh_info.insert("recentContent", Utf8ToStr(DecodeBase64(content.toStdString())).c_str());
-                                         break;
-                                     default:
-                                         break;
-                                     }
-
-                                     QMetaObject::invokeMethod(m_session_list_view,
-                                                               "renewSessionInfo",
-                                                               Qt::QueuedConnection,
-                                                               Q_ARG(QVariant, QVariant::fromValue(refresh_info)));
-
                                      // 채팅 노티를 띄움
                                      if (GetForegroundWindow() != m_window.GetHandle())
                                      {
-                                         // 밑 방식은 굳이 안써도 되고 qml 창을 생성하는 것이 좋아보임
-                                         // QQuickWidget *view = new QQuickWidget;
-                                         // QApplication::alert(view, 1000);
+                                         auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
+
+                                         QVariantMap noti_info;
+                                         noti_info["sessionId"] = session_id;
+                                         noti_info["senderName"] = p_datas[sender_id].user_name.c_str();
+                                         noti_info["senderImgPath"] = p_datas[sender_id].user_img_path.c_str();
+                                         noti_info["content"] = content;
+                                         m_noti_manager->push(noti_info);
                                      }
 
                                      delete service;
@@ -531,8 +536,14 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
     //
     // return;
 
-    // m_noti_manager->push(m_user_name, m_user_img_path, content);
-    // return;
+    QVariantMap noti_info;
+    noti_info["sessionId"] = session_id;
+    noti_info["senderName"] = m_user_name;
+    noti_info["senderImgPath"] = m_user_img_path;
+    noti_info["content"] = content;
+    m_noti_manager->push(noti_info);
+
+    return;
 
     static std::atomic_bool is_ready = true;
 

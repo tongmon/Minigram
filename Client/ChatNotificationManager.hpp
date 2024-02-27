@@ -27,7 +27,7 @@ class ChatNotificationManager : public QObject
 
     Q_INVOKABLE void push(QString sender_name, QString sender_img_path, QString content);
     Q_INVOKABLE void push(QVariantMap &noti_info);
-    Q_INVOKABLE void processNotificationClick();
+    Q_INVOKABLE void processClickedNotification(const QString &session_id);
     Q_INVOKABLE void pop();
     Q_INVOKABLE void popAll();
 };

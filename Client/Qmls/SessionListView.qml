@@ -40,6 +40,12 @@ Rectangle {
         chatSessionModel.renewSessionInfo(refreshInfo)
     }
 
+    function setCurrentSession(sessionId)
+    {
+        var item = sessionListView.itemAtIndex(chatSessionModel.getIndexFromSessionId(sessionId))
+        item.select()
+    }
+
     //function addChat(chatInfo)
     //{
     //    sessionViewMap[chatInfo["sessionId"]].children[2].model.append(chatInfo)
@@ -624,6 +630,11 @@ Rectangle {
 
         delegate: Rectangle {
             property int sessionIndex: index
+
+            function select()
+            {
+                sessionInfoMouseArea.clicked(null)
+            }
 
             id: sessionInfo
             objectName: sessionId

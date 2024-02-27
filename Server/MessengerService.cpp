@@ -338,7 +338,7 @@ void MessengerService::ChatHandling()
                     if (!session.get() || !session->IsValid())
                         return;
 
-                    peer->AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+                    peer->AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
                         if (!session.get() || !session->IsValid())
                             return;
 

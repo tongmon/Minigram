@@ -198,3 +198,8 @@ Q_INVOKABLE void ChatSessionModel::renewSessionInfo(const QVariantMap &qvm)
     if (qvm.find("unreadCntIncreament") != qvm.end())
         setData(session_id, data(session_id, UNREAD_CNT_ROLE).toInt() + qvm[""].toInt(), UNREAD_CNT_ROLE);
 }
+
+int ChatSessionModel::getIndexFromSessionId(const QString &sessionId)
+{
+    return static_cast<int>(m_id_index_map[sessionId]);
+}

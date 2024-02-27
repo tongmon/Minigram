@@ -200,9 +200,13 @@ void ChatNotificationManager::popAll()
     }
 }
 
-void ChatNotificationManager::processNotificationClick()
+void ChatNotificationManager::processClickedNotification(const QString &session_id)
 {
     popAll();
+
+    QMetaObject::invokeMethod(m_main_context->m_session_list_view,
+                              "setCurrentSession",
+                              Q_ARG(QVariant, session_id));
 
     WINDOWPLACEMENT placement_info;
     GetWindowPlacement(m_main_context->m_window.GetHandle(), &placement_info);
