@@ -11,11 +11,7 @@ ChatNotificationManager::ChatNotificationManager(MainContext *main_context, int 
 
 ChatNotificationManager::~ChatNotificationManager()
 {
-    // for (auto &noti : m_noti_queue)
-    //     delete noti;
-
-    for (int i = m_noti_queue.size(); i > 0; i--)
-        pop();
+    popAll();
 }
 
 void ChatNotificationManager::push(QString sender_name, QString sender_img_path, QString content)
@@ -100,19 +96,84 @@ void ChatNotificationManager::push(QString sender_name, QString sender_img_path,
     for (auto &noti : m_noti_queue)
     {
         if (hide_cnt > 0)
+        {
             noti->setProperty("visible", false);
+            hide_cnt--;
+        }
         else
         {
             int noti_y = noti->property("y").toInt();
             noti->setProperty("y", noti_y - m_noti_size.height() - noti_y_padding);
         }
-        hide_cnt--;
+    }
+    m_noti_queue.push_back(noti_window);
+    QMetaObject::invokeMethod(noti_window,
+                              "showNotification");
+    // SetWindowPos(hwnd01, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+    FLASHWINFO fi;
+    fi.cbSize = sizeof(FLASHWINFO);
+    fi.hwnd = m_main_context->m_window.GetHandle();
+    fi.dwFlags = FLASHW_TRAY;
+    fi.uCount = 3;
+    fi.dwTimeout = 0;
+    FlashWindowEx(&fi);
+
+    // monitor_height - taskbar_height - (m_noti_queue.size() + 1) * (m_noti_size.height() + noti_y_padding);
+}
+
+void ChatNotificationManager::push(QVariantMap &noti_info)
+{
+    QObject *noti_window;
+    MONITORINFOEX minfo;
+    minfo.cbSize = sizeof(MONITORINFOEX);
+
+    HMONITOR monitor = MonitorFromWindow(m_main_context->m_window.GetHandle(), MONITOR_DEFAULTTONEAREST);
+    GetMonitorInfo(monitor, &minfo);
+    int taskbar_height = minfo.rcMonitor.bottom - minfo.rcWork.bottom,
+        monitor_height = minfo.rcMonitor.bottom - minfo.rcMonitor.top,
+        monitor_width = minfo.rcMonitor.right - minfo.rcMonitor.left,
+        noti_x_padding = 5,
+        noti_y_padding = 5;
+
+    noti_info["width"] = m_noti_size.width();
+    noti_info["height"] = m_noti_size.height();
+    noti_info["x"] = monitor_width - m_noti_size.width() - noti_x_padding;
+    noti_info["y"] = monitor_height - taskbar_height - m_noti_size.height() - noti_y_padding;
+
+    QVariant noti_var;
+    QMetaObject::invokeMethod(m_main_context->m_main_page,
+                              "createChatNotification",
+                              Q_RETURN_ARG(QVariant, noti_var),
+                              Q_ARG(QVariant, QVariant::fromValue(noti_info)));
+    noti_window = qvariant_cast<QObject *>(noti_var);
+
+    std::unique_lock<std::mutex> ul(m_noti_mut);
+    int hide_cnt = m_noti_queue.size() - m_max_queue_size + 1;
+    for (auto &noti : m_noti_queue)
+    {
+        if (hide_cnt > 0)
+        {
+            noti->setProperty("visible", false);
+            hide_cnt--;
+        }
+        else
+        {
+            int noti_y = noti->property("y").toInt();
+            noti->setProperty("y", noti_y - m_noti_size.height() - noti_y_padding);
+        }
     }
     m_noti_queue.push_back(noti_window);
     QMetaObject::invokeMethod(noti_window,
                               "showNotification");
 
-    // monitor_height - taskbar_height - (m_noti_queue.size() + 1) * (m_noti_size.height() + noti_y_padding);
+    FLASHWINFO fi;
+    fi.cbSize = sizeof(FLASHWINFO);
+    fi.hwnd = m_main_context->m_window.GetHandle();
+    fi.dwFlags = FLASHW_TRAY;
+    fi.uCount = 3;
+    fi.dwTimeout = 0;
+    FlashWindowEx(&fi);
 }
 
 void ChatNotificationManager::pop()
@@ -125,4 +186,37 @@ void ChatNotificationManager::pop()
     m_noti_queue.pop_front();
     QMetaObject::invokeMethod(front_noti,
                               "closeNotification");
+}
+
+void ChatNotificationManager::popAll()
+{
+    std::unique_lock<std::mutex> ul(m_noti_mut);
+    while (!m_noti_queue.empty())
+    {
+        auto front_noti = m_noti_queue.front();
+        m_noti_queue.pop_front();
+        QMetaObject::invokeMethod(front_noti,
+                                  "closeNotification");
+    }
+}
+
+void ChatNotificationManager::processNotificationClick()
+{
+    popAll();
+
+    WINDOWPLACEMENT placement_info;
+    GetWindowPlacement(m_main_context->m_window.GetHandle(), &placement_info);
+    switch (placement_info.showCmd)
+    {
+    case SW_SHOWMINIMIZED:
+        ShowWindow(m_main_context->m_window.GetHandle(), SW_RESTORE);
+        break;
+    case SW_SHOWMAXIMIZED:
+        ShowWindow(m_main_context->m_window.GetHandle(), SW_SHOWMAXIMIZED);
+        break;
+    default:
+        ShowWindow(m_main_context->m_window.GetHandle(), SW_NORMAL);
+        break;
+    }
+    SetForegroundWindow(m_main_context->m_window.GetHandle());
 }

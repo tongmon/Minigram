@@ -38,7 +38,7 @@ find_package(QT NAMES Qt6 Qt5 REQUIRED Core)
 # Major Version에 대한 경로도 설정해줘야 한다.
 set(Qt${QT_VERSION_MAJOR}_DIR ${QT_DIR})
 
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED Qml Quick QuickControls2 Widgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED Qml Quick QuickWidgets QuickControls2 Widgets)
 
 # 소스 파일들을 SRC_FILES 변수에 저장
 file(GLOB SRC_FILES CONFIGURE_DEPENDS ./*.cpp)
@@ -58,6 +58,7 @@ target_link_libraries(
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Qml
     Qt${QT_VERSION_MAJOR}::Quick
+    Qt${QT_VERSION_MAJOR}::QuickWidgets
     Qt${QT_VERSION_MAJOR}::QuickControls2
     Qt${QT_VERSION_MAJOR}::Widgets
     Boost::boost
@@ -70,7 +71,7 @@ target_link_libraries(
     ws2_32.lib
 )
 
-#add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
-#     COMMAND windeployqt.exe $<IF:$<CONFIG:Debug>,--debug,--release> --qmldir "${CMAKE_SOURCE_DIR}/Qmls" "${CMAKE_BINARY_DIR}/$<IF:$<CONFIG:Debug>,Debug,Release>/${CMAKE_PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}"
-#     WORKING_DIRECTORY "${QT_DIR}/../../../bin"
-#)
+# add_custom_command(TARGET ${CMAKE_PROJECT_NAME} POST_BUILD
+#      COMMAND windeployqt.exe $<IF:$<CONFIG:Debug>,--debug,--release> --qmldir "${CMAKE_SOURCE_DIR}/Qmls" "${CMAKE_BINARY_DIR}/$<IF:$<CONFIG:Debug>,Debug,Release>/${CMAKE_PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX}"
+#      WORKING_DIRECTORY "${QT_DIR}/../../../bin"
+# )

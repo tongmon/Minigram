@@ -22,12 +22,14 @@ class ChatNotificationManager : public QObject
     MainContext *m_main_context;
 
   public:
-    ChatNotificationManager(MainContext *main_context, int max_queue_size = 3, const QSize &noti_size = {300, 120});
+    ChatNotificationManager(MainContext *main_context, int max_queue_size = 3, const QSize &noti_size = {350, 120});
     ~ChatNotificationManager();
 
-    void push(QString sender_name, QString sender_img_path, QString content);
-
+    Q_INVOKABLE void push(QString sender_name, QString sender_img_path, QString content);
+    Q_INVOKABLE void push(QVariantMap &noti_info);
+    Q_INVOKABLE void processNotificationClick();
     Q_INVOKABLE void pop();
+    Q_INVOKABLE void popAll();
 };
 
 #endif /* HEADER__FILE__CHATNOTIFICATIONMANAGER */

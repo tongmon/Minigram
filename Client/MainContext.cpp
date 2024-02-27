@@ -531,9 +531,8 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
     //
     // return;
 
-    m_noti_manager->push(m_user_name, m_user_img_path, content);
-
-    return;
+    // m_noti_manager->push(m_user_name, m_user_img_path, content);
+    // return;
 
     static std::atomic_bool is_ready = true;
 

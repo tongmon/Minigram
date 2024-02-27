@@ -1,4 +1,5 @@
 ﻿#include "WinQuickWindow.hpp"
+#include "ChatNotificationManager.hpp"
 #include "MainContext.hpp"
 #include "NetworkDefinition.hpp"
 #include "TCPClient.hpp"
@@ -174,6 +175,22 @@ bool WinQuickWindow::eventFilter(QObject *obj, QEvent *evt)
 bool WinQuickWindow::nativeEventFilter(const QByteArray &event_type, void *message, long *result)
 {
     MSG *msg = (MSG *)message;
+
+    // Notification Popup은 따로 windows 메시지 처리
+    if (m_hwnd != msg->hwnd)
+    {
+        switch (msg->message)
+        {
+        case WM_NCCALCSIZE:
+            return true;
+        case WM_NCHITTEST:
+            *result = HTTRANSPARENT;
+            break;
+        default:
+            break;
+        }
+        return false;
+    }
 
     switch (msg->message)
     {
@@ -359,19 +376,22 @@ bool WinQuickWindow::nativeEventFilter(const QByteArray &event_type, void *messa
     }
 
     case WM_ACTIVATEAPP: {
-        // 올바른 로직이지만 일단 테스트를 위해 비활성화
-        // if (m_main_context && msg->wParam)
-        // {
-        //     QString cur_session_id = m_main_context->m_main_page->property("currentRoomID").toString();
-        //     if (!cur_session_id.isEmpty())
-        //         m_main_context->tryRefreshSession(cur_session_id);
-        // }
+        if (m_main_context && msg->wParam)
+        {
+            // m_main_context->m_noti_manager->popAll();
+
+            // 올바른 로직이지만 일단 테스트를 위해 비활성화
+            // QString cur_session_id = m_main_context->m_session_list_view->property("currentSessionId").toString();
+            // if (!cur_session_id.isEmpty())
+            //     m_main_context->tryRefreshSession(cur_session_id);
+        }
         break;
     }
 
     case WM_CLOSE: {
         if (m_is_shutdown_state)
         {
+            m_main_context->m_noti_manager->popAll();
             m_main_context->tryLogOut();
             break;
         }

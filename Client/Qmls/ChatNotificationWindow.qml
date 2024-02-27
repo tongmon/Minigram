@@ -5,7 +5,7 @@ import QtQuick.Layouts 1.12
 
 ApplicationWindow {
     id: chatNotificationWindow
-    flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+    flags: Qt.WindowStaysOnTopHint
     // width: 400
     // height: 200
     // x: 0
@@ -14,7 +14,9 @@ ApplicationWindow {
     minimumHeight: height
     maximumWidth: width
     maximumHeight: height
-
+    opacity: 1
+    
+    property var sessionId: ""
     property var senderImgPath: ""
     property var senderName: ""
     property var content: ""
@@ -30,50 +32,29 @@ ApplicationWindow {
         chatNotificationWindow.show()
     }
 
+    SequentialAnimation {
+        id: fadeOutAnim
+
+        NumberAnimation {
+            target: chatNotificationWindow
+            property: "opacity"
+            to: 0
+            duration: 500
+        }
+    }
+
+    Timer {
+        id: notificationTimer
+        interval: 6000
+        onTriggered: {
+            fadeOutAnim.running = true
+        }
+    }
+
     Rectangle {
+        id: chatNotificationRect
         anchors.fill: parent
         color: "blue"
-        state: "visible"
-
-        states: [
-            State {
-                name: "visible"
-        
-                PropertyChanges {
-                    target: chatNotificationWindow
-                    opacity: 1
-                }
-            },
-            State {
-                name: "hide"
-        
-                PropertyChanges {
-                    target: chatNotificationWindow
-                    opacity: 0
-                }
-            }
-        ]
-
-        transitions: [
-            Transition {
-                from: "visible"
-                to: "hide"
-                PropertyAnimation { 
-                    properties: "opacity"
-                    duration: 500 
-                }
-            }
-        ]
-
-        Timer {
-            id: notificationTimer
-            interval: 6000
-
-            onTriggered: {
-                // state = "hide"
-                chatNotificationManager.pop()
-            }
-        }
 
         CustomImageButton {
             id: senderImg
@@ -142,17 +123,21 @@ ApplicationWindow {
             }
         }
 
-        onOpacityChanged: { 
-            // 밑에꺼 안먹음...
-            //if (!opacity && state == "hide")
-            //    console.log("hide")
-            //    chatNotificationManager.pop()
+        MouseArea {
+            anchors.fill: parent
+
+            onClicked: {
+                chatNotificationManager.processNotificationClick()
+            }
         }
 
         Component.onCompleted: {
-            // console.log("timer start!")
-            // notificationTimer.start()
         }
+    }
+
+    onOpacityChanged: {
+        if (!opacity)
+            chatNotificationManager.pop()
     }
 
     Component.onCompleted: {

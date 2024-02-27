@@ -21,6 +21,7 @@ Rectangle {
                                                     height: notiInfo["height"]
                                                })
 
+        notiWindow.sessionId = notiInfo["sessionId"]
         notiWindow.senderImgPath = notiInfo["senderImgPath"]
         notiWindow.senderName = notiInfo["senderName"]
         notiWindow.content = notiInfo["content"]
