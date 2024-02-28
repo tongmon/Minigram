@@ -11,7 +11,7 @@
 int main(int argc, char *argv[])
 {
     // 메신저 프로세스는 단 하나 존재해야 함
-    RunGuard run_guard(QStringLiteral("minigram-messenger-34325527-565723"));
+    RunGuard run_guard(QStringLiteral("minigram-messenger-34325527-515723")); // minigram-messenger-34325527-565723 -> rel / minigram-messenger-34325527-515723 -> deb
     if (!run_guard.TryRun())
         return 1;
 

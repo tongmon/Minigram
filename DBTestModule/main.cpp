@@ -80,23 +80,23 @@ void MongoDBTestZone()
     auto &client = MongoDBClient::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213"});
 
     auto db = client["Minigram"];
-    auto col = db["test_collection"];
+    auto col = db["yellowjam_1708298126167_cnt"];
 
-    // col.update_one(basic::make_document(basic::kvp("message_cnt",
-    //                                                basic::make_document(basic::kvp("$gt", -1)))),
-    //                basic::make_document(basic::kvp("$inc",
-    //                                                basic::make_document(basic::kvp("message_cnt", -1)))));
+    col.update_one(basic::make_document(basic::kvp("message_cnt",
+                                                   basic::make_document(basic::kvp("$gt", -1)))),
+                   basic::make_document(basic::kvp("$inc",
+                                                   basic::make_document(basic::kvp("message_cnt", -1)))));
 
-    basic::array reader;
-    reader.append("tongmoon");
-    reader.append("bluejam");
-
-    col.update_one(basic::make_document(basic::kvp("reader_info",
-                                                   "test")),
-                   basic::make_document(basic::kvp("$push",
-                                                   basic::make_document(basic::kvp("reader_id",
-                                                                                   basic::make_document(basic::kvp("$each",
-                                                                                                                   reader)))))));
+    // basic::array reader;
+    // reader.append("tongmoon");
+    // reader.append("bluejam");
+    //
+    // col.update_one(basic::make_document(basic::kvp("reader_info",
+    //                                                "test")),
+    //                basic::make_document(basic::kvp("$push",
+    //                                                basic::make_document(basic::kvp("reader_id",
+    //                                                                                basic::make_document(basic::kvp("$each",
+    //                                                                                                                reader)))))));
 
     //
     // mongocxx::options::find opts;

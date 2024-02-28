@@ -25,7 +25,6 @@ class ChatNotificationManager : public QObject
     ChatNotificationManager(MainContext *main_context, int max_queue_size = 3, const QSize &noti_size = {350, 120});
     ~ChatNotificationManager();
 
-    Q_INVOKABLE void push(QString sender_name, QString sender_img_path, QString content);
     Q_INVOKABLE void push(QVariantMap &noti_info);
     Q_INVOKABLE void processClickedNotification(const QString &session_id);
     Q_INVOKABLE void pop();

@@ -39,6 +39,8 @@ MainContext::MainContext(WinQuickWindow &window)
 
     m_noti_manager = std::make_unique<ChatNotificationManager>(this);
     window.GetEngine().rootContext()->setContextProperty("chatNotificationManager", m_noti_manager.get());
+
+    m_main_page = m_login_page = m_session_list_view = m_contact_view = nullptr;
 }
 
 MainContext::~MainContext()
@@ -66,20 +68,33 @@ void MainContext::RecieveChat(Service *service)
     service->server_response.GetData(content_type);
     service->server_response.GetData(content);
 
+    switch (content_type)
+    {
+    case TEXT_CHAT:
+        content = QString::fromWCharArray(Utf8ToWStr(DecodeBase64(content.toStdString())).c_str());
+        break;
+    default:
+        break;
+    }
+
+    auto cur_session_id = m_session_list_view->property("currentSessionId").toString().toStdString();
+    auto recieve_session = session_id.toStdString();
+
     // async_write하는 동안 유지되어야 하기에 포인터로 할당
     std::shared_ptr<NetworkBuffer> net_buf(new NetworkBuffer(CHAT_RECIEVE_TYPE));
 
-    // top window고 current session이 여기 도착한 session_id와 같으면 읽음 처리
-    bool is_instant_readed_message = GetForegroundWindow() == m_window.GetHandle() && m_session_list_view->property("currentSessionId").toString() == session_id;
+    bool is_foreground = GetForegroundWindow() == m_window.GetHandle(),
+         is_current_session = m_session_list_view->property("currentSessionId").toString() == session_id;
 
-    *net_buf += (is_instant_readed_message ? m_user_id : "");
+    // top window고 current session이 여기 도착한 session_id와 같으면 읽음 처리
+    *net_buf += ((is_foreground && is_current_session) ? m_user_id : "");
 
     auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
     auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
 
     boost::asio::async_write(*service->sock,
                              net_buf->AsioBuffer(),
-                             [this, is_instant_readed_message, service, net_buf, session_view, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
+                             [this, service, net_buf, is_foreground, is_current_session, session_view, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
                                  if (ec != boost::system::errc::success)
                                  {
                                      delete service;
@@ -93,26 +108,20 @@ void MainContext::RecieveChat(Service *service)
                                  refresh_info.insert("recentSendDate", MillisecondToCurrentDate(send_date).c_str());
                                  refresh_info.insert("recentContentType", static_cast<int>(content_type));
                                  refresh_info.insert("recentMessageId", message_id);
-                                 refresh_info.insert("unreadCntIncreament", 1);
+                                 refresh_info.insert("recentContent", content);
 
-                                 switch (content_type)
-                                 {
-                                 case TEXT_CHAT:
-                                     refresh_info.insert("recentContent", QString::fromWCharArray(Utf8ToWStr(DecodeBase64(content.toStdString())).c_str()));
-                                     break;
-                                 default:
-                                     break;
-                                 }
+                                 if (!is_current_session)
+                                     refresh_info.insert("unreadCntIncreament", 1);
 
                                  QMetaObject::invokeMethod(m_session_list_view,
                                                            "renewSessionInfo",
                                                            Qt::QueuedConnection,
                                                            Q_ARG(QVariant, QVariant::fromValue(refresh_info)));
 
-                                 if (!is_instant_readed_message)
+                                 if (!is_foreground || !is_current_session)
                                  {
                                      // 채팅 노티를 띄움
-                                     if (GetForegroundWindow() != m_window.GetHandle())
+                                     if (!is_foreground)
                                      {
                                          auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
 
@@ -173,17 +182,9 @@ void MainContext::RecieveChat(Service *service)
                                                                                          chat_info.insert("senderImgPath", p_datas[sender_id].user_img_path.c_str());
                                                                                          chat_info.insert("sendDate", MillisecondToCurrentDate(send_date).c_str());
                                                                                          chat_info.insert("contentType", static_cast<int>(content_type));
+                                                                                         chat_info.insert("content", content);
                                                                                          chat_info.insert("readerIds", reader_ids);
                                                                                          chat_info.insert("isOpponent", true);
-
-                                                                                         switch (content_type)
-                                                                                         {
-                                                                                         case TEXT_CHAT:
-                                                                                             chat_info.insert("content", content);
-                                                                                             break;
-                                                                                         default:
-                                                                                             break;
-                                                                                         }
 
                                                                                          QMetaObject::invokeMethod(session_view,
                                                                                                                    "addChat",
@@ -206,11 +207,19 @@ void MainContext::RefreshReaderIds(Service *service)
     service->server_response.GetData(reader_id);
     service->server_response.GetData(message_id);
 
-    QMetaObject::invokeMethod(m_session_list_view,
+    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
+    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
+
+    QMetaObject::invokeMethod(session_view,
                               "refreshReaderIds",
-                              Q_ARG(QString, session_id),
-                              Q_ARG(QString, reader_id),
-                              Q_ARG(QVariant, message_id));
+                              Q_ARG(QVariant, reader_id),
+                              Q_ARG(QVariant, static_cast<int>(message_id)));
+
+    // QMetaObject::invokeMethod(m_session_list_view,
+    //                           "refreshReaderIds",
+    //                           Q_ARG(QString, session_id),
+    //                           Q_ARG(QString, reader_id),
+    //                           Q_ARG(QVariant, message_id));
 
     delete service;
 }
@@ -529,20 +538,12 @@ void MainContext::trySendTextChat(const QString &session_id, const QString &cont
 // Server에서 받는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MainContext::trySendChat(const QString &session_id, unsigned char content_type, const QString &content)
 {
-    // auto utf_8_str = WStrToUtf8(content.toStdWString());
-    // auto real_str = Utf8ToStr(utf_8_str);
-    // auto real_wstr = StrToWStr(real_str);
-    // auto encoded = EncodeBase64(WStrToUtf8(content.toStdWString()));
-    //
-    // return;
-
     QVariantMap noti_info;
     noti_info["sessionId"] = session_id;
     noti_info["senderName"] = m_user_name;
     noti_info["senderImgPath"] = m_user_img_path;
     noti_info["content"] = content;
     m_noti_manager->push(noti_info);
-
     return;
 
     static std::atomic_bool is_ready = true;
@@ -932,36 +933,6 @@ void MainContext::tryGetSessionList()
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
 {
-    // auto qvm = m_session_list_view->property("sessionViewMap").toMap();
-    // auto object = qvariant_cast<QObject *>(qvm[session_id]);
-    // std::string obj_color = object->property("color").toString().toStdString();
-    //
-    // auto session_view = object->findChild<QObject *>("sessionView");
-    // auto session_model = qobject_cast<ChatModel *>(qvariant_cast<QObject *>(session_view->property("model")));
-    //
-    //// chat object에서 listview model 뜯어오는 법 알아야됨
-    // QVariantMap chat_info;
-    // chat_info.insert("messageId", 1);
-    // chat_info.insert("sessionId", session_id);
-    // chat_info.insert("senderId", m_user_id);
-    // chat_info.insert("senderName", m_user_name);
-    // chat_info.insert("senderImgPath", m_user_img_path);
-    // chat_info.insert("contentType", TEXT_CHAT);
-    // chat_info.insert("sendDate", MillisecondToCurrentDate(1708298126167).c_str());
-    // chat_info.insert("content", "Hello World");
-    // chat_info.insert("isOpponent", false);
-    //
-    // QStringList list = {"tongstar", "yellowjam"};
-    // chat_info.insert("readerIds", list);
-    //
-    // QMetaObject::invokeMethod(object,
-    //                          "addChat",
-    //                          Q_ARG(QVariant, QVariant::fromValue(chat_info)));
-    //
-    // int num = session_model->rowCount();
-    //
-    // return;
-
     static std::atomic_bool is_ready = true;
 
     bool old_var = true;

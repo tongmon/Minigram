@@ -356,10 +356,7 @@ void MessengerService::ChatHandling()
                             mut->unlock();
                         }
                         else
-                        {
                             peer->CloseRequest(session->GetID());
-                            return;
-                        }
 
                         if (remaining_participant_cnt->fetch_sub(1) == 1)
                         {
@@ -369,7 +366,10 @@ void MessengerService::ChatHandling()
                             for (const auto &r_id : *reader_ids)
                             {
                                 buf += r_id.second;
-                                readers.append(r_id.second);
+
+                                // 보낸 사람은 db에 추가할 필요 없음
+                                if (r_id.first >= 0)
+                                    readers.append(r_id.second);
                             }
 
                             auto &mongo_client = MongoDBClient::Get();

@@ -249,7 +249,7 @@ Rectangle {
         }
 
         delegate: Item {
-            width: parent.width
+            width: sessionView.width
             height: chatLoader.height
             objectName: senderId // 어떤 사람이 연속으로 메시지를 보내고 있는지 알기 위함
 
@@ -266,9 +266,12 @@ Rectangle {
 
             // 말풍선 꼭다리 유무
             property bool hasStem: {
-                var index = sessionViewModel.getIndexFromMsgId(messageId)
-                return index <= 0 ? true : 
-                       ((senderId === sessionView.itemAtIndex(index - 1).objectName && sendDate === sessionView.itemAtIndex(index - 1).sendDateStr) ? false : true)
+                return true
+
+                // 여기 문제 해결해야 됨...
+                //var index = sessionViewModel.getIndexFromMsgId(messageId)
+                //return index <= 0 ? true : 
+                //       ((senderId === sessionView.itemAtIndex(index - 1).objectName && sendDate === sessionView.itemAtIndex(index - 1).sendDateStr) ? false : true)
             }
 
             Loader {

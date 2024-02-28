@@ -95,3 +95,9 @@ request_id는 asyncconnect 함수 밖으로 꺼낼 필요가 없기 때문에 �
 https://het.as.utexas.edu/HET/Software/html/declarative-modelviews-webview-alerts-qml-alerts-alerts-qml.html -> 참고
 https://gist.github.com/Siecje/13f0a3725cf4b6765b86f3b54b15b1fc -> 참고
 alert 함수를 이용할 수도 있고 qml 다이얼로그를 변형하여 접근할 수도 있음
+
+- 고쳐야할 문제
+
+1. 다른 컴퓨터에서 접속 안됨 -> ip 따오는 부분 검토
+2. 다른 사용자한테 메시지를 3개 보낸다 하면 첫번째 메시지는 다른 사람이 바로 읽은 것으로 처리됨 -> ChatHandling()에 문제 있는듯
+3. Qt::BlockingQueuedConnection 방식으로 noti 3개 이상 띄우면 오류남...

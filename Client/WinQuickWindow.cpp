@@ -376,14 +376,13 @@ bool WinQuickWindow::nativeEventFilter(const QByteArray &event_type, void *messa
     }
 
     case WM_ACTIVATEAPP: {
-        if (m_main_context && msg->wParam)
+        if (m_main_context && m_main_context->m_session_list_view && msg->wParam)
         {
             // m_main_context->m_noti_manager->popAll();
 
-            // 올바른 로직이지만 일단 테스트를 위해 비활성화
-            // QString cur_session_id = m_main_context->m_session_list_view->property("currentSessionId").toString();
-            // if (!cur_session_id.isEmpty())
-            //     m_main_context->tryRefreshSession(cur_session_id);
+            QString cur_session_id = m_main_context->m_session_list_view->property("currentSessionId").toString();
+            if (!cur_session_id.isEmpty())
+                m_main_context->tryRefreshSession(cur_session_id);
         }
         break;
     }

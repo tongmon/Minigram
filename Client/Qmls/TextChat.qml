@@ -50,6 +50,19 @@ Item {
         RowLayout {
             Item {
                 Layout.fillWidth: !isOpponent
+                Layout.preferredHeight: chatCanvas.height
+            
+                Text {
+                    anchors {
+                        right: parent.right
+                        bottom: parent.bottom
+                    }
+                    color: "yellow"
+                    text: {
+                        var participantCnt = chatSessionModel.getParticipantCnt(sessionId)
+                        return (!isOpponent && participantCnt != readerIds.length) ? participantCnt - readerIds.length : ""
+                    }
+                }
             }
 
             Canvas {
@@ -158,6 +171,19 @@ Item {
 
             Item {
                 Layout.fillWidth: isOpponent
+                Layout.preferredHeight: chatCanvas.height
+
+                Text {
+                    anchors {
+                        left: parent.left
+                        bottom: parent.bottom
+                    }
+                    color: "yellow"
+                    text: {
+                        var participantCnt = chatSessionModel.getParticipantCnt(sessionId)
+                        return (isOpponent && participantCnt != readerIds.length) ? participantCnt - readerIds.length : ""
+                    }
+                }
             }
         }
     }
