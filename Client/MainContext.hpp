@@ -55,7 +55,7 @@ class MainContext : public QObject
     Q_INVOKABLE void trySendChat(const QString &session_id, unsigned char content_type, const QString &content);
     Q_INVOKABLE void tryGetSessionList();
     Q_INVOKABLE void tryRefreshSession(const QString &session_id);
-    Q_INVOKABLE void tryFetchMoreMessage(const QString &session_id, int message_id); // 스크롤바 올리는 경우 과거 채팅 받아오는 함수
+    Q_INVOKABLE void tryFetchMoreMessage(const QString &session_id, int front_message_id); // 스크롤바 올리는 경우 과거 채팅 받아오는 함수
     Q_INVOKABLE void tryGetContactList();
     Q_INVOKABLE void trySendContactRequest(const QString &user_id);
     Q_INVOKABLE void tryGetContactRequestList();

@@ -197,7 +197,20 @@ raw data: participant_img 01 | participant_img 02 ...
 
 #### Fetch More Message
 클라이언트 채팅방에서 스크롤을 계속 위로 올리면 발생하게 되는 과거 채팅 이력 서버에서 가져오는 경우
-Session Refresh 통신과 동일하다.
+
+{
+	"fetched_chat_list" [
+		{
+			"sender_id": 	"보낸 사람 USER_ID",
+			"send_date": 	time since epoch,
+			"message_id":	462,
+			"content_type": "text",
+			"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4",
+			"reader_id": [ "tongstar", "yellowjam" ... ]
+		},
+		...
+	],
+}
 
 #### Contact Init
 연락처 목록 초기화시 서버에서 클라로 던져주는 json 데이터
