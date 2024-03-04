@@ -104,9 +104,12 @@ bool ChatModel::setData(const QModelIndex &index, const QVariant &value, int rol
     case SENDER_IMG_PATH_ROLE:
         chat->sender_img_path = value.toString();
         break;
-    case READER_IDS_ROLE:
+    case READER_IDS_ROLE: {
         chat->reader_ids = value.toStringList();
+        for (int i = 0; i < chat->reader_ids.size(); i++)
+            chat->reader_set.insert(chat->reader_ids[i]);
         break;
+    }
     case SEND_DATE_ROLE:
         chat->send_date = value.toString();
         break;
@@ -207,7 +210,14 @@ void ChatModel::refreshReaderIds(const QString &reader_id, int start_modify_msg_
 
     for (size_t i = start_modify_msg_id - m_chats[0]->message_id; i < m_chats.size(); i++)
     {
-        m_chats[i]->reader_ids.push_back(reader_id);
+        if (i < 0)
+            continue;
+
+        if (m_chats[i]->reader_set.find(reader_id) == m_chats[i]->reader_set.end())
+        {
+            m_chats[i]->reader_set.insert(reader_id);
+            m_chats[i]->reader_ids.push_back(reader_id);
+        }
 
         auto ind = index(i);
         emit dataChanged(ind, ind, {READER_IDS_ROLE});

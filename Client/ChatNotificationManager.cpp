@@ -36,6 +36,7 @@ void ChatNotificationManager::push(QVariantMap &noti_info)
     QVariant noti_var;
     QMetaObject::invokeMethod(m_main_context->m_main_page,
                               "createChatNotification",
+                              Qt::BlockingQueuedConnection,
                               Q_RETURN_ARG(QVariant, noti_var),
                               Q_ARG(QVariant, QVariant::fromValue(noti_info)));
     noti_window = qvariant_cast<QObject *>(noti_var);
@@ -46,7 +47,8 @@ void ChatNotificationManager::push(QVariantMap &noti_info)
     {
         if (hide_cnt > 0)
         {
-            noti->setProperty("visible", false);
+            // noti->setProperty("visible", false); // thread conflict
+            noti->setProperty("y", -m_noti_size.height() - 10);
             hide_cnt--;
         }
         else
@@ -95,6 +97,10 @@ void ChatNotificationManager::popAll()
 void ChatNotificationManager::processClickedNotification(const QString &session_id)
 {
     popAll();
+
+    QMetaObject::invokeMethod(m_main_context->m_main_page,
+                              "selectCurrentView",
+                              Q_ARG(QVariant, "session"));
 
     QMetaObject::invokeMethod(m_main_context->m_session_list_view,
                               "setCurrentSession",

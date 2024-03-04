@@ -10,10 +10,11 @@
 
 int main(int argc, char *argv[])
 {
+    //! 테스트를 위해 run_guard 잠시 끔
     // 메신저 프로세스는 단 하나 존재해야 함
-    RunGuard run_guard(QStringLiteral("minigram-messenger-34325527-515723")); // minigram-messenger-34325527-565723 -> rel / minigram-messenger-34325527-515723 -> deb
-    if (!run_guard.TryRun())
-        return 1;
+    // RunGuard run_guard(QStringLiteral("minigram-messenger-34325527-515723")); // minigram-messenger-34325527-565723 -> rel / minigram-messenger-34325527-515723 -> deb
+    // if (!run_guard.TryRun())
+    //     return 1;
 
     // Qt::AA_UseSoftwareOpenGL, Qt::AA_UseDesktopOpenGL, Qt::AA_UseOpenGLES 등 많다.
     QApplication::setAttribute(Qt::AA_UseOpenGLES);
@@ -58,7 +59,8 @@ int main(int argc, char *argv[])
             if ((!obj && url == obj_url) || !win_quick_window.InitWindow(engine))
                 QCoreApplication::exit(-1);
 
-            run_guard.SetUniqueHwnd(win_quick_window.GetHandle());
+            //! 테스트를 위해 run_guard 잠시 끔
+            // run_guard.SetUniqueHwnd(win_quick_window.GetHandle());
         },
         Qt::QueuedConnection);
     engine.load(url);

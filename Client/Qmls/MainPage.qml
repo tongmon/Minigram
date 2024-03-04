@@ -28,6 +28,12 @@ Rectangle {
         return notiWindow
     }
 
+    function selectCurrentView(currentView)
+    {
+        if (sideBarView.currentView !== currentView)
+            sideBarView.currentView = currentView
+    }
+
     /*
     Popup {
         id: chatNotificationPopup

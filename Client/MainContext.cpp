@@ -561,18 +561,6 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
             return;
         }
 
-        // 테스트 코드
-        QVariantMap noti_info;
-        noti_info["sessionId"] = session_id;
-        noti_info["senderName"] = m_user_name;
-        noti_info["senderImgPath"] = m_user_img_path;
-        noti_info["content"] = content;
-        m_noti_manager->push(noti_info);
-
-        central_server.CloseRequest(session->GetID());
-        is_ready.store(true);
-        return;
-
         NetworkBuffer net_buf(CHAT_SEND_TYPE);
         net_buf += m_user_id;
         net_buf += session_id;

@@ -8,6 +8,7 @@
 #include <QQmlComponent>
 
 #include <map>
+#include <set>
 
 class Chat : public QObject
 {
@@ -39,6 +40,7 @@ class Chat : public QObject
     QString content;
     QString qml_source;
     QStringList reader_ids;
+    std::set<QString> reader_set;
     bool is_oppoent;
 
     Chat(const int64_t &message_id = 0,

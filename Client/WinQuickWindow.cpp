@@ -380,10 +380,25 @@ bool WinQuickWindow::nativeEventFilter(const QByteArray &event_type, void *messa
         {
             // m_main_context->m_noti_manager->popAll();
 
+            // QString cur_session_id = m_main_context->m_session_list_view->property("currentSessionId").toString();
+            // if (!cur_session_id.isEmpty())
+            //     m_main_context->tryRefreshSession(cur_session_id);
+        }
+        break;
+    }
+
+    case WM_ACTIVATE: {
+        if ((msg->wParam == WA_ACTIVE || msg->wParam == WA_CLICKACTIVE) &&
+            m_main_context &&
+            m_main_context->m_session_list_view)
+        {
+            m_main_context->m_noti_manager->popAll();
+
             QString cur_session_id = m_main_context->m_session_list_view->property("currentSessionId").toString();
             if (!cur_session_id.isEmpty())
                 m_main_context->tryRefreshSession(cur_session_id);
         }
+
         break;
     }
 

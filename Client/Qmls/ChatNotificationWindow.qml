@@ -41,7 +41,7 @@ ApplicationWindow {
 
     Timer {
         id: notificationTimer
-        interval: 6000
+        interval: 4000
         onTriggered: {
             fadeOutAnim.running = true
         }

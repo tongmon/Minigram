@@ -23,6 +23,9 @@ Chat::Chat(const int64_t &message_id,
       is_oppoent{is_oppoent},
       QObject(parent)
 {
+    for (int i = 0; i < reader_ids.size(); i++)
+        reader_set.insert(reader_ids[i]);
+
     qml_source = m_chat_type_component_map[static_cast<ChatType>(content_type)];
     emit qmlSourceChanged();
 }

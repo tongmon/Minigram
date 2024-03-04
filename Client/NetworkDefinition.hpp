@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-constexpr char SERVER_IP[] = "127.0.0.1";
+constexpr char SERVER_IP[] = "172.27.96.1";
 constexpr std::uint64_t SERVER_PORT = 4000;
 
 enum ConnectionType : int64_t

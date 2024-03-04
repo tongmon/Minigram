@@ -790,13 +790,14 @@ void MessengerService::RefreshSessionHandling()
 
         participant_ary.push_back(std::move(p_obj));
 
-        if (ip_ind == soci::i_null || participant_id == user_id)
+        // 로그인을 안했거나 refresh session을 수행한 사람이 자신이거나 업데이트한 채팅이 없을 경우 다른 사람에게 보내지 않음
+        if (ip_ind == soci::i_null || participant_id == user_id || !update_result->matched_count())
             continue;
 
         // 다른 클라이언트에 reader 업데이트 소식 알림
         std::shared_ptr<NetworkBuffer> buf = std::make_shared<NetworkBuffer>(MESSAGE_READER_UPDATE_TYPE);
         *buf += session_id;
-        *buf += participant_id;
+        *buf += user_id;
         *buf += (past_recent_message_id + 1); // past_recent_message_id + 1 이상인 메시지들의 reader cnt 변경
 
         m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, buf](std::shared_ptr<Session> session) -> void {

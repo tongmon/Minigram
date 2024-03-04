@@ -80,12 +80,21 @@ void MongoDBTestZone()
     auto &client = MongoDBClient::Get({"localhost", "27017", "Minigram", "tongstar", "@Lsy12131213"});
 
     auto db = client["Minigram"];
-    auto col = db["yellowjam_1708298126167_cnt"];
+    auto col = db["test_collection"];
 
-    col.update_one(basic::make_document(basic::kvp("message_cnt",
-                                                   basic::make_document(basic::kvp("$gt", -1)))),
-                   basic::make_document(basic::kvp("$inc",
-                                                   basic::make_document(basic::kvp("message_cnt", -1)))));
+    auto ret = col.update_many(basic::make_document(basic::kvp("message_id",
+                                                               basic::make_document(basic::kvp("$gt", 100)))),
+                               basic::make_document(basic::kvp("$inc",
+                                                               basic::make_document(basic::kvp("message_id", 100)))));
+
+    auto cnt = ret.value().modified_count();
+
+    int i = 0;
+
+    // col.update_one(basic::make_document(basic::kvp("message_cnt",
+    //                                                basic::make_document(basic::kvp("$gt", -1)))),
+    //                basic::make_document(basic::kvp("$inc",
+    //                                                basic::make_document(basic::kvp("message_cnt", -1)))));
 
     // basic::array reader;
     // reader.append("tongmoon");
