@@ -925,6 +925,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                     user_img_name = participant_info["user_img_name"].as_string().c_str();
                         std::filesystem::path p_id_path = p_path + "\\" + user_id;
                         QVariantMap qvm;
+                        qvm["sessionId"] = session_id;
                         qvm["participantId"] = user_id.c_str();
 
                         QVariant ret;
@@ -934,9 +935,10 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                                   Q_RETURN_ARG(QVariant, ret),
                                                   Q_ARG(QVariant, session_id),
                                                   Q_ARG(QVariant, user_id.c_str()));
-                        QVariantMap paticipant_data = ret.toMap();
+                        QVariantMap participant_data = ret.toMap();
 
-                        if (paticipant_data.find("participantId") == paticipant_data.end())
+                        // 처음 넣는 경우
+                        if (participant_data.find("participantId") == participant_data.end())
                         {
                             QVariantMap insert_info;
                             insert_info["sessionId"] = session_id;
@@ -946,24 +948,16 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             insert_info["participantImgPath"] = "";
                             QMetaObject::invokeMethod(m_main_page,
                                                       "insertParticipantData",
-                                                      Qt::BlockingQueuedConnection,
+                                                      Qt::QueuedConnection,
                                                       Q_ARG(QVariant, QVariant::fromValue(insert_info)));
                         }
-
-                        //! 여기서 부터 이어서...
-                        if (p_datas.find(user_id.c_str()) == p_datas.end())
-                        {
-                            p_datas[user_id.c_str()] = UserData{user_name, user_info, ""};
-                            // changed = true;
-                        }
+                        // 이미 있던 경우
                         else
                         {
-                            if (p_datas[user_id.c_str()].user_name != user_name)
-                            {
-                                p_datas[user_id.c_str()].user_name = user_name;
-                                qvm["changedName"] = user_name.c_str();
-                            }
-                            p_datas[user_id.c_str()].user_info = user_info;
+                            if (participant_data["participantName"].toString() != user_name.c_str())
+                                qvm["participantName"] = user_name.c_str();
+                            if (participant_data["participantInfo"].toString() != user_info.c_str())
+                                qvm["participantInfo"] = user_info.c_str();
                         }
 
                         if (!std::filesystem::exists(p_id_path))
@@ -979,20 +973,72 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
 
-                            p_datas[user_id.c_str()].user_img_path = p_img_path.string();
-                            qvm["changedImgPath"] = p_img_path.string().c_str();
+                            qvm["participantImgPath"] = p_img_path.string().c_str();
                         }
                         else
                         {
                             std::filesystem::directory_iterator it{p_id_path / "profile_img"};
-                            if (it != std::filesystem::end(it))
-                                p_datas[user_id.c_str()].user_img_path = it->path().string();
+                            if (it != std::filesystem::end(it) &&
+                                (participant_data.find("participantImgPath") == participant_data.end() ||
+                                 participant_data["participantImgPath"].toString() != it->path().string().c_str()))
+                                qvm["participantImgPath"] = it->path().string().c_str();
                         }
 
-                        if (qvm.find("changedImgPath") != qvm.end() || qvm.find("changedName") != qvm.end())
-                            QMetaObject::invokeMethod(session_view,
-                                                      "refreshParticipantInfo",
-                                                      Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                        // 채팅방의 챗 버블과 관련된 것들을 바꾸는 녀석
+                        QMetaObject::invokeMethod(session_view,
+                                                  "refreshParticipantInfo",
+                                                  Qt::QueuedConnection,
+                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                        // 채팅방에 활용할 참가자 변수를 바꾸는 녀석
+                        QMetaObject::invokeMethod(m_main_page,
+                                                  "updateParticipantData",
+                                                  Qt::QueuedConnection,
+                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                        //! 여기서 부터 이어서...
+                        // if (p_datas.find(user_id.c_str()) == p_datas.end())
+                        // {
+                        //     p_datas[user_id.c_str()] = UserData{user_name, user_info, ""};
+                        //     // changed = true;
+                        // }
+                        // else
+                        // {
+                        //     if (p_datas[user_id.c_str()].user_name != user_name)
+                        //     {
+                        //         p_datas[user_id.c_str()].user_name = user_name;
+                        //         qvm["changedName"] = user_name.c_str();
+                        //     }
+                        //     p_datas[user_id.c_str()].user_info = user_info;
+                        // }
+                        //
+                        // if (!std::filesystem::exists(p_id_path))
+                        //     std::filesystem::create_directories(p_id_path / "profile_img");
+                        //
+                        // if (!user_img_name.empty())
+                        // {
+                        //     std::vector<unsigned char> raw_img;
+                        //     session->GetResponse().GetData(raw_img);
+                        //
+                        //     auto p_img_path = p_id_path / "profile_img" / user_img_name;
+                        //     std::ofstream of(p_img_path, std::ios::binary);
+                        //     if (of.is_open())
+                        //         of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
+                        //
+                        //     p_datas[user_id.c_str()].user_img_path = p_img_path.string();
+                        //     qvm["changedImgPath"] = p_img_path.string().c_str();
+                        // }
+                        // else
+                        // {
+                        //     std::filesystem::directory_iterator it{p_id_path / "profile_img"};
+                        //     if (it != std::filesystem::end(it))
+                        //         p_datas[user_id.c_str()].user_img_path = it->path().string();
+                        // }
+                        //
+                        // if (qvm.find("changedImgPath") != qvm.end() || qvm.find("changedName") != qvm.end())
+                        //     QMetaObject::invokeMethod(session_view,
+                        //                               "refreshParticipantInfo",
+                        //                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
                     for (auto i = static_cast<int64_t>(fetch_list.size()) - 1; i >= 0; i--)

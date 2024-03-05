@@ -230,8 +230,8 @@ void ChatModel::refreshParticipantInfo(const QVariantMap &qvm)
         return;
 
     QString sender_id = qvm["participantId"].toString(),
-            sender_name = qvm.find("changedName") != qvm.end() ? qvm["changedName"].toString() : "",
-            sender_img_path = qvm.find("changedImgPath") != qvm.end() ? qvm["changedImgPath"].toString() : "";
+            sender_name = qvm.find("participantName") != qvm.end() ? qvm["participantName"].toString() : "",
+            sender_img_path = qvm.find("participantImgPath") != qvm.end() ? qvm["participantImgPath"].toString() : "";
 
     for (size_t i = 0; i < m_chats.size(); i++)
     {

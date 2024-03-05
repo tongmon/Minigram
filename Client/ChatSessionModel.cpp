@@ -230,6 +230,20 @@ void ChatSessionModel::insertParticipantData(const QVariantMap &qvm)
                                                                                   qvm["participantImgPath"].toString().toStdString()};
 }
 
+void ChatSessionModel::updateParticipantData(const QVariantMap &qvm)
+{
+    auto index = getIndexFromSessionId(qvm["sessionId"].toString());
+    if (index < 0)
+        return;
+
+    if (qvm.find("participantName") != qvm.end())
+        m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()].user_name = qvm["participantName"].toString().toStdString();
+    if (qvm.find("participantInfo") != qvm.end())
+        m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()].user_name = qvm["participantInfo"].toString().toStdString();
+    if (qvm.find("participantImgPath") != qvm.end())
+        m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()].user_name = qvm["participantImgPath"].toString().toStdString();
+}
+
 QVariantMap ChatSessionModel::getParticipantData(const QString &session_id, const QString &p_id)
 {
     QVariantMap ret;

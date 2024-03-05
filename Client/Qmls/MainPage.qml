@@ -34,6 +34,11 @@ Rectangle {
             sideBarView.currentView = currentView
     }
 
+    function updateParticipantData(participantInfo)
+    {
+        chatSessionModel.updateParticipantData(participantInfo)
+    }
+
     function insertParticipantData(participantInfo)
     {
         chatSessionModel.insertParticipantData(participantInfo)
