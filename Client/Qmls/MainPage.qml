@@ -34,6 +34,21 @@ Rectangle {
             sideBarView.currentView = currentView
     }
 
+    function insertParticipantData(participantInfo)
+    {
+        chatSessionModel.insertParticipantData(participantInfo)
+    }
+
+    function getParticipantData(sessionId, participantId)
+    {
+        return chatSessionModel.getParticipantData(sessionId, participantId)
+    }
+
+    function getSessionData(sessionId, sessionData)
+    {
+        chatSessionModel.getSessionData(sessionId, sessionData)
+    }
+
     /*
     Popup {
         id: chatNotificationPopup

@@ -7,7 +7,7 @@ ChatSession::ChatSession(const QString &id,
                          const QString &send_date,
                          int content_type,
                          const QString &content,
-                         const int64_t &message_id,
+                         const int &message_id,
                          int unread_cnt,
                          QObject *parent)
     : session_id{id},

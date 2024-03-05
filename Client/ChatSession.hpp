@@ -18,7 +18,7 @@ class ChatSession : public QObject
     Q_PROPERTY(QString recentSendDate MEMBER recent_send_date NOTIFY recentSendDateChanged)
     Q_PROPERTY(int recentContentType MEMBER recent_content_type NOTIFY recentContentTypeChanged)
     Q_PROPERTY(QString recentContent MEMBER recent_content NOTIFY recentContentChanged)
-    Q_PROPERTY(int64_t recentMessageId MEMBER recent_message_id NOTIFY recentMessageIdChanged)
+    Q_PROPERTY(int recentMessageId MEMBER recent_message_id NOTIFY recentMessageIdChanged)
     Q_PROPERTY(int unreadCnt MEMBER unread_cnt NOTIFY unreadCntChanged)
 
   public:
@@ -31,7 +31,7 @@ class ChatSession : public QObject
     QString recent_send_date;
     int recent_content_type;
     QString recent_content;
-    int64_t recent_message_id;
+    int recent_message_id;
     int unread_cnt;
 
     ChatSession(const QString &id = "",
@@ -41,7 +41,7 @@ class ChatSession : public QObject
                 const QString &send_date = "",
                 int content_type = UNDEFINED_TYPE,
                 const QString &content = "",
-                const int64_t &message_id = 0,
+                const int &message_id = 0,
                 int unread_cnt = 0,
                 QObject *parent = nullptr);
 

@@ -42,8 +42,26 @@ Rectangle {
 
     function setCurrentSession(sessionId)
     {
-        var item = sessionListView.itemAtIndex(chatSessionModel.getIndexFromSessionId(sessionId))
+        var index = chatSessionModel.getIndexFromSessionId(sessionId)
+        if(index < 0)
+            return
+        var item = sessionListView.itemAtIndex(index)
         item.select()
+    }
+
+    function getRecentMsgId(sessionId)
+    {
+        return chatSessionModel.get(sessionId).recentMessageId
+    }
+
+    function getUnreadCnt(sessionId)
+    {
+        return chatSessionModel.get(sessionId).unreadCnt
+    }
+
+    function getChatCnt(sessionId)
+    {
+        return sessionViewMap[sessionId].children[2].count
     }
 
     //function addChat(chatInfo)

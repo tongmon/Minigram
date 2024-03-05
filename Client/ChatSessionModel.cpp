@@ -201,10 +201,58 @@ Q_INVOKABLE void ChatSessionModel::renewSessionInfo(const QVariantMap &qvm)
 
 int ChatSessionModel::getIndexFromSessionId(const QString &session_id)
 {
+    if (m_id_index_map.find(session_id) == m_id_index_map.end())
+        return -1;
     return static_cast<int>(m_id_index_map[session_id]);
 }
 
 int ChatSessionModel::getParticipantCnt(const QString &session_id)
 {
     return static_cast<int>(m_chat_sessions[m_id_index_map[session_id]]->participant_datas.size());
+}
+
+QObject *ChatSessionModel::get(const QString &session_id)
+{
+    auto index = getIndexFromSessionId(session_id);
+    if (index < 0)
+        return nullptr;
+    return reinterpret_cast<QObject *>(m_chat_sessions[index]);
+}
+
+void ChatSessionModel::getSessionData(const QString &session_id, QVariantMap &session_info)
+{
+    auto index = getIndexFromSessionId(session_id);
+    if (index < 0)
+        return;
+    session_info["sessionId"] = m_chat_sessions[index]->session_id;
+    session_info["sessionName"] = m_chat_sessions[index]->session_name;
+    session_info["sessionImg"] = m_chat_sessions[index]->session_img;
+    session_info["recentSenderId"] = m_chat_sessions[index]->recent_sender_id;
+    session_info["recentSendDate"] = m_chat_sessions[index]->recent_send_date;
+    session_info["recentContentType"] = m_chat_sessions[index]->recent_content_type;
+    session_info["recentContent"] = m_chat_sessions[index]->recent_content;
+    session_info["recentMessageId"] = m_chat_sessions[index]->recent_message_id;
+    session_info["unreadCnt"] = m_chat_sessions[index]->unread_cnt;
+}
+
+void ChatSessionModel::insertParticipantData(const QVariantMap &qvm)
+{
+    auto index = getIndexFromSessionId(qvm["sessionId"].toString());
+    if (index < 0)
+        return;
+    m_chat_sessions[index]->participant_datas[qvm["pId"].toString()] = {qvm["pName"].toString().toStdString(),
+                                                                        qvm["pInfo"].toString().toStdString(),
+                                                                        qvm["pImgPath"].toString().toStdString()};
+}
+
+QVariantMap ChatSessionModel::getParticipantData(const QString &sessionId, const QString &pId)
+{
+    QVariantMap ret;
+    auto index = getIndexFromSessionId(sessionId);
+    if (index < 0)
+        return ret;
+    ret["pName"] = m_chat_sessions[index]->participant_datas[pId].user_name.c_str();
+    ret["pInfo"] = m_chat_sessions[index]->participant_datas[pId].user_info.c_str();
+    ret["pImgPath"] = m_chat_sessions[index]->participant_datas[pId].user_img_path.c_str();
+    return ret;
 }

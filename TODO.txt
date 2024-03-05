@@ -101,4 +101,5 @@ alert 함수를 이용할 수도 있고 qml 다이얼로그를 변형하여 접�
 1. 다른 컴퓨터에서 접속 안됨 -> server ip가 로컬 호스트로 되어있어서 그럼
 2. 채팅 정렬 안됨, hasStem 값 관련 오류
 3. 다른 기기에서 채팅 보내거나 받는 경우 이미지가 안보임
-4. tryRefreshSession <-> RecieveChat 서로 다른 스레드에서 동시에 작동할 수 있음... 해당 문제 해결해야 됨
+4. 스레드 경합이 발생할 수 있는 부분은 모두 gui의 invokemethod를 통하여 수행한다.
+=> (*m_chat_session_model)[], getParticipantCnt, tryRefreshSession -> 간단 명료하게 다시 짜셈
