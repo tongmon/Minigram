@@ -473,67 +473,6 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
     });
 }
 
-/*
-// Server에 전달하는 버퍼 형식: sender id | session id | encoded content
-// Server에서 받는 버퍼 형식: message send date | message id
-void MainContext::trySendTextChat(const QString &session_id, const QString &content)
-{
-    auto &central_server = m_window.GetServerHandle();
-
-    int request_id = central_server.MakeRequestID();
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
-
-    NetworkBuffer net_buf(CHAT_SEND_TYPE);
-    net_buf +=
-
-        // Buffer request(m_user_id.toStdString() + "|" +
-        //                session_id.toStdString() + "|" +
-        //                EncodeBase64(StrToUtf8(content.toStdString())));
-        //
-        // TCPHeader header(CHAT_SEND_TYPE, request.Size());
-        // request = header.GetHeaderBuffer() + request;
-
-        central_server.AsyncWrite(request_id, request, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
-            if (!session.get() || !session->IsValid())
-                return;
-
-            central_server.AsyncRead(session->GetID(), TCP_HEADER_SIZE, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
-                if (!session.get() || !session->IsValid())
-                    return;
-
-                TCPHeader header(session->GetResponse());
-
-                auto connection_type = header.GetConnectionType();
-                auto data_size = header.GetDataSize();
-
-                central_server.AsyncRead(session->GetID(), data_size, [&central_server, &session_id, &content, this](std::shared_ptr<Session> session) -> void {
-                    if (!session.get() || !session->IsValid())
-                        return;
-
-                    // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
-                    QVariantMap qvm;
-                    qvm.insert("sessionID", session_id);
-                    qvm.insert("userID", m_user_id);
-                    qvm.insert("userName", m_user_name);
-                    qvm.insert("userImage", m_user_img);
-                    qvm.insert("chatContent", content);
-                    qvm.insert("chatDate", session->GetResponse().CStr());
-                    qvm.insert("isOpponent", false);
-
-                    // 챗 버블 실제로 추가하는 로직
-                    QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("mainPage"),
-                                              "addChatBubbleText",
-                                              Q_ARG(QVariant, QVariant::fromValue(qvm)));
-
-                    central_server.CloseRequest(session->GetID());
-                });
-            });
-        });
-
-    return;
-}
-*/
-
 // Server에 전달하는 버퍼 형식: sender id | session id | content_type | content
 // Server에서 받는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MainContext::trySendChat(const QString &session_id, unsigned char content_type, const QString &content)
@@ -656,99 +595,6 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
             });
         });
     });
-
-    //***
-    // 밑에꺼 무시
-    //***
-    // static TCPClient &central_server = m_window.GetServerHandle();
-    //
-    // int request_id = central_server.MakeRequestID();
-    // central_server.AsyncConnect(SERVER_IP, SERVER_PORT, request_id);
-    //
-    // QSharedPointer<QVariantMap> qvm(new QVariantMap);
-    // qvm->insert("sessionId", session_id);
-    // qvm->insert("senderId", m_user_id);
-    // qvm->insert("contentType", content_type);
-    // qvm->insert("isOpponent", false);
-    //
-    // NetworkBuffer net_buf(CHAT_SEND_TYPE);
-    // net_buf += m_user_id;
-    // net_buf += session_id;
-    // net_buf += content_type;
-    //
-    // switch (content_type)
-    //{
-    // case TEXT_CHAT:
-    //    net_buf += content;
-    //    qvm->insert("content", content);
-    //    break;
-    // default:
-    //    net_buf += 26;
-    //    break;
-    //}
-    //
-    //// Buffer request(m_user_id.toStdString() + "|" +
-    ////                session_id.toStdString() + "|");
-    //// request += content_type;
-    //// request += '|';
-    ////
-    //// switch (content_type)
-    ////{
-    //// case TEXT_CHAT:
-    ////    request += EncodeBase64(StrToUtf8(content.toStdString()));
-    ////    qvm->insert("content", content);
-    ////    break;
-    //// default:
-    ////    request += 26;
-    ////    break;
-    ////}
-    ////
-    //// TCPHeader header(CHAT_SEND_TYPE, request.Size());
-    //// request = header.GetHeaderBuffer() + request;
-    //
-    // central_server.AsyncWrite(request_id, std::move(net_buf), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
-    //    if (!session.get() || !session->IsValid())
-    //        return;
-    //
-    //    central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
-    //        if (!session.get() || !session->IsValid())
-    //            return;
-    //
-    //        central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [qvm, this](std::shared_ptr<Session> session) mutable -> void {
-    //            if (!session.get() || !session->IsValid())
-    //                return;
-    //
-    //            int64_t message_id, reader_cnt;
-    //            QString send_date;
-    //            QStringList reader_ids;
-    //            auto response = session->GetResponse();
-    //
-    //            response.GetData(send_date);
-    //            response.GetData(message_id);
-    //            response.GetData(reader_cnt);
-    //            while (reader_cnt--)
-    //            {
-    //                QString reader_id;
-    //                response.GetData(reader_id);
-    //                reader_id.push_back(reader_id); // move로 속도 증가 가능할 듯 한데...
-    //            }
-    //
-    //            // 성능 향상을 위해 모두 QString형으로 통합하고 QStringList로 넘기는 것이 빠를 듯
-    //            qvm->insert("sendDate", send_date);
-    //            qvm->insert("messageId", message_id);
-    //            qvm->insert("readerIds", reader_ids);
-    //
-    //            // 챗 버블 실제로 추가하는 로직, 추후에 읽은 사람 목록 고려하는 함수 새로 만들어야 됨
-    //            QMetaObject::invokeMethod(m_main_page,
-    //                                      "addChat",
-    //                                      Q_ARG(QVariant, QVariant::fromValue(*qvm)));
-    //
-    //            central_server.CloseRequest(session->GetID());
-    //        });
-    //    });
-    //});
-    //
-    // return;
 }
 
 // Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
@@ -942,17 +788,16 @@ void MainContext::tryRefreshSession(const QString &session_id)
             return;
         }
 
-        //! 여기 고쳐야됨
-        QVariantMap qvm;
+        QVariant ret;
         QMetaObject::invokeMethod(m_main_page,
                                   "getSessionData",
-                                  Qt::QueuedConnection,
-                                  Q_ARG(QVariant, session_id),
-                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                                  Qt::BlockingQueuedConnection,
+                                  Q_RETURN_ARG(QVariant, ret),
+                                  Q_ARG(QVariant, session_id));
+        QVariantMap session_data = ret.toMap();
 
-        int a = qvm["unreadCnt"].toInt();
-        int t = qvm["recentMessageId"].toInt();
-        //! 여기 고쳐야됨
+        int unread_cnt = session_data["unreadCnt"].toInt(),
+            recent_message_id = session_data["recentMessageId"].toInt();
 
         QVariant ret;
         QMetaObject::invokeMethod(m_session_list_view,
@@ -962,25 +807,12 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                   Q_ARG(QVariant, session_id));
         int chat_cnt = ret.toInt();
 
-        QMetaObject::invokeMethod(m_session_list_view,
-                                  "getUnreadCnt",
-                                  Qt::BlockingQueuedConnection,
-                                  Q_RETURN_ARG(QVariant, ret),
-                                  Q_ARG(QVariant, session_id));
-        int unread_cnt = ret.toInt();
         if (!unread_cnt && chat_cnt)
         {
             central_server.CloseRequest(session->GetID());
             is_ready.store(true);
             return;
         }
-
-        QMetaObject::invokeMethod(m_session_list_view,
-                                  "getRecentMsgId",
-                                  Qt::BlockingQueuedConnection,
-                                  Q_RETURN_ARG(QVariant, ret),
-                                  Q_ARG(QVariant, session_id));
-        int recent_message_id = ret.toInt();
 
         NetworkBuffer net_buf(SESSION_REFRESH_TYPE);
         net_buf += m_user_id;
@@ -1072,6 +904,16 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                          "\\sessions\\" +
                                          session_id.toStdString() +
                                          "\\participant_data";
+
+                    // QVariant ret;
+                    // QMetaObject::invokeMethod(m_main_page,
+                    //                           "getParticipantData",
+                    //                           Qt::BlockingQueuedConnection,
+                    //                           Q_RETURN_ARG(QVariant, ret),
+                    //                           Q_ARG(QVariant, session_id),
+                    //                           Q_ARG(QVariant, participant_id));
+
+                    //! p_datas is not thread safe!
                     auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
 
                     for (size_t i = 0; i < participant_list.size(); i++)
@@ -1085,6 +927,30 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         QVariantMap qvm;
                         qvm["participantId"] = user_id.c_str();
 
+                        QVariant ret;
+                        QMetaObject::invokeMethod(m_main_page,
+                                                  "getParticipantData",
+                                                  Qt::BlockingQueuedConnection,
+                                                  Q_RETURN_ARG(QVariant, ret),
+                                                  Q_ARG(QVariant, session_id),
+                                                  Q_ARG(QVariant, user_id.c_str()));
+                        QVariantMap paticipant_data = ret.toMap();
+
+                        if (paticipant_data.find("participantId") == paticipant_data.end())
+                        {
+                            QVariantMap insert_info;
+                            insert_info["sessionId"] = session_id;
+                            insert_info["participantId"] = user_id.c_str();
+                            insert_info["participantName"] = user_name.c_str();
+                            insert_info["participantInfo"] = user_info.c_str();
+                            insert_info["participantImgPath"] = "";
+                            QMetaObject::invokeMethod(m_main_page,
+                                                      "insertParticipantData",
+                                                      Qt::BlockingQueuedConnection,
+                                                      Q_ARG(QVariant, QVariant::fromValue(insert_info)));
+                        }
+
+                        //! 여기서 부터 이어서...
                         if (p_datas.find(user_id.c_str()) == p_datas.end())
                         {
                             p_datas[user_id.c_str()] = UserData{user_name, user_info, ""};
@@ -2116,7 +1982,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
 
 void MainContext::tryLogOut()
 {
-    if (m_user_id.isEmpty()) // 로그인도 안했는데 logout 시도하면 바로 return
+    if (m_user_id.isEmpty())
         return;
 
     static std::atomic_bool is_ready = true;

@@ -49,16 +49,6 @@ Rectangle {
         item.select()
     }
 
-    function getRecentMsgId(sessionId)
-    {
-        return chatSessionModel.get(sessionId).recentMessageId
-    }
-
-    function getUnreadCnt(sessionId)
-    {
-        return chatSessionModel.get(sessionId).unreadCnt
-    }
-
     function getChatCnt(sessionId)
     {
         return sessionViewMap[sessionId].children[2].count

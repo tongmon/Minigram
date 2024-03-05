@@ -44,9 +44,23 @@ Rectangle {
         return chatSessionModel.getParticipantData(sessionId, participantId)
     }
 
-    function getSessionData(sessionId, sessionData)
+    function getSessionData(sessionId)
     {
-        chatSessionModel.getSessionData(sessionId, sessionData)
+        var obj = chatSessionModel.get(sessionId)
+        if (obj == null)
+            return {}
+            
+        return {
+            "sessionId": obj.sessionId,
+            "sessionName": obj.sessionName,
+            "sessionImg": obj.sessionImg,
+            "recentSenderId": obj.recentSenderId,
+            "recentSendDate": obj.recentSendDate,
+            "recentContentType": obj.recentContentType,
+            "recentContent": obj.recentContent,
+            "recentMessageId": obj.recentMessageId,
+            "unreadCnt": obj.unreadCnt
+        }
     }
 
     /*

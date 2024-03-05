@@ -46,12 +46,11 @@ class ChatSessionModel : public QAbstractListModel
     Q_INVOKABLE void remove(const QString &session_id);
     Q_INVOKABLE void clear();
     Q_INVOKABLE QObject *get(const QString &session_id);
-    Q_INVOKABLE void getSessionData(const QString &session_id, QVariantMap &session_info); // 읽기 전용
     Q_INVOKABLE void renewSessionInfo(const QVariantMap &qvm);
     Q_INVOKABLE int getIndexFromSessionId(const QString &session_id);
     Q_INVOKABLE int getParticipantCnt(const QString &session_id);
     Q_INVOKABLE void insertParticipantData(const QVariantMap &qvm);
-    Q_INVOKABLE QVariantMap getParticipantData(const QString &sessionId, const QString &pId);
+    Q_INVOKABLE QVariantMap getParticipantData(const QString &session_id, const QString &p_id);
 };
 
 #endif /* HEADER__FILE__CHATSESSIONMODEL */
