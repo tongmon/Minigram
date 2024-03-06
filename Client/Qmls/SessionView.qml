@@ -31,6 +31,11 @@ Rectangle {
         sessionView.model.clear()
     }
 
+    function setParticipantCnt(participantCnt)
+    {
+        sessionViewModel.participantCnt = participantCnt
+    }
+
     Rectangle {
         id: sessionHeaderRect
         color: "white"

@@ -489,12 +489,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
 
     bool old_var = true;
     if (!is_ready.compare_exchange_strong(old_var, false))
-    {
-        QMetaObject::invokeMethod(m_login_page,
-                                  "processLogin",
-                                  Q_ARG(QVariant, LOGIN_PROCEEDING));
         return;
-    }
 
     auto &central_server = m_window.GetServerHandle();
 
@@ -995,6 +990,11 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                                   Qt::QueuedConnection,
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
+
+                    QMetaObject::invokeMethod(session_view,
+                                              "setParticipantCnt",
+                                              Qt::QueuedConnection,
+                                              Q_ARG(QVariant, static_cast<int>(participant_list.size())));
 
                     for (auto i = static_cast<int64_t>(fetch_list.size()) - 1; i >= 0; i--)
                     {

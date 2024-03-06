@@ -180,8 +180,9 @@ Item {
                     }
                     color: "yellow"
                     text: {
-                        var participantCnt = chatSessionModel.getParticipantCnt(sessionId)
-                        return (isOpponent && participantCnt != readerIds.length) ? participantCnt - readerIds.length : ""
+                        // var participantCnt = chatSessionModel.getParticipantCnt(sessionId)
+                        // return (isOpponent && participantCnt != readerIds.length) ? participantCnt - readerIds.length : ""
+                        return (isOpponent && sessionViewModel.participantCnt != readerIds.length) ? sessionViewModel.participantCnt - readerIds.length : ""
                     }
                 }
             }
