@@ -16,14 +16,14 @@
 #include <QQmlContext>
 #include <QQmlEngine>
 
+#include <spdlog/spdlog.h>
+
 #include <filesystem>
 #include <fstream>
 #include <regex>
 #include <sstream>
 
-#include <boost/algorithm/string.hpp>
 #include <boost/dll.hpp>
-#include <boost/filesystem.hpp>
 #include <boost/json.hpp>
 
 #include <commdlg.h>
@@ -110,7 +110,7 @@ void MainContext::RecieveChat(Service *service)
                                  refresh_info.insert("recentMessageId", message_id);
                                  refresh_info.insert("recentContent", content);
 
-                                 if (!is_current_session)
+                                 if (!is_current_session || !is_foreground)
                                      refresh_info.insert("unreadCntIncreament", 1);
 
                                  QMetaObject::invokeMethod(m_session_list_view,
@@ -123,12 +123,19 @@ void MainContext::RecieveChat(Service *service)
                                      // 채팅 노티를 띄움
                                      if (!is_foreground)
                                      {
-                                         auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
+                                         QVariant ret;
+                                         QMetaObject::invokeMethod(m_main_page,
+                                                                   "getParticipantData",
+                                                                   Qt::BlockingQueuedConnection,
+                                                                   Q_RETURN_ARG(QVariant, ret),
+                                                                   Q_ARG(QVariant, session_id),
+                                                                   Q_ARG(QVariant, sender_id));
+                                         QVariantMap participant_data = ret.toMap();
 
                                          QVariantMap noti_info;
                                          noti_info["sessionId"] = session_id;
-                                         noti_info["senderName"] = p_datas[sender_id].user_name.c_str();
-                                         noti_info["senderImgPath"] = p_datas[sender_id].user_img_path.c_str();
+                                         noti_info["senderName"] = participant_data["participantName"].toString();
+                                         noti_info["senderImgPath"] = participant_data["participantImgPath"].toString();
                                          noti_info["content"] = content;
                                          m_noti_manager->push(noti_info);
                                      }
@@ -172,14 +179,21 @@ void MainContext::RecieveChat(Service *service)
                                                                                              reader_ids.push_back(reader_id);
                                                                                          }
 
-                                                                                         auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
+                                                                                         QVariant ret;
+                                                                                         QMetaObject::invokeMethod(m_main_page,
+                                                                                                                   "getParticipantData",
+                                                                                                                   Qt::BlockingQueuedConnection,
+                                                                                                                   Q_RETURN_ARG(QVariant, ret),
+                                                                                                                   Q_ARG(QVariant, session_id),
+                                                                                                                   Q_ARG(QVariant, sender_id));
+                                                                                         QVariantMap participant_data = ret.toMap();
 
                                                                                          QVariantMap chat_info;
                                                                                          chat_info.insert("messageId", message_id);
                                                                                          chat_info.insert("sessionId", session_id);
                                                                                          chat_info.insert("senderId", sender_id);
-                                                                                         chat_info.insert("senderName", p_datas[sender_id].user_name.c_str());
-                                                                                         chat_info.insert("senderImgPath", p_datas[sender_id].user_img_path.c_str());
+                                                                                         chat_info.insert("senderName", participant_data["participantName"].toString());
+                                                                                         chat_info.insert("senderImgPath", participant_data["participantImgPath"].toString());
                                                                                          chat_info.insert("sendDate", MillisecondToCurrentDate(send_date).c_str());
                                                                                          chat_info.insert("contentType", static_cast<int>(content_type));
                                                                                          chat_info.insert("content", content);
@@ -214,12 +228,6 @@ void MainContext::RefreshReaderIds(Service *service)
                               "refreshReaderIds",
                               Q_ARG(QVariant, reader_id),
                               Q_ARG(QVariant, static_cast<int>(message_id)));
-
-    // QMetaObject::invokeMethod(m_session_list_view,
-    //                           "refreshReaderIds",
-    //                           Q_ARG(QString, session_id),
-    //                           Q_ARG(QString, reader_id),
-    //                           Q_ARG(QVariant, message_id));
 
     delete service;
 }
@@ -708,7 +716,10 @@ void MainContext::tryGetSessionList()
                             session_img = img_dir->path().string().c_str();
 
                         if (session_data["session_img_name"].as_string().empty())
+                        {
                             qvm.insert("sessionImg", session_img.c_str());
+                            spdlog::trace(session_img);
+                        }
                         else
                         {
                             std::vector<unsigned char> img_data;
@@ -720,6 +731,7 @@ void MainContext::tryGetSessionList()
                                 of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
 
                             qvm.insert("sessionImg", session_img_path.string().c_str());
+                            spdlog::trace(session_img_path.string());
                         }
 
                         // 채팅방에 대화가 아무것도 없는 경우
@@ -799,7 +811,6 @@ void MainContext::tryRefreshSession(const QString &session_id)
         int unread_cnt = session_data["unreadCnt"].toInt(),
             recent_message_id = session_data["recentMessageId"].toInt();
 
-        QVariant ret;
         QMetaObject::invokeMethod(m_session_list_view,
                                   "getChatCnt",
                                   Qt::BlockingQueuedConnection,
@@ -828,7 +839,6 @@ void MainContext::tryRefreshSession(const QString &session_id)
         // 500개가 넘으면 해당 세션의 채팅 기록 초기화 후 최대 100개 채팅만 서버에서 가져와서 채움
         else
         {
-            // qobject_cast<ChatModel *>(chat_model)->clear(); // 얘 쓰레드 다른 곳에서 수행하기에 안될 수도 있음...
             QMetaObject::invokeMethod(session_view,
                                       "clearChat",
                                       Qt::QueuedConnection);
@@ -905,17 +915,6 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                          session_id.toStdString() +
                                          "\\participant_data";
 
-                    // QVariant ret;
-                    // QMetaObject::invokeMethod(m_main_page,
-                    //                           "getParticipantData",
-                    //                           Qt::BlockingQueuedConnection,
-                    //                           Q_RETURN_ARG(QVariant, ret),
-                    //                           Q_ARG(QVariant, session_id),
-                    //                           Q_ARG(QVariant, participant_id));
-
-                    //! p_datas is not thread safe!
-                    auto &p_datas = (*m_chat_session_model)[session_id].participant_datas;
-
                     for (size_t i = 0; i < participant_list.size(); i++)
                     {
                         auto participant_info = participant_list[i].as_object();
@@ -938,7 +937,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         QVariantMap participant_data = ret.toMap();
 
                         // 처음 넣는 경우
-                        if (participant_data.find("participantId") == participant_data.end())
+                        if (participant_data.find("participantName") == participant_data.end())
                         {
                             QVariantMap insert_info;
                             insert_info["sessionId"] = session_id;
@@ -986,7 +985,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
 
                         // 채팅방의 챗 버블과 관련된 것들을 바꾸는 녀석
                         QMetaObject::invokeMethod(session_view,
-                                                  "refreshParticipantInfo",
+                                                  "updateParticipantInfo",
                                                   Qt::QueuedConnection,
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
 
@@ -995,50 +994,6 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                                   "updateParticipantData",
                                                   Qt::QueuedConnection,
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
-
-                        //! 여기서 부터 이어서...
-                        // if (p_datas.find(user_id.c_str()) == p_datas.end())
-                        // {
-                        //     p_datas[user_id.c_str()] = UserData{user_name, user_info, ""};
-                        //     // changed = true;
-                        // }
-                        // else
-                        // {
-                        //     if (p_datas[user_id.c_str()].user_name != user_name)
-                        //     {
-                        //         p_datas[user_id.c_str()].user_name = user_name;
-                        //         qvm["changedName"] = user_name.c_str();
-                        //     }
-                        //     p_datas[user_id.c_str()].user_info = user_info;
-                        // }
-                        //
-                        // if (!std::filesystem::exists(p_id_path))
-                        //     std::filesystem::create_directories(p_id_path / "profile_img");
-                        //
-                        // if (!user_img_name.empty())
-                        // {
-                        //     std::vector<unsigned char> raw_img;
-                        //     session->GetResponse().GetData(raw_img);
-                        //
-                        //     auto p_img_path = p_id_path / "profile_img" / user_img_name;
-                        //     std::ofstream of(p_img_path, std::ios::binary);
-                        //     if (of.is_open())
-                        //         of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
-                        //
-                        //     p_datas[user_id.c_str()].user_img_path = p_img_path.string();
-                        //     qvm["changedImgPath"] = p_img_path.string().c_str();
-                        // }
-                        // else
-                        // {
-                        //     std::filesystem::directory_iterator it{p_id_path / "profile_img"};
-                        //     if (it != std::filesystem::end(it))
-                        //         p_datas[user_id.c_str()].user_img_path = it->path().string();
-                        // }
-                        //
-                        // if (qvm.find("changedImgPath") != qvm.end() || qvm.find("changedName") != qvm.end())
-                        //     QMetaObject::invokeMethod(session_view,
-                        //                               "refreshParticipantInfo",
-                        //                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
                     for (auto i = static_cast<int64_t>(fetch_list.size()) - 1; i >= 0; i--)
@@ -1046,12 +1001,23 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         auto chat_info = fetch_list[i].as_object();
                         std::string sender_id = chat_info["sender_id"].as_string().c_str();
 
+                        QVariant ret;
+                        QMetaObject::invokeMethod(m_main_page,
+                                                  "getParticipantData",
+                                                  Qt::BlockingQueuedConnection,
+                                                  Q_RETURN_ARG(QVariant, ret),
+                                                  Q_ARG(QVariant, session_id),
+                                                  Q_ARG(QVariant, sender_id.c_str()));
+                        QVariantMap participant_data = ret.toMap();
+
+                        auto t = participant_data["participantName"].toString().toStdString();
+
                         QVariantMap qvm;
                         qvm.insert("messageId", chat_info["message_id"].as_int64());
                         qvm.insert("sessionId", session_id);
                         qvm.insert("senderId", sender_id.c_str());
-                        qvm.insert("senderName", p_datas[sender_id.c_str()].user_name.c_str());
-                        qvm.insert("senderImgPath", p_datas[sender_id.c_str()].user_img_path.c_str());
+                        qvm.insert("senderName", participant_data["participantName"].toString());
+                        qvm.insert("senderImgPath", participant_data["participantImgPath"].toString());
                         qvm.insert("contentType", chat_info["content_type"].as_int64());
                         qvm.insert("sendDate", MillisecondToCurrentDate(chat_info["send_date"].as_int64()).c_str());
 
@@ -1434,48 +1400,6 @@ void MainContext::trySendContactRequest(const QString &user_id)
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
-
-                    // auto response = session->GetResponse();
-                    // int64_t result;
-                    // std::string user_name, img_date, img_data;
-                    //
-                    // response.GetData(result);
-                    // response.GetData(user_name);
-                    // response.GetData(img_date);
-                    // response.GetData(img_data);
-                    //
-                    // QVariantMap qvm;
-                    // qvm["userId"] = qvm["userName"] = qvm["userImg"] = "";
-                    //
-                    //// session->GetResponse()[0] 종류에 따라 로직 추가해야 됨
-                    // if (result == CONTACTADD_SUCCESS)
-                    //{
-                    //     qvm["userId"] = user_id;
-                    //     qvm["userName"] = user_name.data();
-                    //     qvm["userImg"] = "";
-                    //
-                    //    std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/contact/" + user_id.toStdString();
-                    //    boost::filesystem::create_directories(user_cache_path);
-                    //
-                    //    if (img_data != "null")
-                    //    {
-                    //        std::string img_base64 = img_date.data();
-                    //        img_base64 += "|";
-                    //        img_base64 += img_data.data();
-                    //
-                    //        std::ofstream img_file(user_cache_path + "/user_img_info.bck");
-                    //        if (img_file.is_open())
-                    //            img_file.write(img_base64.c_str(), img_base64.size());
-                    //    }
-                    //}
-                    //
-                    // QMetaObject::invokeMethod(m_window.GetQuickWindow().findChild<QObject *>("contactButton"),
-                    //                          "processSendContactRequest",
-                    //                          Q_ARG(int64_t, result),
-                    //                          Q_ARG(QVariant, QVariant::fromValue(qvm)));
-                    //
-                    // central_server.CloseRequest(session->GetID());
-                    // request_id = -1;
                 });
             });
         });

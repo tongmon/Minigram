@@ -11,9 +11,9 @@ Rectangle {
     property string sessionId: ""
     property string sessionName: typeof(mainContext) !== "undefined" ? mainContext.getSessionNameById(sessionId) : ""
 
-    function refreshParticipantInfo(participantInfo)
+    function updateParticipantInfo(participantInfo)
     {
-        sessionView.model.refreshParticipantInfo(participantInfo)
+        sessionView.model.updateParticipantInfo(participantInfo)
     }
 
     function refreshReaderIds(readerId, messageId)

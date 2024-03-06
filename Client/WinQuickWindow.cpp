@@ -12,9 +12,13 @@
 #include <QQmlContext>
 #include <QQmlProperty>
 #include <QSystemTrayIcon>
+
+#include <spdlog/spdlog.h>
+
 #include <Windows.h>
 #include <Windowsx.h>
 #include <dwmapi.h>
+
 #include <memory>
 #include <stdexcept>
 
@@ -407,6 +411,7 @@ bool WinQuickWindow::nativeEventFilter(const QByteArray &event_type, void *messa
         {
             m_main_context->m_noti_manager->popAll();
             m_main_context->tryLogOut();
+            spdlog::shutdown();
             break;
         }
         else

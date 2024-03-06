@@ -8,8 +8,24 @@
 #include <QQmlApplicationEngine>
 #include <QSurfaceFormat>
 
+#include <spdlog/async.h>
+#include <spdlog/async_logger.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/rotating_file_sink.h>
+#include <spdlog/spdlog.h>
+
+#include <boost/dll.hpp>
+
 int main(int argc, char *argv[])
 {
+    // logger 초기화
+    std::string logger_path = boost::dll::program_location().parent_path().string() + "\\minigram_logs\\minigram_log.log";
+    int max_file_size = 1024 * 1024 * 5,
+        max_file_num = 5;
+    auto logger = spdlog::create_async<spdlog::sinks::rotating_file_sink_mt>("minigram_basic_logger", logger_path, max_file_size, max_file_num);
+    spdlog::set_default_logger(logger);
+    spdlog::set_level(spdlog::level::trace);
+
     //! 테스트를 위해 run_guard 잠시 끔
     // 메신저 프로세스는 단 하나 존재해야 함
     // RunGuard run_guard(QStringLiteral("minigram-messenger-34325527-515723")); // minigram-messenger-34325527-565723 -> rel / minigram-messenger-34325527-515723 -> deb

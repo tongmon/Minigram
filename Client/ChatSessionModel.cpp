@@ -239,16 +239,16 @@ void ChatSessionModel::updateParticipantData(const QVariantMap &qvm)
     if (qvm.find("participantName") != qvm.end())
         m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()].user_name = qvm["participantName"].toString().toStdString();
     if (qvm.find("participantInfo") != qvm.end())
-        m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()].user_name = qvm["participantInfo"].toString().toStdString();
+        m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()].user_info = qvm["participantInfo"].toString().toStdString();
     if (qvm.find("participantImgPath") != qvm.end())
-        m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()].user_name = qvm["participantImgPath"].toString().toStdString();
+        m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()].user_img_path = qvm["participantImgPath"].toString().toStdString();
 }
 
 QVariantMap ChatSessionModel::getParticipantData(const QString &session_id, const QString &p_id)
 {
     QVariantMap ret;
     auto index = getIndexFromSessionId(session_id);
-    if (index < 0)
+    if (index < 0 || m_chat_sessions[index]->participant_datas.find(p_id) == m_chat_sessions[index]->participant_datas.end())
         return ret;
     ret["participantName"] = m_chat_sessions[index]->participant_datas[p_id].user_name.c_str();
     ret["participantInfo"] = m_chat_sessions[index]->participant_datas[p_id].user_info.c_str();

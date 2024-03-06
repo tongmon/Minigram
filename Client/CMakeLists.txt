@@ -28,6 +28,9 @@ set(CMAKE_CXX_STANDARD 17)
 # C:/Users/DP91-HSK/Documents/Libraries/5.15.10-MSVC-x64-shared/lib/cmake/Qt5
 set(QT_DIR "C:/Users/DP91-HSK/Documents/Libraries/5.15.10-MSVC-x64-shared/lib/cmake/Qt5")
 
+# spdlog 포함
+find_package(spdlog CONFIG REQUIRED)
+
 # Boost Asio 포함
 find_package(Boost REQUIRED COMPONENTS system filesystem json)
 
@@ -64,6 +67,7 @@ target_link_libraries(
     Boost::system
     Boost::filesystem
     Boost::json
+    spdlog::spdlog
     dwmapi.lib
     gdi32.lib
     iphlpapi.lib

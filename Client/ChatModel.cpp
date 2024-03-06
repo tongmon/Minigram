@@ -205,26 +205,28 @@ void ChatModel::clear()
 
 void ChatModel::refreshReaderIds(const QString &reader_id, int start_modify_msg_id)
 {
+    // 여기서 채팅참가자 프로퍼티 설정...
+
     if (m_chats.empty())
         return;
 
     for (size_t i = start_modify_msg_id - m_chats[0]->message_id; i < m_chats.size(); i++)
     {
-        if (i < 0)
+        if (i < 0 || m_chats[i]->message_id < start_modify_msg_id)
             continue;
 
         if (m_chats[i]->reader_set.find(reader_id) == m_chats[i]->reader_set.end())
         {
             m_chats[i]->reader_set.insert(reader_id);
             m_chats[i]->reader_ids.push_back(reader_id);
-        }
 
-        auto ind = index(i);
-        emit dataChanged(ind, ind, {READER_IDS_ROLE});
+            auto ind = index(i);
+            emit dataChanged(ind, ind, {READER_IDS_ROLE});
+        }
     }
 }
 
-void ChatModel::refreshParticipantInfo(const QVariantMap &qvm)
+void ChatModel::updateParticipantInfo(const QVariantMap &qvm)
 {
     if (m_chats.empty())
         return;

@@ -50,9 +50,8 @@ class ChatSessionModel : public QAbstractListModel
     Q_INVOKABLE int getIndexFromSessionId(const QString &session_id);
     Q_INVOKABLE int getParticipantCnt(const QString &session_id);
     Q_INVOKABLE void insertParticipantData(const QVariantMap &qvm);
-    void changeParticipantData();
-    Q_INVOKABLE QVariantMap
-    getParticipantData(const QString &session_id, const QString &p_id);
+    Q_INVOKABLE void updateParticipantData(const QVariantMap &qvm);
+    Q_INVOKABLE QVariantMap getParticipantData(const QString &session_id, const QString &p_id);
 };
 
 #endif /* HEADER__FILE__CHATSESSIONMODEL */
