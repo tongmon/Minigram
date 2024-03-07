@@ -365,6 +365,11 @@ void MainContext::RecieveAddSession(Service *service)
     delete service;
 }
 
+void MainContext::RecieveDeleteContact(Service *service)
+{
+    delete service;
+}
+
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
 // Server에서 받는 버퍼 형식: 로그인 성공 여부
 void MainContext::tryLogin(const QString &id, const QString &pw)
@@ -1312,6 +1317,57 @@ void MainContext::tryGetContactList()
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
+                });
+            });
+        });
+    });
+}
+
+// Server에 전달하는 버퍼 형식: current user id | deleted user id
+// Server에서 받는 버퍼 형식: contact가 추가되었는지 결과값 | added user name | added user img name | added user raw profile img
+void MainContext::tryDeleteContact(const QString &del_user_id)
+{
+    auto &central_server = m_window.GetServerHandle();
+
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, del_user_id, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            is_ready.store(true);
+            return;
+        }
+
+        NetworkBuffer net_buf(DELETE_CONTACT_TYPE);
+        net_buf += m_user_id;
+        net_buf += del_user_id;
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    is_ready.store(true);
+                    return;
+                }
+
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        is_ready.store(true);
+                        return;
+                    }
+
+                    // 지워졌다 아니다만 하면 될 듯
                 });
             });
         });

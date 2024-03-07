@@ -26,6 +26,7 @@ class MessengerService : public Service
     void FetchMoreMessageHandling();
     void GetSessionListHandling();
     void GetContactListHandling();
+    void DeleteContactHandling();
     void GetContactRequestListHandling();
     void ProcessContactRequestHandling();
     void SignUpHandling();

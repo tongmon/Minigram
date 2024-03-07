@@ -1149,6 +1149,59 @@ void MessengerService::GetContactListHandling()
                              });
 }
 
+void MessengerService::DeleteContactHandling()
+{
+    std::string user_id, del_user_id, ip;
+    int port;
+
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(del_user_id);
+
+    *m_sql << "delete from contact_tb where user_id=:uid and acquaintance_id=:aid",
+        soci::use(user_id), soci::use(del_user_id);
+
+    *m_sql << "delete from contact_tb where user_id=:uid and acquaintance_id=:aid",
+        soci::use(del_user_id), soci::use(user_id);
+
+    soci::indicator ip_ind, port_ind;
+    *m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
+        soci::into(ip, ip_ind), soci::into(port, port_ind);
+
+    // 지워지는 상대가 로그인 중이라면 상대 클라이언트에서 바로 지움
+    if (ip_ind != soci::i_null)
+    {
+        m_peer->AsyncConnect(ip, port, [peer = m_peer, user_id](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            // shared_ptr로 바꿔서 수행
+            // NetworkBuffer net_buf(DELETE_CONTACT_TYPE);
+            // net_buf += user_id;
+            //
+            // peer->AsyncWrite(session->GetID(), *net_buf, [](std::shared_ptr<Session> session) -> void {
+            //    if (!session.get() || !session->IsValid())
+            //        return;
+            //});
+        });
+    }
+
+    NetworkBuffer net_buf(DELETE_CONTACT_TYPE);
+    net_buf += true;
+
+    m_request = std::move(net_buf);
+
+    boost::asio::async_write(*m_sock,
+                             m_request.AsioBuffer(),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
+}
+
 // Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ requester id / requester img date ] 배열 )
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MessengerService::GetContactRequestListHandling()
@@ -1866,6 +1919,8 @@ void MessengerService::StartHandling()
                                                                 break;
                                                             case LOGOUT_TYPE:
                                                                 LogOutHandling();
+                                                                break;
+                                                            case DELETE_CONTACT_TYPE:
                                                                 break;
                                                             default:
                                                                 break;
