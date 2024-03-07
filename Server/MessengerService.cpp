@@ -849,39 +849,46 @@ void MessengerService::FetchMoreMessageHandling()
     m_client_request.GetData(message_id);
     m_client_request.GetData(fetch_cnt);
 
-    auto &mongo_client = **m_mongo_ent;
+    auto &mongo_client = MongoDBClient::Get();
     auto mongo_db = mongo_client["Minigram"];
     auto mongo_coll = mongo_db[session_id + "_log"];
 
-    auto opts = mongocxx::options::find{};
-    opts.sort(basic::make_document(basic::kvp("message_id", -1)).view()).limit(fetch_cnt);
+    mongocxx::options::find opts;
+    stream::document sort_order{};
+    sort_order << "message_id" << -1;
+    opts.sort(sort_order.view()).limit(fetch_cnt);
+
     auto mongo_cursor = mongo_coll.find(basic::make_document(basic::kvp("message_id",
                                                                         basic::make_document(basic::kvp("$lt",
                                                                                                         message_id)))),
                                         opts);
 
-    boost::json::array chat_ary;
+    MongoDBClient::Free();
 
+    boost::json::array chat_ary;
     for (auto &&doc : mongo_cursor)
     {
         boost::json::object chat_info;
-        std::chrono::system_clock::time_point send_date(doc["send_date"].get_date().value);
-        chat_info["send_date"] = std::format("{0:%F %T}", send_date);
-        chat_info["message_id"] = doc["message_id"].get_string().value;
         chat_info["sender_id"] = doc["sender_id"].get_string().value;
-        chat_info["content_type"] = doc["content_type"].get_int64().value;
+        chat_info["send_date"] = doc["send_date"].get_int64().value;
+        chat_info["message_id"] = doc["message_id"].get_int64().value;
+        chat_info["content_type"] = doc["content_type"].get_int32().value;
+
+        boost::json::array readers;
+        auto ary_view = doc["reader_id"].get_array().value;
+        for (auto &&sub_doc : ary_view)
+            readers.push_back(sub_doc.get_string().value.data());
+        chat_info["reader_id"] = readers;
 
         switch (chat_info["content_type"].as_int64())
         {
         case TEXT_CHAT:
-            chat_info["content"] = EncodeBase64(StrToUtf8(doc["content"].get_string().value.data()));
-            break;
-        case IMG_CHAT:
-            chat_info["content"] = EncodeBase64(doc["content"].get_string().value.data());
+            chat_info["content"] = doc["content"].get_string().value.data();
             break;
         default:
             break;
         }
+
         chat_ary.push_back(std::move(chat_info));
     }
 

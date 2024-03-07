@@ -33,7 +33,7 @@ Rectangle {
 
     function setParticipantCnt(participantCnt)
     {
-        sessionViewModel.participantCnt = participantCnt
+        sessionView.participantCnt = participantCnt
     }
 
     Rectangle {
@@ -245,7 +245,10 @@ Rectangle {
         boundsBehavior: Flickable.StopAtBounds
         spacing: 3
 
+        property var participantCnt: 0
+
         ScrollBar.vertical: ScrollBar {
+            id: sessionViewScrollBar
             policy: ScrollBar.AsNeeded
         }
     
@@ -291,11 +294,17 @@ Rectangle {
             }
 
             Component.onCompleted: {
+                
             }
         }
 
         onCountChanged: {
             Qt.callLater(positionViewAtEnd)
+        }
+
+        onContentYChanged: {
+            if (!sessionViewScrollBar.position && sessionView.count)
+                mainContext.tryFetchMoreMessage(sessionId, itemAt(1, contentY + 1).messageId)
         }
 
         // 밑 로직으로 날짜에 따라 채팅 읽어오기 가능

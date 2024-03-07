@@ -175,7 +175,7 @@ find_one_and_update()를 이용하여 원자적 연산을 해야됨
 			"sender_id": 	"보낸 사람 USER_ID",
 			"send_date": 	time since epoch,
 			"message_id":	462,
-			"content_type": "text",
+			"content_type": 숫자,
 			"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4",
 			"reader_id": [ "tongstar", "yellowjam" ... ]
 		},
@@ -204,7 +204,7 @@ raw data: participant_img 01 | participant_img 02 ...
 			"sender_id": 	"보낸 사람 USER_ID",
 			"send_date": 	time since epoch,
 			"message_id":	462,
-			"content_type": "text",
+			"content_type": 숫자,
 			"content": 		"7LGE7YyF7J2EIOyzkOuztOyekH4",
 			"reader_id": [ "tongstar", "yellowjam" ... ]
 		},

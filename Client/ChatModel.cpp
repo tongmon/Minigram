@@ -203,6 +203,13 @@ void ChatModel::clear()
     m_chats.clear();
 }
 
+QObject *ChatModel::get(int index)
+{
+    if (index < 0)
+        return nullptr;
+    return m_chats[index];
+}
+
 void ChatModel::refreshReaderIds(const QString &reader_id, int start_modify_msg_id)
 {
     // 여기서 채팅참가자 프로퍼티 설정...

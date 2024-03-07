@@ -17,10 +17,10 @@ class ChatModel : public QAbstractListModel
     // 선택된 message_id에서 m_chats[0].message_id를 빼면 인덱스가 나옴
     QList<Chat *> m_chats;
 
-    Q_PROPERTY(int participantCnt MEMBER participant_cnt NOTIFY participantCntChanged)
+    // Q_PROPERTY(int participantCnt MEMBER participant_cnt NOTIFY participantCntChanged)
 
   public:
-    int participant_cnt;
+    // int participant_cnt;
 
     enum ContactRoles
     {
@@ -49,13 +49,14 @@ class ChatModel : public QAbstractListModel
     Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void remove(const int &msg_id);
     Q_INVOKABLE void clear();
+    Q_INVOKABLE QObject *get(int index);
     Q_INVOKABLE void refreshReaderIds(const QString &reader_id, int start_modify_msg_id);
     Q_INVOKABLE void updateParticipantInfo(const QVariantMap &qvm);
     Q_INVOKABLE QVariant data(const int64_t &msg_id, int role = Qt::DisplayRole) const;
     Q_INVOKABLE int getIndexFromMsgId(const int &msg_id); // Have to change this function's param int to int64_t
 
   signals:
-    void participantCntChanged();
+    // void participantCntChanged();
 };
 
 #endif /* HEADER__FILE__CHATMODEL */

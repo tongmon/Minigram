@@ -206,11 +206,6 @@ int ChatSessionModel::getIndexFromSessionId(const QString &session_id)
     return static_cast<int>(m_id_index_map[session_id]);
 }
 
-int ChatSessionModel::getParticipantCnt(const QString &session_id)
-{
-    return static_cast<int>(m_chat_sessions[m_id_index_map[session_id]]->participant_datas.size());
-}
-
 QObject *ChatSessionModel::get(const QString &session_id)
 {
     auto index = getIndexFromSessionId(session_id);
