@@ -34,9 +34,24 @@ Rectangle {
         contactModel.append(acqInfo)
     }
 
-    function recieveContactRequest(requester_info)
+    function addContacts(contacts)
     {
-        contactRequestModel.append(requester_info)
+        contactModel.addContacts(contacts)
+    }
+
+    function deleteContact(acqId)
+    {
+        contactModel.remove(acqId)
+    }
+
+    function addContactRequest(requester)
+    {
+        contactRequestModel.append(requester)
+    }
+
+    function addContactRequests(requesters)
+    {
+        contactRequestModel.addContacts(requesters)
     }
 
     function processContactRequest(acceptance, reqInfo)

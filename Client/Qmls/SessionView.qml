@@ -26,6 +26,11 @@ Rectangle {
         sessionView.model.append(chatInfo)
     }
 
+    function insertOrderedChats(index, chats)
+    {
+        sessionView.model.insertOrderedChats(index, chats)
+    }
+
     function clearChat()
     {
         sessionView.model.clear()

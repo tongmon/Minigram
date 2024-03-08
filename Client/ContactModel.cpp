@@ -89,3 +89,20 @@ void ContactModel::clear()
     m_contacts.clear();
     m_id_index_map.clear();
 }
+
+void ContactModel::addContacts(const QVariantList &contacts)
+{
+    beginInsertRows(QModelIndex(), m_contacts.size(), m_contacts.size() + contacts.size() - 1);
+    for (int i = 0; i < contacts.size(); i++)
+    {
+        const QVariantMap &contact_info = contacts[i].toMap();
+        Contact *contact = new Contact(contact_info["userId"].toString(),
+                                       contact_info["userName"].toString(),
+                                       contact_info["userImg"].toString(),
+                                       contact_info["userInfo"].toString(),
+                                       this);
+        m_id_index_map[contact->user_id] = m_contacts.size();
+        m_contacts.append(contact);
+    }
+    endInsertRows();
+}

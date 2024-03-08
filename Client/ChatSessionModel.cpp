@@ -172,6 +172,28 @@ void ChatSessionModel::clear()
     m_id_index_map.clear();
 }
 
+void ChatSessionModel::addSessions(const QVariantList &sessions)
+{
+    beginInsertRows(QModelIndex(), m_chat_sessions.size(), m_chat_sessions.size() + sessions.size() - 1);
+    for (int i = 0; i < sessions.size(); i++)
+    {
+        const QVariantMap &session = sessions[i].toMap();
+        ChatSession *chat_session = new ChatSession(session["sessionId"].toString(),
+                                                    session["sessionName"].toString(),
+                                                    session["sessionImg"].toString(),
+                                                    session["recentSenderId"].toString(),
+                                                    session["recentSendDate"].toString(),
+                                                    session["recentContentType"].toInt(),
+                                                    session["recentContent"].toString(),
+                                                    session["recentMessageId"].toInt(),
+                                                    session["unreadCnt"].toInt(),
+                                                    this);
+        m_id_index_map[chat_session->session_id] = m_chat_sessions.size();
+        m_chat_sessions.append(chat_session);
+    }
+    endInsertRows();
+}
+
 Q_INVOKABLE void ChatSessionModel::renewSessionInfo(const QVariantMap &qvm)
 {
     QString session_id;

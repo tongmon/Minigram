@@ -270,7 +270,8 @@ void MainContext::RecieveContactRequest(Service *service)
 
     // requester 추가 함수 호출
     QMetaObject::invokeMethod(m_contact_view,
-                              "recieveContactRequest",
+                              "addContactRequest",
+                              Qt::BlockingQueuedConnection,
                               Q_ARG(QVariant, qvm));
 
     delete service;
@@ -360,13 +361,27 @@ void MainContext::RecieveAddSession(Service *service)
 
     QMetaObject::invokeMethod(m_session_list_view,
                               "addSession",
+                              Qt::BlockingQueuedConnection,
                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
 
     delete service;
 }
 
+void MainContext::RecieveDeleteSession(Service *service)
+{
+    delete service;
+}
+
 void MainContext::RecieveDeleteContact(Service *service)
 {
+    QString acq_id;
+    service->server_response.GetData(acq_id);
+
+    QMetaObject::invokeMethod(m_contact_view,
+                              "deleteContact",
+                              Qt::QueuedConnection,
+                              Q_ARG(QVariant, acq_id));
+
     delete service;
 }
 
@@ -689,6 +704,7 @@ void MainContext::tryGetSessionList()
                     boost::json::value json_data = boost::json::parse(json_txt, ec);
                     auto session_array = json_data.as_object()["session_init_data"].as_array();
 
+                    QVariantList sessions;
                     for (int i = 0; i < session_array.size(); i++)
                     {
                         auto session_data = session_array[i].as_object();
@@ -765,11 +781,17 @@ void MainContext::tryGetSessionList()
                             qvm.insert("recentMessageId", chat_info["message_id"].as_int64());
                         }
 
-                        QMetaObject::invokeMethod(m_session_list_view,
-                                                  "addSession",
-                                                  Qt::QueuedConnection,
-                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                        sessions.append(qvm);
+                        // QMetaObject::invokeMethod(m_session_list_view,
+                        //                           "addSession",
+                        //                           Qt::QueuedConnection,
+                        //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
+
+                    QMetaObject::invokeMethod(m_session_list_view,
+                                              "addSessions",
+                                              Qt::QueuedConnection,
+                                              Q_ARG(QVariant, QVariant::fromValue(sessions)));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
@@ -1001,6 +1023,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                               Qt::QueuedConnection,
                                               Q_ARG(QVariant, static_cast<int>(participant_list.size())));
 
+                    QVariantList chats;
                     for (auto i = static_cast<int64_t>(fetch_list.size()) - 1; i >= 0; i--)
                     {
                         auto chat_info = fetch_list[i].as_object();
@@ -1025,6 +1048,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         qvm.insert("senderImgPath", participant_data["participantImgPath"].toString());
                         qvm.insert("contentType", chat_info["content_type"].as_int64());
                         qvm.insert("sendDate", MillisecondToCurrentDate(chat_info["send_date"].as_int64()).c_str());
+                        qvm.insert("isOpponent", m_user_id != sender_id.c_str());
 
                         switch (chat_info["content_type"].as_int64())
                         {
@@ -1042,13 +1066,18 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             readers.push_back(reader_ids[j].as_string().c_str());
                         qvm.insert("readerIds", readers);
 
-                        qvm.insert("isOpponent", m_user_id != sender_id.c_str());
-
-                        QMetaObject::invokeMethod(session_view,
-                                                  "addChat",
-                                                  Qt::BlockingQueuedConnection, // Qt::QueuedConnection인 경우 property 참조 충돌남
-                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                        chats.append(qvm);
+                        // QMetaObject::invokeMethod(session_view,
+                        //                           "addChat",
+                        //                           Qt::BlockingQueuedConnection, // Qt::QueuedConnection인 경우 property 참조 충돌남
+                        //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
+
+                    QMetaObject::invokeMethod(session_view,
+                                              "insertOrderedChats",
+                                              Qt::QueuedConnection,
+                                              Q_ARG(QVariant, -1),
+                                              Q_ARG(QVariant, QVariant::fromValue(chats)));
 
                     QVariantMap renew_info;
                     renew_info.insert("sessionId", session_id);
@@ -1122,6 +1151,7 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
                     boost::json::error_code ec;
                     boost::json::value json_data = boost::json::parse(json_txt, ec);
                     auto fetched_chat_ary = json_data.as_object()["fetched_chat_list"].as_array();
+                    QVariantList chats;
 
                     for (int i = 0; i < fetched_chat_ary.size(); i++)
                     {
@@ -1175,11 +1205,18 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
                             break;
                         }
 
-                        QMetaObject::invokeMethod(session_view,
-                                                  "addChat",
-                                                  Qt::BlockingQueuedConnection, // Qt::QueuedConnection인 경우 property 참조 충돌남
-                                                  Q_ARG(QVariant, QVariant::fromValue(chat_info)));
+                        chats.append(chat_info);
+                        // QMetaObject::invokeMethod(session_view,
+                        //                           "addChat",
+                        //                           Qt::BlockingQueuedConnection, // Qt::QueuedConnection인 경우 property 참조 충돌남
+                        //                           Q_ARG(QVariant, QVariant::fromValue(chat_info)));
                     }
+
+                    QMetaObject::invokeMethod(session_view,
+                                              "insertOrderedChats",
+                                              Qt::QueuedConnection,
+                                              Q_ARG(QVariant, 0),
+                                              Q_ARG(QVariant, QVariant::fromValue(chats)));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
@@ -1273,6 +1310,7 @@ void MainContext::tryGetContactList()
                     boost::json::error_code ec;
                     boost::json::value json_data = boost::json::parse(json_txt, ec);
                     auto contact_array = json_data.as_object()["contact_init_data"].as_array();
+                    QVariantList contacts;
 
                     for (int i = 0; i < contact_array.size(); i++)
                     {
@@ -1309,11 +1347,16 @@ void MainContext::tryGetContactList()
                             qvm.insert("userImg", profile_img_path.string().c_str());
                         }
 
-                        // 실제 채팅방 삽입하는 로직
-                        QMetaObject::invokeMethod(m_contact_view,
-                                                  "addContact",
-                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                        contacts.append(qvm);
+
+                        // QMetaObject::invokeMethod(m_contact_view,
+                        //                          "addContact",
+                        //                          Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
+
+                    QMetaObject::invokeMethod(m_contact_view,
+                                              "addContacts",
+                                              Q_ARG(QVariant, QVariant::fromValue(contacts)));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
@@ -1346,28 +1389,40 @@ void MainContext::tryDeleteContact(const QString &del_user_id)
         net_buf += m_user_id;
         net_buf += del_user_id;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, del_user_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, del_user_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, del_user_id, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
                         return;
                     }
 
-                    // 지워졌다 아니다만 하면 될 듯
+                    bool ret;
+                    session->GetResponse().GetData(ret);
+
+                    if (ret)
+                    {
+                        QMetaObject::invokeMethod(m_contact_view,
+                                                  "deleteContact",
+                                                  Qt::QueuedConnection,
+                                                  Q_ARG(QVariant, del_user_id));
+                    }
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
                 });
             });
         });
@@ -1522,6 +1577,7 @@ void MainContext::tryGetContactRequestList()
                     boost::json::error_code ec;
                     boost::json::value json_data = boost::json::parse(json_txt, ec);
                     auto request_array = json_data.as_object()["contact_request_init_data"].as_array();
+                    QVariantList contact_reqs;
 
                     for (int i = 0; i < request_array.size(); i++)
                     {
@@ -1557,11 +1613,17 @@ void MainContext::tryGetContactRequestList()
                             qvm.insert("userImg", profile_img_path.string().c_str());
                         }
 
+                        contact_reqs.append(qvm);
+
                         // qvm으로 contact request 추가하는 로직
-                        QMetaObject::invokeMethod(m_contact_view,
-                                                  "recieveContactRequest",
-                                                  Q_ARG(QVariant, qvm));
+                        // QMetaObject::invokeMethod(m_contact_view,
+                        //                           "addContactRequest",
+                        //                           Q_ARG(QVariant, qvm));
                     }
+
+                    QMetaObject::invokeMethod(m_contact_view,
+                                              "addContactRequests",
+                                              Q_ARG(QVariant, contact_reqs));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
@@ -1979,7 +2041,65 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
 
                     QMetaObject::invokeMethod(m_session_list_view,
                                               "addSession",
+                                              Qt::BlockingQueuedConnection,
                                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
+                });
+            });
+        });
+    });
+}
+
+void MainContext::tryDeleteSession(const QString &session_id)
+{
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    auto &central_server = m_window.GetServerHandle();
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            is_ready.store(true);
+            return;
+        }
+
+        NetworkBuffer net_buf(DELETE_SESSION_TYPE);
+        net_buf += m_user_id;
+        net_buf += session_id;
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    is_ready.store(true);
+                    return;
+                }
+
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        is_ready.store(true);
+                        return;
+                    }
+
+                    bool ret;
+                    session->GetResponse().GetData(ret);
+
+                    if (ret)
+                    {
+                    }
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
@@ -2018,6 +2138,9 @@ void MainContext::tryLogOut()
                 is_ready.store(true);
                 return;
             }
+
+            central_server.CloseRequest(session->GetID());
+            is_ready.store(true);
         });
     });
 

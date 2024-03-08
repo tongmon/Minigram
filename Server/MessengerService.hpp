@@ -31,6 +31,7 @@ class MessengerService : public Service
     void ProcessContactRequestHandling();
     void SignUpHandling();
     void AddSessionHandling();
+    void DeleteSessionHandling();
     void SendContactRequestHandling();
     void LogOutHandling();
 

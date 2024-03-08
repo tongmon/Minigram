@@ -4,15 +4,7 @@
 #include "Utility.hpp"
 #include "WinQuickWindow.hpp"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/dll.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/json.hpp>
-#include <chrono>
-#include <ctime>
-#include <fstream>
 #include <iostream>
-#include <regex>
 #include <sstream>
 
 Service::Service(WinQuickWindow &window, std::shared_ptr<boost::asio::ip::tcp::socket> sock)
@@ -35,13 +27,6 @@ void Service::StartHandling()
                                 server_response_buf.commit(bytes_transferred);
                                 server_response = server_response_buf;
 
-                                // std::istream strm(&m_server_request_buf);
-                                // std::getline(strm, m_server_request);
-
-                                // TCPHeader header(m_server_request);
-                                // auto connection_type = header.GetConnectionType();
-                                // auto data_size = header.GetDataSize();
-
                                 boost::asio::async_read(*sock,
                                                         server_response_buf.prepare(server_response.GetDataSize()),
                                                         [this, connection_type = server_response.GetConnectionType()](const boost::system::error_code &ec, std::size_t bytes_transferred) {
@@ -54,9 +39,6 @@ void Service::StartHandling()
 
                                                             server_response_buf.commit(bytes_transferred);
                                                             server_response = server_response_buf;
-
-                                                            // std::istream strm(&m_server_request_buf);
-                                                            // std::getline(strm, m_server_request);
 
                                                             switch (connection_type)
                                                             {
@@ -76,6 +58,12 @@ void Service::StartHandling()
                                                             case RECEIVE_ADD_SESSION_TYPE:
                                                             case SESSION_ADD_TYPE:
                                                                 window.GetMainContext().RecieveAddSession(this);
+                                                                break;
+                                                            case DELETE_CONTACT_TYPE:
+                                                                window.GetMainContext().RecieveDeleteContact(this);
+                                                                break;
+                                                            case DELETE_SESSION_TYPE:
+                                                                window.GetMainContext().RecieveDeleteSession(this);
                                                                 break;
                                                             default:
                                                                 break;

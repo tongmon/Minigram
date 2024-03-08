@@ -7,6 +7,7 @@
 #include "NetworkBuffer.hpp"
 
 #include <boost/asio.hpp>
+
 #include <memory>
 #include <string>
 

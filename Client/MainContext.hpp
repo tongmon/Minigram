@@ -48,6 +48,7 @@ class MainContext : public QObject
     void RefreshReaderIds(Service *service);
     void RecieveContactRequest(Service *service);
     void RecieveAddSession(Service *service);
+    void RecieveDeleteSession(Service *service);
     void RecieveDeleteContact(Service *service);
 
     // 클라에서 서버로 전송하기 위한 함수들
@@ -64,6 +65,7 @@ class MainContext : public QObject
     Q_INVOKABLE void tryProcessContactRequest(const QString &acq_id, bool is_accepted);
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);
     Q_INVOKABLE void tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids);
+    Q_INVOKABLE void tryDeleteSession(const QString &session_id);
     Q_INVOKABLE void tryLogOut();
 
     // 유틸 함수

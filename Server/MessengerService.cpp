@@ -1165,7 +1165,7 @@ void MessengerService::DeleteContactHandling()
 
     soci::indicator ip_ind, port_ind;
     *m_sql << "select login_ip, login_port from user_tb where user_id=:uid",
-        soci::into(ip, ip_ind), soci::into(port, port_ind);
+        soci::into(ip, ip_ind), soci::into(port, port_ind), soci::use(del_user_id);
 
     // 지워지는 상대가 로그인 중이라면 상대 클라이언트에서 바로 지움
     if (ip_ind != soci::i_null)
@@ -1174,14 +1174,13 @@ void MessengerService::DeleteContactHandling()
             if (!session.get() || !session->IsValid())
                 return;
 
-            // shared_ptr로 바꿔서 수행
-            // NetworkBuffer net_buf(DELETE_CONTACT_TYPE);
-            // net_buf += user_id;
-            //
-            // peer->AsyncWrite(session->GetID(), *net_buf, [](std::shared_ptr<Session> session) -> void {
-            //    if (!session.get() || !session->IsValid())
-            //        return;
-            //});
+            NetworkBuffer net_buf(DELETE_CONTACT_TYPE);
+            net_buf += user_id;
+
+            peer->AsyncWrite(session->GetID(), std::move(net_buf), [](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+            });
         });
     }
 
@@ -1634,6 +1633,57 @@ void MessengerService::AddSessionHandling()
                              });
 }
 
+void MessengerService::DeleteSessionHandling()
+{
+    std::string user_id, session_id;
+
+    m_client_request.GetData(user_id);
+    m_client_request.GetData(session_id);
+
+    // participant_tb 삭제
+    *m_sql << "delete from participant_tb where participant_id=:uid and session_id=:sid",
+        soci::use(user_id), soci::use(session_id);
+
+    // 로그인 중인 사용자들이라면 해당 클라에서 세션 바로 삭제
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select login_ip, login_port from user_tb where user_id in (select participant_id from participant_tb where session_id=:sid)",
+                                  soci::use(session_id));
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        if (it->get_indicator(0) == soci::i_null)
+            continue;
+
+        m_peer->AsyncConnect(it->get<std::string>(0), it->get<int>(1), [peer = m_peer, user_id, session_id](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            NetworkBuffer net_buf(DELETE_SESSION_TYPE);
+            net_buf += user_id;
+            net_buf += session_id;
+
+            peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+            });
+        });
+    }
+
+    NetworkBuffer net_buf(DELETE_SESSION_TYPE);
+    net_buf += true;
+
+    m_request = std::move(net_buf);
+
+    boost::asio::async_write(*m_sock,
+                             m_request.AsioBuffer(),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
+}
+
 // Client에서 받는 버퍼 형식: current user id | user id to add
 // Client에 전달하는 버퍼 형식: contact add result | added user name | added user img name | added user raw profile img
 void MessengerService::SendContactRequestHandling()
@@ -1921,6 +1971,10 @@ void MessengerService::StartHandling()
                                                                 LogOutHandling();
                                                                 break;
                                                             case DELETE_CONTACT_TYPE:
+                                                                DeleteContactHandling();
+                                                                break;
+                                                            case DELETE_SESSION_TYPE:
+                                                                DeleteSessionHandling();
                                                                 break;
                                                             default:
                                                                 break;

@@ -35,6 +35,17 @@ Rectangle {
         sessionNameDecisionPopup.close()
     }
 
+    function addSessions(sessions)
+    {
+        for (var i = 0; i < sessions.length; i++)
+        {
+            sessionViewMap[sessions[i]["sessionId"]] = sessionViewComponent.createObject(null)
+            sessionViewMap[sessions[i]["sessionId"]].sessionId = sessions[i]["sessionId"]
+        }
+
+        chatSessionModel.addSessions(sessions)
+    }
+
     function renewSessionInfo(refreshInfo)
     {
         chatSessionModel.renewSessionInfo(refreshInfo)

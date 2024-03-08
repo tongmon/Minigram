@@ -47,13 +47,13 @@ class ChatModel : public QAbstractListModel
     bool setData(const int64_t &msg_id, const QVariant &value, int role);
 
     Q_INVOKABLE void append(const QVariantMap &qvm);
-    Q_INVOKABLE void remove(const int &msg_id);
     Q_INVOKABLE void clear();
     Q_INVOKABLE QObject *get(int index);
     Q_INVOKABLE void refreshReaderIds(const QString &reader_id, int start_modify_msg_id);
     Q_INVOKABLE void updateParticipantInfo(const QVariantMap &qvm);
     Q_INVOKABLE QVariant data(const int64_t &msg_id, int role = Qt::DisplayRole) const;
     Q_INVOKABLE int getIndexFromMsgId(const int &msg_id); // Have to change this function's param int to int64_t
+    Q_INVOKABLE void insertOrderedChats(int index, const QVariantList &chats);
 
   signals:
     // void participantCntChanged();
