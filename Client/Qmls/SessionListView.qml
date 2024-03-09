@@ -17,6 +17,8 @@ Rectangle {
 
     property var selectedPerson: ({})
 
+    property var deletedSessions: []
+
     property string currentSessionId: ""
 
     function addSession(sessionInfo)
@@ -44,6 +46,25 @@ Rectangle {
         }
 
         chatSessionModel.addSessions(sessions)
+    }
+
+    function deleteSession(sessionId)
+    {
+        // 삭제할 세션이 50개 이상이 될 때마다 25개씩 삭제
+        // 바로 삭제하지 않는 이유는 c++ 클라 코드에서 해당 세션을 이용하고 있을 수 있기 때문
+        if (deletedSessions.length > 50)
+        {
+            var cnt = 25
+            while (cnt)
+            {
+                delete sessionViewMap.deletedSessions[deletedSessions.length - 1]
+                deletedSessions.pop()
+                cnt--
+            }
+        }
+
+        deletedSessions.splice(0, 0, sessionId)
+        chatSessionModel.remove(sessionId)
     }
 
     function renewSessionInfo(refreshInfo)

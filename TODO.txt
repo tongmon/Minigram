@@ -105,3 +105,11 @@ alert 함수를 이용할 수도 있고 qml 다이얼로그를 변형하여 접�
 4. 세션 나가기
 5. 유저 이름 or 이미지 바꾸는 경우
 6. 채팅방 추방, 초대
+
+
+채팅 add, read하는 곳
+세션 add, read하는 곳
+
+participant_data
+
+getParticipantData 호출하는 곳

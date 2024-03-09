@@ -39,6 +39,11 @@ Rectangle {
         contactModel.addContacts(contacts)
     }
 
+    function getContact(userId)
+    {
+        return contactModel.getContact(userId)
+    }
+
     function deleteContact(acqId)
     {
         contactModel.remove(acqId)

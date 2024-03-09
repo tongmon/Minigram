@@ -98,9 +98,9 @@ void ChatNotificationManager::processClickedNotification(const QString &session_
 {
     popAll();
 
-    QMetaObject::invokeMethod(m_main_context->m_main_page,
-                              "selectCurrentView",
-                              Q_ARG(QVariant, "session"));
+    // QMetaObject::invokeMethod(m_main_context->m_main_page,
+    //                           "selectCurrentView",
+    //                           Q_ARG(QVariant, "session"));
 
     QMetaObject::invokeMethod(m_main_context->m_session_list_view,
                               "setCurrentSession",

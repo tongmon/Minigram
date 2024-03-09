@@ -50,6 +50,7 @@ class ChatSessionModel : public QAbstractListModel
     Q_INVOKABLE void renewSessionInfo(const QVariantMap &qvm);
     Q_INVOKABLE int getIndexFromSessionId(const QString &session_id);
     Q_INVOKABLE void insertParticipantData(const QVariantMap &qvm);
+    Q_INVOKABLE void deleteParticipantData(const QString &session_id, const QString &participant_id);
     Q_INVOKABLE void updateParticipantData(const QVariantMap &qvm);
     Q_INVOKABLE QVariantMap getParticipantData(const QString &session_id, const QString &p_id);
 };

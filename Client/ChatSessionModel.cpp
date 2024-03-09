@@ -238,13 +238,21 @@ QObject *ChatSessionModel::get(const QString &session_id)
 
 void ChatSessionModel::insertParticipantData(const QVariantMap &qvm)
 {
-    auto index = getIndexFromSessionId(qvm["sessionId"].toString());
+    int index = getIndexFromSessionId(qvm["sessionId"].toString());
     if (index < 0 || m_chat_sessions[index]->participant_datas.find(qvm["participantId"].toString()) != m_chat_sessions[index]->participant_datas.end())
         return;
 
     m_chat_sessions[index]->participant_datas[qvm["participantId"].toString()] = {qvm["participantName"].toString().toStdString(),
                                                                                   qvm["participantInfo"].toString().toStdString(),
                                                                                   qvm["participantImgPath"].toString().toStdString()};
+}
+
+void ChatSessionModel::deleteParticipantData(const QString &session_id, const QString &participant_id)
+{
+    int index = getIndexFromSessionId(session_id);
+
+    if (m_chat_sessions[index]->participant_datas.find(participant_id) != m_chat_sessions[index]->participant_datas.end())
+        m_chat_sessions[index]->participant_datas.remove(participant_id);
 }
 
 void ChatSessionModel::updateParticipantData(const QVariantMap &qvm)

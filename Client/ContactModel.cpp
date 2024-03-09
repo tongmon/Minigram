@@ -106,3 +106,18 @@ void ContactModel::addContacts(const QVariantList &contacts)
     }
     endInsertRows();
 }
+
+QVariantMap ContactModel::getContact(const QString &user_id)
+{
+    QVariantMap ret;
+
+    if (m_id_index_map.find(user_id) == m_id_index_map.end())
+        return ret;
+
+    ret["userId"] = m_contacts[m_id_index_map[user_id]]->user_id;
+    ret["userImg"] = m_contacts[m_id_index_map[user_id]]->user_img;
+    ret["userInfo"] = m_contacts[m_id_index_map[user_id]]->user_info;
+    ret["userName"] = m_contacts[m_id_index_map[user_id]]->user_name;
+
+    return ret;
+}

@@ -369,6 +369,16 @@ void MainContext::RecieveAddSession(Service *service)
 
 void MainContext::RecieveDeleteSession(Service *service)
 {
+    QString deleter_id, session_id;
+    service->server_response.GetData(deleter_id);
+    service->server_response.GetData(session_id);
+
+    QMetaObject::invokeMethod(m_main_page,
+                              "deleteParticipantData",
+                              Qt::QueuedConnection,
+                              Q_ARG(QVariant, session_id),
+                              Q_ARG(QVariant, deleter_id));
+
     delete service;
 }
 
@@ -1037,15 +1047,35 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                                   Q_ARG(QVariant, session_id),
                                                   Q_ARG(QVariant, sender_id.c_str()));
                         QVariantMap participant_data = ret.toMap();
+                        QString sender_name = "Unknown", sender_img_path = "";
 
-                        auto t = participant_data["participantName"].toString().toStdString();
+                        if (participant_data.find("participantName") == participant_data.end())
+                        {
+                            QMetaObject::invokeMethod(m_contact_view,
+                                                      "getContact",
+                                                      Qt::BlockingQueuedConnection,
+                                                      Q_RETURN_ARG(QVariant, ret),
+                                                      Q_ARG(QVariant, sender_id.c_str()));
+                            QVariantMap contact_data = ret.toMap();
+
+                            if (contact_data.find("userName") != contact_data.end())
+                            {
+                                sender_name = contact_data["userName"].toString();
+                                sender_img_path = contact_data["userImg"].toString();
+                            }
+                        }
+                        else
+                        {
+                            sender_name = participant_data["participantName"].toString();
+                            sender_img_path = participant_data["participantImgPath"].toString();
+                        }
 
                         QVariantMap qvm;
                         qvm.insert("messageId", chat_info["message_id"].as_int64());
                         qvm.insert("sessionId", session_id);
                         qvm.insert("senderId", sender_id.c_str());
-                        qvm.insert("senderName", participant_data["participantName"].toString());
-                        qvm.insert("senderImgPath", participant_data["participantImgPath"].toString());
+                        qvm.insert("senderName", sender_name);
+                        qvm.insert("senderImgPath", sender_img_path);
                         qvm.insert("contentType", chat_info["content_type"].as_int64());
                         qvm.insert("sendDate", MillisecondToCurrentDate(chat_info["send_date"].as_int64()).c_str());
                         qvm.insert("isOpponent", m_user_id != sender_id.c_str());
@@ -2073,21 +2103,21 @@ void MainContext::tryDeleteSession(const QString &session_id)
         net_buf += m_user_id;
         net_buf += session_id;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -2098,8 +2128,9 @@ void MainContext::tryDeleteSession(const QString &session_id)
                     session->GetResponse().GetData(ret);
 
                     if (ret)
-                    {
-                    }
+                        QMetaObject::invokeMethod(m_session_list_view,
+                                                  "deleteSession",
+                                                  Q_ARG(QVariant, session_id));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);

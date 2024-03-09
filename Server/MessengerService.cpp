@@ -1177,9 +1177,11 @@ void MessengerService::DeleteContactHandling()
             NetworkBuffer net_buf(DELETE_CONTACT_TYPE);
             net_buf += user_id;
 
-            peer->AsyncWrite(session->GetID(), std::move(net_buf), [](std::shared_ptr<Session> session) -> void {
+            peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
+
+                peer->CloseRequest(session->GetID());
             });
         });
     }
@@ -1595,9 +1597,11 @@ void MessengerService::AddSessionHandling()
             if (!session.get() || !session->IsValid())
                 return;
 
-            peer->AsyncWrite(session->GetID(), *net_buf, [](std::shared_ptr<Session> session) -> void {
+            peer->AsyncWrite(session->GetID(), *net_buf, [peer](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
+
+                peer->CloseRequest(session->GetID());
             });
         });
     }
@@ -1663,6 +1667,8 @@ void MessengerService::DeleteSessionHandling()
             peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
+
+                peer->CloseRequest(session->GetID());
             });
         });
     }
@@ -1763,6 +1769,8 @@ void MessengerService::SendContactRequestHandling()
                 peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                         return;
+
+                    peer->CloseRequest(session->GetID());
                 });
             });
         }

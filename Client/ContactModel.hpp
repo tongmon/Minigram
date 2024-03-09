@@ -34,7 +34,8 @@ class ContactModel : public QAbstractListModel
     Q_INVOKABLE void append(const QVariantMap &qvm);
     Q_INVOKABLE void remove(const QString &user_id);
     Q_INVOKABLE void clear();
-    Q_INVOKABLE void addContacts(const QVariantList& contacts);
+    Q_INVOKABLE void addContacts(const QVariantList &contacts);
+    Q_INVOKABLE QVariantMap getContact(const QString &user_id);
 };
 
 #endif /* HEADER__FILE__CONTACTMODEL */

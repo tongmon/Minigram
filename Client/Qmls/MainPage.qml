@@ -44,6 +44,11 @@ Rectangle {
         chatSessionModel.insertParticipantData(participantInfo)
     }
 
+    function deleteParticipantData(sessionId, participantId)
+    {
+        chatSessionModel.deleteParticipantData(sessionId, participantId)
+    }
+
     function getParticipantData(sessionId, participantId)
     {
         return chatSessionModel.getParticipantData(sessionId, participantId)
