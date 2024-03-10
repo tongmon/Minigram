@@ -131,11 +131,33 @@ void MainContext::RecieveChat(Service *service)
                                                                    Q_ARG(QVariant, session_id),
                                                                    Q_ARG(QVariant, sender_id));
                                          QVariantMap participant_data = ret.toMap();
+                                         QString sender_name = "Unknown", sender_img_path = "";
+
+                                         if (participant_data.find("participantName") == participant_data.end())
+                                         {
+                                             QMetaObject::invokeMethod(m_contact_view,
+                                                                       "getContact",
+                                                                       Qt::BlockingQueuedConnection,
+                                                                       Q_RETURN_ARG(QVariant, ret),
+                                                                       Q_ARG(QVariant, sender_id));
+                                             QVariantMap contact_data = ret.toMap();
+
+                                             if (contact_data.find("userName") != contact_data.end())
+                                             {
+                                                 sender_name = contact_data["userName"].toString();
+                                                 sender_img_path = contact_data["userImg"].toString();
+                                             }
+                                         }
+                                         else
+                                         {
+                                             sender_name = participant_data["participantName"].toString();
+                                             sender_img_path = participant_data["participantImgPath"].toString();
+                                         }
 
                                          QVariantMap noti_info;
                                          noti_info["sessionId"] = session_id;
-                                         noti_info["senderName"] = participant_data["participantName"].toString();
-                                         noti_info["senderImgPath"] = participant_data["participantImgPath"].toString();
+                                         noti_info["senderName"] = sender_name;
+                                         noti_info["senderImgPath"] = sender_img_path;
                                          noti_info["content"] = content;
                                          m_noti_manager->push(noti_info);
                                      }
@@ -187,13 +209,35 @@ void MainContext::RecieveChat(Service *service)
                                                                                                                    Q_ARG(QVariant, session_id),
                                                                                                                    Q_ARG(QVariant, sender_id));
                                                                                          QVariantMap participant_data = ret.toMap();
+                                                                                         QString sender_name = "Unknown", sender_img_path = "";
+
+                                                                                         if (participant_data.find("participantName") == participant_data.end())
+                                                                                         {
+                                                                                             QMetaObject::invokeMethod(m_contact_view,
+                                                                                                                       "getContact",
+                                                                                                                       Qt::BlockingQueuedConnection,
+                                                                                                                       Q_RETURN_ARG(QVariant, ret),
+                                                                                                                       Q_ARG(QVariant, sender_id));
+                                                                                             QVariantMap contact_data = ret.toMap();
+
+                                                                                             if (contact_data.find("userName") != contact_data.end())
+                                                                                             {
+                                                                                                 sender_name = contact_data["userName"].toString();
+                                                                                                 sender_img_path = contact_data["userImg"].toString();
+                                                                                             }
+                                                                                         }
+                                                                                         else
+                                                                                         {
+                                                                                             sender_name = participant_data["participantName"].toString();
+                                                                                             sender_img_path = participant_data["participantImgPath"].toString();
+                                                                                         }
 
                                                                                          QVariantMap chat_info;
                                                                                          chat_info.insert("messageId", message_id);
                                                                                          chat_info.insert("sessionId", session_id);
                                                                                          chat_info.insert("senderId", sender_id);
-                                                                                         chat_info.insert("senderName", participant_data["participantName"].toString());
-                                                                                         chat_info.insert("senderImgPath", participant_data["participantImgPath"].toString());
+                                                                                         chat_info.insert("senderName", sender_name);
+                                                                                         chat_info.insert("senderImgPath", sender_img_path);
                                                                                          chat_info.insert("sendDate", MillisecondToCurrentDate(send_date).c_str());
                                                                                          chat_info.insert("contentType", static_cast<int>(content_type));
                                                                                          chat_info.insert("content", content);
@@ -378,6 +422,8 @@ void MainContext::RecieveDeleteSession(Service *service)
                               Qt::QueuedConnection,
                               Q_ARG(QVariant, session_id),
                               Q_ARG(QVariant, deleter_id));
+
+    // 해당 사용자가 세션을 나갔다는 내용의 채팅을 채팅방에 입력해야됨
 
     delete service;
 }
@@ -1195,27 +1241,35 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
                                                   Q_ARG(QVariant, session_id),
                                                   Q_ARG(QVariant, chat_data["sender_id"].as_string().c_str()));
                         QVariantMap participant_data = ret.toMap();
+                        QString sender_name = "Unknown", sender_img_path = "";
 
-                        QString participantName, participantImgPath;
-
-                        // 참가자가 없는 경우 해당 참가자는 추방, 탈퇴한 것이기에 별도의 로직이 필요함
                         if (participant_data.find("participantName") == participant_data.end())
                         {
-                            participantName = "Unknown";
-                            participantImgPath = "";
+                            QMetaObject::invokeMethod(m_contact_view,
+                                                      "getContact",
+                                                      Qt::BlockingQueuedConnection,
+                                                      Q_RETURN_ARG(QVariant, ret),
+                                                      Q_ARG(QVariant, chat_data["sender_id"].as_string().c_str()));
+                            QVariantMap contact_data = ret.toMap();
+
+                            if (contact_data.find("userName") != contact_data.end())
+                            {
+                                sender_name = contact_data["userName"].toString();
+                                sender_img_path = contact_data["userImg"].toString();
+                            }
                         }
                         else
                         {
-                            participantName = participant_data["participantName"].toString();
-                            participantImgPath = participant_data["participantImgPath"].toString();
+                            sender_name = participant_data["participantName"].toString();
+                            sender_img_path = participant_data["participantImgPath"].toString();
                         }
 
                         QVariantMap chat_info;
                         chat_info.insert("messageId", chat_data["message_id"].as_int64());
                         chat_info.insert("sessionId", session_id);
                         chat_info.insert("senderId", chat_data["sender_id"].as_string().c_str());
-                        chat_info.insert("senderName", participantName);
-                        chat_info.insert("senderImgPath", participantImgPath);
+                        chat_info.insert("senderName", sender_name);
+                        chat_info.insert("senderImgPath", sender_img_path);
                         chat_info.insert("sendDate", MillisecondToCurrentDate(chat_data["send_date"].as_int64()).c_str());
                         chat_info.insert("contentType", static_cast<int>(chat_data["content_type"].as_int64()));
                         chat_info.insert("isOpponent", m_user_id != chat_data["sender_id"].as_string().c_str());

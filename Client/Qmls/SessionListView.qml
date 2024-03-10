@@ -63,8 +63,12 @@ Rectangle {
             }
         }
 
+        // 지우려는 세션이 현재 열려져있는 세션인 경우
+        if (sessionListView.currentIndex > 0 && chatSessionModel.currentItem.sessionId == sessionId)
+            mainView.clear()
+
         deletedSessions.splice(0, 0, sessionId)
-        chatSessionModel.remove(sessionId)
+        chatSessionModel.remove(sessionId) // 얘가 미리 지워져서 문제를 발생시킬 수도 있음... 근데 아마 없을듯? 사용 잔여가 발생하는 넘은 UI쪽인 sessionViewMap라...
     }
 
     function renewSessionInfo(refreshInfo)
