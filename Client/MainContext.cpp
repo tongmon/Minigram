@@ -561,6 +561,28 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 // Server에서 받는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MainContext::trySendChat(const QString &session_id, unsigned char content_type, const QString &content)
 {
+    auto ttt = m_session_list_view->property("sessionViewMap").toMap();
+    auto tt = qvariant_cast<QObject *>(ttt[session_id]);
+
+    QVariantMap chat_info;
+    chat_info.insert("messageId", 23.001);
+    chat_info.insert("sessionId", session_id);
+    chat_info.insert("senderId", "");
+    chat_info.insert("senderName", "");
+    chat_info.insert("senderImgPath", "");
+    chat_info.insert("sendDate", "");
+    chat_info.insert("contentType", 4);
+    chat_info.insert("contentType", content);
+    chat_info.insert("readerIds", QStringList());
+    chat_info.insert("isOpponent", false);
+
+    QMetaObject::invokeMethod(tt,
+                              "addChat",
+                              Qt::QueuedConnection,
+                              Q_ARG(QVariant, QVariant::fromValue(chat_info)));
+
+    return;
+
     static std::atomic_bool is_ready = true;
 
     bool old_var = true;
@@ -1434,8 +1456,8 @@ void MainContext::tryGetContactList()
                         contacts.append(qvm);
 
                         // QMetaObject::invokeMethod(m_contact_view,
-                        //                          "addContact",
-                        //                          Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                        //                           "addContact",
+                        //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
                     QMetaObject::invokeMethod(m_contact_view,
@@ -1501,7 +1523,7 @@ void MainContext::tryDeleteContact(const QString &del_user_id)
                     {
                         QMetaObject::invokeMethod(m_contact_view,
                                                   "deleteContact",
-                                                  Qt::QueuedConnection,
+                                                  Qt::BlockingQueuedConnection,
                                                   Q_ARG(QVariant, del_user_id));
                     }
 
@@ -1707,7 +1729,7 @@ void MainContext::tryGetContactRequestList()
 
                     QMetaObject::invokeMethod(m_contact_view,
                                               "addContactRequests",
-                                              Q_ARG(QVariant, contact_reqs));
+                                              Q_ARG(QVariant, QVariant::fromValue(contact_reqs)));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
@@ -2184,6 +2206,7 @@ void MainContext::tryDeleteSession(const QString &session_id)
                     if (ret)
                         QMetaObject::invokeMethod(m_session_list_view,
                                                   "deleteSession",
+                                                  Qt::BlockingQueuedConnection,
                                                   Q_ARG(QVariant, session_id));
 
                     central_server.CloseRequest(session->GetID());

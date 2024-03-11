@@ -14,7 +14,7 @@ class Chat : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(int messageId MEMBER message_id NOTIFY messageIdChanged)
+    Q_PROPERTY(double messageId MEMBER message_id NOTIFY messageIdChanged)
     Q_PROPERTY(QString sessionId MEMBER session_id NOTIFY sessionIdChanged)
     Q_PROPERTY(QString senderId MEMBER sender_id NOTIFY senderIdChanged)
     Q_PROPERTY(QString senderName MEMBER sender_name NOTIFY senderNameChanged)
@@ -27,10 +27,11 @@ class Chat : public QObject
     Q_PROPERTY(bool isOpponent MEMBER is_oppoent NOTIFY isOpponentChanged)
 
     static inline std::map<ChatType, QString> m_chat_type_component_map = {
-        {TEXT_CHAT, "qrc:/qml/TextChat.qml"}};
+        {TEXT_CHAT, "qrc:/qml/TextChat.qml"},
+        {INFO_CHAT, "qrc:/qml/InfoChat.qml"}};
 
   public:
-    int message_id;
+    double message_id;
     QString session_id;
     QString sender_id;
     QString sender_name;
@@ -43,7 +44,7 @@ class Chat : public QObject
     std::set<QString> reader_set;
     bool is_oppoent;
 
-    Chat(const int &message_id = 0,
+    Chat(const double &message_id = 0,
          const QString &session_id = "",
          const QString &sender_id = "",
          const QString &sender_name = "",

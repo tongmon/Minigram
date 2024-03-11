@@ -132,10 +132,18 @@ ChatSession &ChatSessionModel::operator[](const QString &session_id)
 
 void ChatSessionModel::remove(const QString &session_id)
 {
+    // 다른 곳에서 참조하고 있을 수도 있기에 세션을 미리 지우지 않음
+    if (m_deleted_sessions.size() > 50)
+        while (m_deleted_sessions.size() > 25)
+        {
+            delete m_deleted_sessions.front();
+            m_deleted_sessions.pop_front();
+        }
+
     int ind = m_id_index_map[session_id];
     beginRemoveRows(QModelIndex(), ind, ind);
     endRemoveRows();
-    delete m_chat_sessions[ind];
+    m_deleted_sessions.append(m_chat_sessions[ind]);
     m_chat_sessions.removeAt(ind);
 
     m_id_index_map.remove(session_id);
@@ -174,6 +182,9 @@ void ChatSessionModel::clear()
 
 void ChatSessionModel::addSessions(const QVariantList &sessions)
 {
+    if (sessions.isEmpty())
+        return;
+
     beginInsertRows(QModelIndex(), m_chat_sessions.size(), m_chat_sessions.size() + sessions.size() - 1);
     for (int i = 0; i < sessions.size(); i++)
     {

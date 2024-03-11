@@ -92,6 +92,9 @@ void ContactModel::clear()
 
 void ContactModel::addContacts(const QVariantList &contacts)
 {
+    if (contacts.isEmpty())
+        return;
+
     beginInsertRows(QModelIndex(), m_contacts.size(), m_contacts.size() + contacts.size() - 1);
     for (int i = 0; i < contacts.size(); i++)
     {

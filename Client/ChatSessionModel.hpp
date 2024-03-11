@@ -13,6 +13,7 @@ class ChatSessionModel : public QAbstractListModel
 
     QHash<QString, size_t> m_id_index_map;
     QList<ChatSession *> m_chat_sessions;
+    QList<ChatSession *> m_deleted_sessions;
 
   public:
     enum ContactRoles

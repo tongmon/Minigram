@@ -39,13 +39,12 @@ Rectangle {
 
     function addSessions(sessions)
     {
+        chatSessionModel.addSessions(sessions)
         for (var i = 0; i < sessions.length; i++)
         {
-            sessionViewMap[sessions[i]["sessionId"]] = sessionViewComponent.createObject(null)
-            sessionViewMap[sessions[i]["sessionId"]].sessionId = sessions[i]["sessionId"]
+            sessionViewMap[sessions[i].sessionId] = sessionViewComponent.createObject(null)
+            sessionViewMap[sessions[i].sessionId].sessionId = sessions[i].sessionId
         }
-
-        chatSessionModel.addSessions(sessions)
     }
 
     function deleteSession(sessionId)
@@ -68,7 +67,7 @@ Rectangle {
             mainView.clear()
 
         deletedSessions.splice(0, 0, sessionId)
-        chatSessionModel.remove(sessionId) // 얘가 미리 지워져서 문제를 발생시킬 수도 있음... 근데 아마 없을듯? 사용 잔여가 발생하는 넘은 UI쪽인 sessionViewMap라...
+        chatSessionModel.remove(sessionId)
     }
 
     function renewSessionInfo(refreshInfo)

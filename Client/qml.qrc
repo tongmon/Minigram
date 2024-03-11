@@ -21,6 +21,7 @@
         <file alias="ApplicationWindow.qml">Qmls/ApplicationWindow.qml</file>
         <file alias="TitleBar.qml">Qmls/TitleBar.qml</file>
         <file alias="TextChat.qml">Qmls/TextChat.qml</file>
+        <file alias="InfoChat.qml">Qmls/InfoChat.qml</file>
         <file alias="ChatListView.qml">Qmls/ChatListView.qml</file>
         <file alias="ChatNotificationWindow.qml">Qmls/ChatNotificationWindow.qml</file>
         <file alias="SettingButton.qml">Qmls/SettingButton.qml</file>

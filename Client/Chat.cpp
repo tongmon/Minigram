@@ -1,6 +1,6 @@
 ﻿#include "Chat.hpp"
 
-Chat::Chat(const int &message_id,
+Chat::Chat(const double &message_id,
            const QString &session_id,
            const QString &sender_id,
            const QString &sender_name,

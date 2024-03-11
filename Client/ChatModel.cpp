@@ -7,7 +7,7 @@ ChatModel::ChatModel(QObject *parent)
 
 ChatModel::~ChatModel()
 {
-    qDeleteAll(m_chats);
+    clear();
 }
 
 int ChatModel::rowCount(const QModelIndex &parent) const
@@ -16,26 +16,40 @@ int ChatModel::rowCount(const QModelIndex &parent) const
     return m_chats.size();
 }
 
-QVariant ChatModel::data(const int64_t &msg_id, int role) const
+QVariant ChatModel::data(const int &msg_id, int role) const
 {
-    int ind = msg_id - m_chats[0]->message_id;
-    return ind < 0 ? QVariant() : data(index(ind), role);
+    int ind = getIndexFromMsgId(msg_id);
+    return ind == m_chats.size() ? QVariant() : data(index(ind), role);
 }
 
-Q_INVOKABLE int ChatModel::getIndexFromMsgId(const int &msg_id)
+int ChatModel::getIndexFromMsgId(const int &msg_id) const
 {
-    return msg_id - static_cast<int>(m_chats[0]->message_id);
+    int mid, st = 0, fin = m_chats.size();
+    while (st < fin)
+    {
+        mid = (st + fin) / 2;
+        if (msg_id >= m_chats[mid]->message_id)
+            st = mid + 1;
+        else
+            fin = mid;
+    }
+    return fin;
+
+    // return msg_id - static_cast<int>(m_chats[0]->message_id);
 }
 
 void ChatModel::insertOrderedChats(int index, const QVariantList &chats)
 {
+    if (chats.isEmpty())
+        return;
+
     int ind = index < 0 ? m_chats.size() : index;
 
     beginInsertRows(QModelIndex(), ind, ind + chats.size() - 1);
     for (int i = 0; i < chats.size(); i++, ind++)
     {
         const QVariantMap &chat_info = chats[i].toMap();
-        Chat *chat = new Chat(chat_info["messageId"].toInt(),
+        Chat *chat = new Chat(chat_info["messageId"].toDouble(),
                               chat_info["sessionId"].toString(),
                               chat_info["senderId"].toString(),
                               chat_info["senderName"].toString(),
@@ -113,7 +127,7 @@ bool ChatModel::setData(const QModelIndex &index, const QVariant &value, int rol
     switch (role)
     {
     case MESSAGE_ID_ROLE:
-        chat->message_id = value.toInt();
+        chat->message_id = value.toDouble();
         break;
     case SESSION_ID_ROLE:
         chat->session_id = value.toString();
@@ -165,7 +179,7 @@ bool ChatModel::setData(const int64_t &msg_id, const QVariant &value, int role)
 
 void ChatModel::append(const QVariantMap &qvm)
 {
-    Chat *chat = new Chat(qvm["messageId"].toInt(),
+    Chat *chat = new Chat(qvm["messageId"].toDouble(),
                           qvm["sessionId"].toString(),
                           qvm["senderId"].toString(),
                           qvm["senderName"].toString(),
@@ -184,32 +198,23 @@ void ChatModel::append(const QVariantMap &qvm)
         return;
     }
 
-    int64_t mid, st = 0, fin = m_chats.size();
-    while (st < fin)
+    int ind = getIndexFromMsgId(chat->message_id);
+    if (ind == m_chats.size())
     {
-        mid = (st + fin) / 2;
-        if (chat->message_id >= m_chats[mid]->message_id)
-            st = mid + 1;
-        else
-            fin = mid;
-    }
-
-    if (fin == m_chats.size())
-    {
-        beginInsertRows(QModelIndex(), fin, fin);
-        m_chats.insert(m_chats.begin() + fin, chat);
+        beginInsertRows(QModelIndex(), ind, ind);
+        m_chats.insert(m_chats.begin() + ind, chat);
         endInsertRows();
         return;
     }
 
-    beginRemoveRows(QModelIndex(), fin, fin);
-    auto front_chat = m_chats[fin];
-    m_chats.removeAt(fin);
+    beginRemoveRows(QModelIndex(), ind, ind);
+    auto front_chat = m_chats[ind];
+    m_chats.removeAt(ind);
     endRemoveRows();
 
-    beginInsertRows(QModelIndex(), fin, fin + 1);
-    m_chats.insert(m_chats.begin() + fin, front_chat);
-    m_chats.insert(m_chats.begin() + fin, chat);
+    beginInsertRows(QModelIndex(), ind, ind + 1);
+    m_chats.insert(m_chats.begin() + ind, front_chat);
+    m_chats.insert(m_chats.begin() + ind, chat);
     endInsertRows();
 }
 
@@ -221,11 +226,12 @@ void ChatModel::clear()
     m_chats.clear();
 }
 
-QObject *ChatModel::get(int index)
+QObject *ChatModel::get(int msg_id)
 {
-    if (index < 0)
+    int ind = getIndexFromMsgId(msg_id);
+    if (m_chats.size() == ind)
         return nullptr;
-    return m_chats[index];
+    return m_chats[ind];
 }
 
 void ChatModel::refreshReaderIds(const QString &reader_id, int start_modify_msg_id)
@@ -235,12 +241,10 @@ void ChatModel::refreshReaderIds(const QString &reader_id, int start_modify_msg_
     if (m_chats.empty())
         return;
 
-    for (size_t i = start_modify_msg_id - m_chats[0]->message_id; i < m_chats.size(); i++)
+    for (int i = getIndexFromMsgId(start_modify_msg_id); i < m_chats.size(); i++)
     {
-        if (i < 0 || m_chats[i]->message_id < start_modify_msg_id)
-            continue;
-
-        if (m_chats[i]->reader_set.find(reader_id) == m_chats[i]->reader_set.end())
+        if (m_chats[i]->reader_set.find(reader_id) == m_chats[i]->reader_set.end() &&
+            floor(m_chats[i]->message_id) == m_chats[i]->message_id)
         {
             m_chats[i]->reader_set.insert(reader_id);
             m_chats[i]->reader_ids.push_back(reader_id);
@@ -249,6 +253,21 @@ void ChatModel::refreshReaderIds(const QString &reader_id, int start_modify_msg_
             emit dataChanged(ind, ind, {READER_IDS_ROLE});
         }
     }
+
+    // for (size_t i = start_modify_msg_id - m_chats[0]->message_id; i < m_chats.size(); i++)
+    //{
+    //     if (i < 0)
+    //         continue;
+    //
+    //    if (m_chats[i]->reader_set.find(reader_id) == m_chats[i]->reader_set.end())
+    //    {
+    //        m_chats[i]->reader_set.insert(reader_id);
+    //        m_chats[i]->reader_ids.push_back(reader_id);
+    //
+    //        auto ind = index(i);
+    //        emit dataChanged(ind, ind, {READER_IDS_ROLE});
+    //    }
+    //}
 }
 
 void ChatModel::updateParticipantInfo(const QVariantMap &qvm)

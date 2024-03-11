@@ -70,6 +70,7 @@ enum ChatType : int64_t
     TEXT_CHAT,
     IMG_CHAT,
     VIDEO_CHAT,
+    INFO_CHAT,
     CHAT_TYPE_CNT
 };
 

@@ -358,6 +358,22 @@ Rectangle {
 
                     mainContext.trySendChat(sessionId, 1, text)
 
+                    // addChat({
+                    //     "messageId": sessionView.count + 0.01,
+                    //     "sessionId": sessionId,
+                    //     "senderId": "",
+                    //     "senderName": "",
+                    //     "senderImgPath": ""
+                    //     "readerIds": [],
+                    //     "sendDate": ""
+                    //     "contentType": 4,
+                    //     "content": text,
+                    //     "isOpponent": true
+                    // })
+
+                    // mainContext.trySendChat(sessionId, 1, text)
+
+
                     // var notiInfo = {
                     //     "x", 0,
                     //     "y", 0,
