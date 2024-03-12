@@ -238,7 +238,7 @@ void MainContext::RecieveChat(Service *service)
                                                                                          chat_info.insert("senderId", sender_id);
                                                                                          chat_info.insert("senderName", sender_name);
                                                                                          chat_info.insert("senderImgPath", sender_img_path);
-                                                                                         chat_info.insert("sendDate", MillisecondToCurrentDate(send_date).c_str());
+                                                                                         chat_info.insert("timeSinceEpoch", send_date);
                                                                                          chat_info.insert("contentType", static_cast<int>(content_type));
                                                                                          chat_info.insert("content", content);
                                                                                          chat_info.insert("readerIds", reader_ids);
@@ -417,13 +417,48 @@ void MainContext::RecieveDeleteSession(Service *service)
     service->server_response.GetData(deleter_id);
     service->server_response.GetData(session_id);
 
+    QVariantMap chat_info;
+
+    QVariant ret;
+    QMetaObject::invokeMethod(m_main_page,
+                              "getSessionData",
+                              Qt::BlockingQueuedConnection,
+                              Q_RETURN_ARG(QVariant, ret),
+                              Q_ARG(QVariant, session_id));
+    QVariantMap session_data = ret.toMap();
+
+    QMetaObject::invokeMethod(m_main_page,
+                              "getParticipantData",
+                              Qt::BlockingQueuedConnection,
+                              Q_RETURN_ARG(QVariant, ret),
+                              Q_ARG(QVariant, session_id),
+                              Q_ARG(QVariant, deleter_id));
+    QVariantMap participant_data = ret.toMap();
+
+    chat_info["messageId"] = session_data["recentMessageId"].toInt() + 0.001;
+    chat_info["sessionId"] = session_id;
+    chat_info["senderId"] = "";
+    chat_info["senderName"] = "";
+    chat_info["senderImgPath"] = "";
+    chat_info["timeSinceEpoch"] = 0;
+    chat_info["contentType"] = INFO_CHAT;
+    chat_info["content"] = participant_data["participantName"].toString() + " left.";
+    chat_info["readerIds"] = QStringList();
+    chat_info["isOpponent"] = false;
+
     QMetaObject::invokeMethod(m_main_page,
                               "deleteParticipantData",
                               Qt::QueuedConnection,
                               Q_ARG(QVariant, session_id),
                               Q_ARG(QVariant, deleter_id));
 
-    // 해당 사용자가 세션을 나갔다는 내용의 채팅을 채팅방에 입력해야됨
+    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
+    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
+
+    QMetaObject::invokeMethod(session_view,
+                              "addChat",
+                              Qt::BlockingQueuedConnection,
+                              Q_ARG(QVariant, QVariant::fromValue(chat_info)));
 
     delete service;
 }
@@ -561,28 +596,6 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 // Server에서 받는 버퍼 형식: message send date | message id | 배열 크기 | reader id 배열
 void MainContext::trySendChat(const QString &session_id, unsigned char content_type, const QString &content)
 {
-    auto ttt = m_session_list_view->property("sessionViewMap").toMap();
-    auto tt = qvariant_cast<QObject *>(ttt[session_id]);
-
-    QVariantMap chat_info;
-    chat_info.insert("messageId", 23.001);
-    chat_info.insert("sessionId", session_id);
-    chat_info.insert("senderId", "");
-    chat_info.insert("senderName", "");
-    chat_info.insert("senderImgPath", "");
-    chat_info.insert("sendDate", "");
-    chat_info.insert("contentType", 4);
-    chat_info.insert("contentType", content);
-    chat_info.insert("readerIds", QStringList());
-    chat_info.insert("isOpponent", false);
-
-    QMetaObject::invokeMethod(tt,
-                              "addChat",
-                              Qt::QueuedConnection,
-                              Q_ARG(QVariant, QVariant::fromValue(chat_info)));
-
-    return;
-
     static std::atomic_bool is_ready = true;
 
     bool old_var = true;
@@ -650,15 +663,13 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
                     session->GetResponse().GetData(message_id);
                     session->GetResponse().GetData(send_date);
 
-                    QString sendDate = MillisecondToCurrentDate(send_date).c_str();
-
                     QVariantMap chat_info;
                     chat_info.insert("messageId", message_id);
                     chat_info.insert("sessionId", session_id);
                     chat_info.insert("senderId", m_user_id);
                     chat_info.insert("senderName", m_user_name);
                     chat_info.insert("senderImgPath", m_user_img_path);
-                    chat_info.insert("sendDate", sendDate);
+                    chat_info.insert("timeSinceEpoch", send_date);
                     chat_info.insert("contentType", static_cast<int>(content_type));
                     chat_info.insert("readerIds", reader_ids);
                     chat_info.insert("isOpponent", false);
@@ -666,7 +677,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
                     QVariantMap renew_info;
                     renew_info.insert("sessionId", session_id);
                     renew_info.insert("recentSenderId", m_user_id);
-                    renew_info.insert("recentSendDate", sendDate);
+                    renew_info.insert("recentSendDate", MillisecondToCurrentDate(send_date).c_str());
                     renew_info.insert("recentContentType", static_cast<int>(content_type));
                     renew_info.insert("recentMessageId", message_id);
 
@@ -1145,7 +1156,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         qvm.insert("senderName", sender_name);
                         qvm.insert("senderImgPath", sender_img_path);
                         qvm.insert("contentType", chat_info["content_type"].as_int64());
-                        qvm.insert("sendDate", MillisecondToCurrentDate(chat_info["send_date"].as_int64()).c_str());
+                        qvm.insert("timeSinceEpoch", chat_info["send_date"].as_int64());
                         qvm.insert("isOpponent", m_user_id != sender_id.c_str());
 
                         switch (chat_info["content_type"].as_int64())
@@ -1292,7 +1303,7 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
                         chat_info.insert("senderId", chat_data["sender_id"].as_string().c_str());
                         chat_info.insert("senderName", sender_name);
                         chat_info.insert("senderImgPath", sender_img_path);
-                        chat_info.insert("sendDate", MillisecondToCurrentDate(chat_data["send_date"].as_int64()).c_str());
+                        chat_info.insert("timeSinceEpoch", chat_data["send_date"].as_int64());
                         chat_info.insert("contentType", static_cast<int>(chat_data["content_type"].as_int64()));
                         chat_info.insert("isOpponent", m_user_id != chat_data["sender_id"].as_string().c_str());
 

@@ -5,27 +5,34 @@ import QtQuick.Layouts 1.12
 
 Item {
     width: parent.width
-    height: 25
+    height: infoBck.height + 5
 
     Rectangle {
+        id: infoBck
         anchors {
             horizontalCenter: parent.horizontalCenter
             verticalCenter: parent.verticalCenter
         }
-        width: childrenRect.width
-        height: parent.height - 6
+        width: infoText.paintedWidth + 5
+        height: infoText.paintedHeight + 5
         color: "white"
         opacity: 0.5
+        radius: 5
 
         Text {
+            id: infoText
             anchors {
                 verticalCenter: parent.verticalCenter
+                horizontalCenter: parent.horizontalCenter
             }
             text: content
+            font {
+                pointSize: 11
+            }
         }
     }
 
-    Component.onCompleted: {
-        console.log("InfoChat Created!")
-    }
+    // Component.onCompleted: {
+    //     console.log("InfoChat Created!")
+    // }
 }

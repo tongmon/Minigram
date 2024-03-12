@@ -41,8 +41,11 @@ class Chat : public QObject
     QString content;
     QString qml_source;
     QStringList reader_ids;
-    std::set<QString> reader_set;
     bool is_oppoent;
+
+    // property는 아니지만 씀
+    std::set<QString> reader_set;
+    int64_t time_since_epoch;
 
     Chat(const double &message_id = 0,
          const QString &session_id = "",
@@ -50,7 +53,7 @@ class Chat : public QObject
          const QString &sender_name = "",
          const QString &sender_img_path = "",
          const QStringList &reader_ids = {},
-         const QString &date = "",
+         const int64_t &t_s_ep = 0,
          unsigned char content_type = TEXT_CHAT,
          const QString &content = "",
          bool is_oppoent = false,
