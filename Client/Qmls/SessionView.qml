@@ -41,6 +41,16 @@ Rectangle {
         sessionView.participantCnt = participantCnt
     }
 
+    function addParticipantCnt()
+    {
+        sessionView.participantCnt++
+    }
+
+    function subParticipantCnt()
+    {
+        sessionView.participantCnt--
+    }
+
     Rectangle {
         id: sessionHeaderRect
         color: "white"

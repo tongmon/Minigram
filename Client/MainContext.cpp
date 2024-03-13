@@ -1058,7 +1058,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             insert_info["participantImgPath"] = "";
                             QMetaObject::invokeMethod(m_main_page,
                                                       "insertParticipantData",
-                                                      Qt::QueuedConnection,
+                                                      Qt::BlockingQueuedConnection,
                                                       Q_ARG(QVariant, QVariant::fromValue(insert_info)));
                         }
                         // 이미 있던 경우
@@ -1107,10 +1107,10 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
-                    QMetaObject::invokeMethod(session_view,
-                                              "setParticipantCnt",
-                                              Qt::QueuedConnection,
-                                              Q_ARG(QVariant, static_cast<int>(participant_list.size())));
+                    // QMetaObject::invokeMethod(session_view,
+                    //                           "setParticipantCnt",
+                    //                           Qt::QueuedConnection,
+                    //                           Q_ARG(QVariant, static_cast<int>(participant_list.size())));
 
                     QVariantList chats;
                     for (auto i = static_cast<int64_t>(fetch_list.size()) - 1; i >= 0; i--)

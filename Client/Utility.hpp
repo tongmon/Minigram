@@ -202,7 +202,7 @@ inline std::string DecodeURL(const std::string &str)
     return result;
 }
 
-inline std::string MillisecondToCurrentDate(long long time_since_epoch, const std::string time_format = "%D %H:%M") // "%F %T"
+inline std::string MillisecondToCurrentDate(long long time_since_epoch, const std::string time_format = "%y-%m-%d %H:%M") // "%F %T"
 {
     using namespace std::chrono;
 

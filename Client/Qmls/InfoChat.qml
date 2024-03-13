@@ -15,8 +15,7 @@ Item {
         }
         width: infoText.paintedWidth + 5
         height: infoText.paintedHeight + 5
-        color: "white"
-        opacity: 0.5
+        color: Qt.rgba(1, 1, 1, 0.5)
         radius: 5
 
         Text {

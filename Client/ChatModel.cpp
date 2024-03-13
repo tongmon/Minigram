@@ -45,14 +45,8 @@ void ChatModel::insertOrderedChats(int index, const QVariantList &chats)
         return;
 
     int ind = index < 0 ? m_chats.size() : index;
-
-    beginInsertRows(QModelIndex(), ind, ind + chats.size() - 1);
     for (int i = 0; i < chats.size(); i++, ind++)
     {
-        //!
-        //* 여기도 날짜 구분 채팅 로직 넣어야 함
-        //!
-
         const QVariantMap &chat_info = chats[i].toMap();
         Chat *chat = new Chat(chat_info["messageId"].toDouble(),
                               chat_info["sessionId"].toString(),
@@ -64,9 +58,159 @@ void ChatModel::insertOrderedChats(int index, const QVariantList &chats)
                               chat_info["contentType"].toInt(),
                               chat_info["content"].toString(),
                               chat_info["isOpponent"].toBool());
-        m_chats.insert(m_chats.begin() + ind, chat);
+
+        int ins_index = -1;
+        for (int j = ind - 1; j >= 0; j--)
+        {
+            if (m_chats[j]->content_type != INFO_CHAT)
+            {
+                std::string in_chat_date = MillisecondToCurrentDate(chat->time_since_epoch, "%y-%m-%d"),
+                            origin_chat_date = MillisecondToCurrentDate(m_chats[j]->time_since_epoch, "%y-%m-%d");
+
+                if (in_chat_date != origin_chat_date)
+                {
+                    Chat *date_chat = new Chat(m_chats[j]->message_id + 0.001,
+                                               chat->session_id,
+                                               "",
+                                               "",
+                                               "",
+                                               QStringList(),
+                                               chat->time_since_epoch,
+                                               INFO_CHAT,
+                                               in_chat_date.c_str(),
+                                               false);
+
+                    beginInsertRows(QModelIndex(), ind, ind);
+                    m_chats.insert(m_chats.begin() + ind, date_chat);
+                    endInsertRows();
+
+                    ind++;
+                }
+
+                break;
+            }
+            else if (m_chats[j]->content_type == INFO_CHAT &&
+                     m_chats[j]->time_since_epoch)
+            {
+                std::string in_chat_date = MillisecondToCurrentDate(chat->time_since_epoch, "%y-%m-%d"),
+                            origin_chat_date = MillisecondToCurrentDate(m_chats[j]->time_since_epoch, "%y-%m-%d");
+
+                if (in_chat_date != origin_chat_date)
+                {
+                    setData(this->index(j), chat->message_id + 0.001, MESSAGE_ID_ROLE);
+                    ins_index = j;
+                }
+
+                break;
+            }
+        }
+
+        ins_index = ins_index < 0 ? ind : ins_index;
+
+        beginInsertRows(QModelIndex(), ins_index, ins_index);
+        m_chats.insert(m_chats.begin() + ins_index, chat);
+        endInsertRows();
     }
-    endInsertRows();
+
+    for (int i = ind; i < m_chats.size(); i++)
+    {
+        if (m_chats[i]->content_type != INFO_CHAT ||
+            (m_chats[i]->content_type == INFO_CHAT && m_chats[i]->time_since_epoch))
+        {
+            std::string in_chat_date = MillisecondToCurrentDate(m_chats[ind - 1]->time_since_epoch, "%y-%m-%d"),
+                        origin_chat_date = MillisecondToCurrentDate(m_chats[i]->time_since_epoch, "%y-%m-%d");
+
+            if (in_chat_date != origin_chat_date)
+            {
+                Chat *date_chat = new Chat(m_chats[ind - 1]->message_id + 0.001,
+                                           m_chats[i]->session_id,
+                                           "",
+                                           "",
+                                           "",
+                                           QStringList(),
+                                           m_chats[i]->time_since_epoch,
+                                           INFO_CHAT,
+                                           origin_chat_date.c_str(),
+                                           false);
+
+                beginRemoveRows(QModelIndex(), i, i);
+                auto front_chat = m_chats[i];
+                m_chats.removeAt(i);
+                endRemoveRows();
+
+                beginInsertRows(QModelIndex(), i, i + 1);
+                m_chats.insert(m_chats.begin() + i, front_chat);
+                m_chats.insert(m_chats.begin() + i, date_chat);
+                endInsertRows();
+            }
+
+            break;
+        }
+    }
+
+    // beginInsertRows(QModelIndex(), ind, ind + chats.size() - 1);
+    // for (int i = 0; i < chats.size(); i++, iter++, ind++)
+    // {
+    //     const QVariantMap &chat_info = chats[i].toMap();
+    //     Chat *chat = new Chat(chat_info["messageId"].toDouble(),
+    //                           chat_info["sessionId"].toString(),
+    //                           chat_info["senderId"].toString(),
+    //                           chat_info["senderName"].toString(),
+    //                           chat_info["senderImgPath"].toString(),
+    //                           chat_info["readerIds"].toStringList(),
+    //                           chat_info["timeSinceEpoch"].toULongLong(),
+    //                           chat_info["contentType"].toInt(),
+    //                           chat_info["content"].toString(),
+    //                           chat_info["isOpponent"].toBool());
+    //
+    //     if (ind)
+    //     {
+    //         std::string new_chat_date = MillisecondToCurrentDate(chat->time_since_epoch, "%y-%m-%d"),
+    //                     ori_chat_date = MillisecondToCurrentDate(m_chats[ind - 1]->time_since_epoch, "%y-%m-%d");
+    //
+    //         if (new_chat_date != ori_chat_date)
+    //         {
+    //             Chat *date_chat = new Chat(m_chats[ind - 1]->message_id + 0.001,
+    //                                        chat->session_id,
+    //                                        "",
+    //                                        "",
+    //                                        "",
+    //                                        QStringList(),
+    //                                        chat->time_since_epoch,
+    //                                        INFO_CHAT,
+    //                                        new_chat_date.c_str(),
+    //                                        false);
+    //
+    //             m_chats.insert(iter, date_chat);
+    //             iter++, ind++;
+    //         }
+    //     }
+    //
+    //     m_chats.insert(iter, chat);
+    // }
+    //
+    // if (ind != m_chats.size())
+    // {
+    //     std::string front_chat_date = MillisecondToCurrentDate(m_chats[ind - 1]->time_since_epoch, "%y-%m-%d"),
+    //                 back_chat_date = MillisecondToCurrentDate(m_chats[ind]->time_since_epoch, "%y-%m-%d");
+    //
+    //     if (front_chat_date != back_chat_date)
+    //     {
+    //         Chat *date_chat = new Chat(m_chats[ind - 1]->message_id + 0.001,
+    //                                    m_chats[ind]->session_id,
+    //                                    "",
+    //                                    "",
+    //                                    "",
+    //                                    QStringList(),
+    //                                    m_chats[ind]->time_since_epoch,
+    //                                    INFO_CHAT,
+    //                                    back_chat_date.c_str(),
+    //                                    false);
+    //         m_chats.insert(iter, date_chat);
+    //     }
+    // }
+    //
+    // endInsertRows();
 }
 
 QVariant ChatModel::data(const QModelIndex &index, int role) const
@@ -204,87 +348,142 @@ void ChatModel::append(const QVariantMap &qvm)
     }
 
     int ind = getIndexFromMsgId(chat->message_id);
+    for (int i = ind - 1; i >= 0; i--)
+    {
+        if (m_chats[i]->content_type != INFO_CHAT) // 삽입할 공간 바로 전 녀석이 일반적인 채팅
+        {
+            std::string in_chat_date = MillisecondToCurrentDate(chat->time_since_epoch, "%y-%m-%d"),
+                        origin_chat_date = MillisecondToCurrentDate(m_chats[i]->time_since_epoch, "%y-%m-%d");
+
+            if (in_chat_date != origin_chat_date) // 년월일이 더 전이면 date_chat 생성해서 넣음
+            {
+                Chat *date_chat = new Chat(m_chats[i]->message_id + 0.001,
+                                           chat->session_id,
+                                           "",
+                                           "",
+                                           "",
+                                           QStringList(),
+                                           chat->time_since_epoch,
+                                           INFO_CHAT,
+                                           in_chat_date.c_str(),
+                                           false);
+
+                if (ind == m_chats.size())
+                {
+                    beginInsertRows(QModelIndex(), ind, ind + 1);
+                    m_chats.insert(m_chats.begin() + ind, chat);
+                    m_chats.insert(m_chats.begin() + ind, date_chat);
+                    endInsertRows();
+                }
+                else
+                {
+                    beginRemoveRows(QModelIndex(), ind, ind);
+                    auto front_chat = m_chats[ind];
+                    m_chats.removeAt(ind);
+                    endRemoveRows();
+
+                    beginInsertRows(QModelIndex(), ind, ind + 2);
+                    m_chats.insert(m_chats.begin() + ind, front_chat);
+                    m_chats.insert(m_chats.begin() + ind, chat);
+                    m_chats.insert(m_chats.begin() + ind, date_chat);
+                    endInsertRows();
+                }
+
+                return;
+            }
+
+            // else
+            // {
+            //     if (ind == m_chats.size())
+            //     {
+            //         beginInsertRows(QModelIndex(), ind, ind);
+            //         m_chats.insert(m_chats.begin() + ind, chat);
+            //         endInsertRows();
+            //     }
+            //     else
+            //     {
+            //         beginRemoveRows(QModelIndex(), ind, ind);
+            //         auto front_chat = m_chats[ind];
+            //         m_chats.removeAt(ind);
+            //         endRemoveRows();
+            //
+            //         beginInsertRows(QModelIndex(), ind, ind + 1);
+            //         m_chats.insert(m_chats.begin() + ind, front_chat);
+            //         m_chats.insert(m_chats.begin() + ind, chat);
+            //         endInsertRows();
+            //     }
+            // }
+
+            break;
+        }
+        else if (m_chats[i]->content_type == INFO_CHAT &&
+                 m_chats[i]->time_since_epoch) // 삽입할 공간 바로 전 녀석이 날짜 정보 채팅
+        {
+            std::string in_chat_date = MillisecondToCurrentDate(chat->time_since_epoch, "%D"),
+                        origin_chat_date = MillisecondToCurrentDate(m_chats[i]->time_since_epoch, "%D");
+
+            if (in_chat_date != origin_chat_date)
+            {
+                setData(index(i), chat->message_id + 0.001, MESSAGE_ID_ROLE);
+
+                beginInsertRows(QModelIndex(), i, i);
+                m_chats.insert(m_chats.begin() + i, chat);
+                endInsertRows();
+
+                return;
+            }
+
+            // if (in_chat_date == origin_chat_date)
+            //{
+            //     if (ind == m_chats.size())
+            //     {
+            //         beginInsertRows(QModelIndex(), ind, ind);
+            //         m_chats.insert(m_chats.begin() + ind, chat);
+            //         endInsertRows();
+            //     }
+            //     else
+            //     {
+            //         beginRemoveRows(QModelIndex(), ind, ind);
+            //         auto front_chat = m_chats[ind];
+            //         m_chats.removeAt(ind);
+            //         endRemoveRows();
+            //
+            //        beginInsertRows(QModelIndex(), ind, ind + 1);
+            //        m_chats.insert(m_chats.begin() + ind, front_chat);
+            //        m_chats.insert(m_chats.begin() + ind, chat);
+            //        endInsertRows();
+            //    }
+            //}
+            // else
+            //{
+            //    setData(index(i), chat->message_id + 0.001, MESSAGE_ID_ROLE);
+            //
+            //    beginInsertRows(QModelIndex(), i, i);
+            //    m_chats.insert(m_chats.begin() + i, chat);
+            //    endInsertRows();
+            //}
+
+            break;
+        }
+    }
+
     if (ind == m_chats.size())
     {
-        for (int i = ind - 1; i >= 0; i--)
-        {
-            if (m_chats[i]->content_type != INFO_CHAT) // 삽입할 공간 바로 전 녀석이 일반적인 채팅
-            {
-                std::string in_chat_date = MillisecondToCurrentDate(chat->time_since_epoch, "%D"),
-                            origin_chat_date = MillisecondToCurrentDate(m_chats[i]->time_since_epoch, "%D");
-                if (in_chat_date != origin_chat_date) // 년월일이 더 전이면 date_chat 생성해서 넣음
-                {
-                    Chat *date_chat = new Chat(m_chats[i]->message_id + 0.001,
-                                               chat->session_id,
-                                               "",
-                                               "",
-                                               "",
-                                               QStringList(),
-                                               chat->time_since_epoch,
-                                               INFO_CHAT,
-                                               in_chat_date.c_str(),
-                                               false);
+        beginInsertRows(QModelIndex(), ind, ind);
+        m_chats.insert(m_chats.begin() + ind, chat);
+        endInsertRows();
+    }
+    else
+    {
+        beginRemoveRows(QModelIndex(), ind, ind);
+        auto front_chat = m_chats[ind];
+        m_chats.removeAt(ind);
+        endRemoveRows();
 
-                    if (ind == m_chats.size())
-                    {
-                        beginInsertRows(QModelIndex(), i, i + 1);
-                        m_chats.insert(m_chats.begin() + i, chat);
-                        m_chats.insert(m_chats.begin() + i, date_chat);
-                        endInsertRows();
-                    }
-                    else
-                    {
-                    }
-                }
-                else
-                {
-                    if (ind == m_chats.size())
-                    {
-                        beginInsertRows(QModelIndex(), i + 1, i + 1);
-                        m_chats.insert(m_chats.begin() + i + 1, chat);
-                        endInsertRows();
-                    }
-                    else
-                    {
-                    }
-                }
-                break;
-            }
-            else if (m_chats[i]->content_type == INFO_CHAT &&
-                     m_chats[i]->time_since_epoch) // 삽입할 공간 바로 전 녀석이 날짜 정보 채팅
-            {
-                std::string in_chat_date = MillisecondToCurrentDate(chat->time_since_epoch, "%D"),
-                            origin_chat_date = MillisecondToCurrentDate(m_chats[i]->time_since_epoch, "%D");
-                if (in_chat_date == origin_chat_date)
-                {
-                    if (ind == m_chats.size())
-                    {
-                        beginInsertRows(QModelIndex(), i + 1, i + 1);
-                        m_chats.insert(m_chats.begin() + i + 1, chat);
-                        endInsertRows();
-                    }
-                    else
-                    {
-                    }
-                }
-                else
-                {
-                    setData(index(i), chat->message_id + 0.001, MESSAGE_ID_ROLE);
-
-                    if (ind == m_chats.size())
-                    {
-                        beginInsertRows(QModelIndex(), i, i);
-                        m_chats.insert(m_chats.begin() + i, chat);
-                        endInsertRows();
-                    }
-                    else
-                    {
-                    }
-                }
-                break;
-            }
-        }
-        return;
+        beginInsertRows(QModelIndex(), ind, ind + 1);
+        m_chats.insert(m_chats.begin() + ind, front_chat);
+        m_chats.insert(m_chats.begin() + ind, chat);
+        endInsertRows();
     }
 
     //!

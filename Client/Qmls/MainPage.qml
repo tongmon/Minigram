@@ -41,11 +41,13 @@ Rectangle {
 
     function insertParticipantData(participantInfo)
     {
+        sideBarView.sideBarViewMap["session"].sessionViewMap[participantInfo["sessionId"]].addParticipantCnt()
         chatSessionModel.insertParticipantData(participantInfo)
     }
 
     function deleteParticipantData(sessionId, participantId)
     {
+        sideBarView.sideBarViewMap["session"].sessionViewMap[sessionId].subParticipantCnt()
         chatSessionModel.deleteParticipantData(sessionId, participantId)
     }
 
@@ -72,83 +74,6 @@ Rectangle {
             "unreadCnt": obj.unreadCnt
         }
     }
-
-    /*
-    Popup {
-        id: chatNotificationPopup
-        modal: false
-        focus: false
-        closePolicy: Popup.NoAutoClose
-        width: 400
-        height: 200
-
-        //states: [
-        //    State {
-        //        name: "visible"
-        //
-        //        PropertyChanges {
-        //            target: chatNotificationPopup
-        //            opacity: 1
-        //        }
-        //    },
-        //    State {
-        //        name: "hide"
-        //
-        //        PropertyChanges {
-        //            target: chatNotificationPopup
-        //            opacity: 0
-        //        }
-        //    }
-        //]
-
-        //transitions: [
-        //    Transition {
-        //        from: "visible"
-        //        to: "hide"
-        //        PropertyAnimation { 
-        //            properties: "opacity"
-        //            duration: 500 
-        //        }
-        //    }
-        //]
-
-        exit: Transition {
-            PropertyAnimation { 
-                properties: "opacity"
-                from: 1
-                to: 0
-                duration: 500 
-            }
-        }
-
-        Timer {
-            id: notificationTimer
-            interval: 1000
-            repeat: false
-        
-            onTriggered: {
-                chatNotificationPopup.close()
-            }
-        }
-
-        background: Rectangle {
-            color: "#333366"
-            radius: 5
-        }
-
-        contentItem: Item {
-            anchors.fill: parent
-        }
-
-        onOpened: {
-            notificationTimer.start()
-        }
-
-        onClosed: {
-        
-        }
-    }
-    */
 
     TitleBar {
         id: titleBar

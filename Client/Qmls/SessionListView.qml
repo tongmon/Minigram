@@ -56,14 +56,14 @@ Rectangle {
             var cnt = 25
             while (cnt)
             {
-                delete sessionViewMap.deletedSessions[deletedSessions.length - 1]
+                delete sessionViewMap[deletedSessions[deletedSessions.length - 1]]
                 deletedSessions.pop()
                 cnt--
             }
         }
 
         // 지우려는 세션이 현재 열려져있는 세션인 경우
-        if (sessionListView.currentIndex > 0 && chatSessionModel.currentItem.sessionId == sessionId)
+        if (sessionListView.currentIndex >= 0 && chatSessionModel.currentItem.sessionId == sessionId)
             mainView.clear()
 
         deletedSessions.splice(0, 0, sessionId)
