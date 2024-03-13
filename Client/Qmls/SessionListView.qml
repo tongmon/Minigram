@@ -808,17 +808,25 @@ Rectangle {
                 }
 
                 onClicked: {
-                    if (sessionListView.currentIndex === sessionIndex)
-                        return
-                    
-                    sessionListView.currentIndex = sessionIndex
-                    currentSessionId = sessionInfo.objectName
-                    mainContext.tryRefreshSession(currentSessionId)
+                    if (mouse.button === Qt.RightButton)
+                    {
+                        // mouse.x mouse.y 이용
+                        
+                    }
+                    else if (mouse.button === Qt.LeftButton)
+                    {
+                        if (sessionListView.currentIndex === sessionIndex)
+                            return
 
-                    if(mainView.empty)
-                        mainView.push(sessionViewMap[currentSessionId], StackView.Immediate)
-                    else
-                        mainView.replace(null, sessionViewMap[currentSessionId], StackView.Immediate)
+                        sessionListView.currentIndex = sessionIndex
+                        currentSessionId = sessionInfo.objectName
+                        mainContext.tryRefreshSession(currentSessionId)
+
+                        if(mainView.empty)
+                            mainView.push(sessionViewMap[currentSessionId], StackView.Immediate)
+                        else
+                            mainView.replace(null, sessionViewMap[currentSessionId], StackView.Immediate)
+                    }
                 }
             }
         }

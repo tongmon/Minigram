@@ -114,8 +114,9 @@ void ChatModel::insertOrderedChats(int index, const QVariantList &chats)
 
     for (int i = ind; i < m_chats.size(); i++)
     {
-        if (m_chats[i]->content_type != INFO_CHAT ||
-            (m_chats[i]->content_type == INFO_CHAT && m_chats[i]->time_since_epoch))
+        if (m_chats[i]->content_type == INFO_CHAT && m_chats[i]->time_since_epoch)
+            break;
+        else if (m_chats[i]->content_type != INFO_CHAT)
         {
             std::string in_chat_date = MillisecondToCurrentDate(m_chats[ind - 1]->time_since_epoch, "%y-%m-%d"),
                         origin_chat_date = MillisecondToCurrentDate(m_chats[i]->time_since_epoch, "%y-%m-%d");

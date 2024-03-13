@@ -620,6 +620,18 @@ Rectangle {
                 id: contactInfoMouseArea
                 anchors.fill: parent
                 hoverEnabled: true
+
+                onClicked: {
+                    if (mouse.button === Qt.RightButton)
+                    {
+                        // mouse.x mouse.y 이용
+                        
+                    }
+                    else if (mouse.button === Qt.LeftButton)
+                    {
+
+                    }
+                }
             }
         }
 

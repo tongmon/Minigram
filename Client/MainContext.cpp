@@ -473,6 +473,15 @@ void MainContext::RecieveDeleteContact(Service *service)
                               Qt::QueuedConnection,
                               Q_ARG(QVariant, acq_id));
 
+    std::string contact_cache = boost::dll::program_location().parent_path().string() +
+                                "\\minigram_cache\\" +
+                                m_user_id.toStdString() +
+                                "\\contact\\" +
+                                acq_id.toStdString();
+
+    if (std::filesystem::exists(contact_cache))
+        std::filesystem::remove_all(contact_cache);
+
     delete service;
 }
 
@@ -1536,6 +1545,15 @@ void MainContext::tryDeleteContact(const QString &del_user_id)
                                                   "deleteContact",
                                                   Qt::BlockingQueuedConnection,
                                                   Q_ARG(QVariant, del_user_id));
+
+                        std::string contact_cache = boost::dll::program_location().parent_path().string() +
+                                                    "\\minigram_cache\\" +
+                                                    m_user_id.toStdString() +
+                                                    "\\contact\\" +
+                                                    del_user_id.toStdString();
+
+                        if (std::filesystem::exists(contact_cache))
+                            std::filesystem::remove_all(contact_cache);
                     }
 
                     central_server.CloseRequest(session->GetID());
@@ -2215,13 +2233,118 @@ void MainContext::tryDeleteSession(const QString &session_id)
                     session->GetResponse().GetData(ret);
 
                     if (ret)
+                    {
                         QMetaObject::invokeMethod(m_session_list_view,
                                                   "deleteSession",
                                                   Qt::BlockingQueuedConnection,
                                                   Q_ARG(QVariant, session_id));
 
+                        std::string session_cache_path = boost::dll::program_location().parent_path().string() +
+                                                         "\\minigram_cache\\" +
+                                                         m_user_id.toStdString() +
+                                                         "\\sessions\\" +
+                                                         session_id.toStdString();
+
+                        if (std::filesystem::exists(session_cache_path))
+                            std::filesystem::remove_all(session_cache_path);
+                    }
+
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
+                });
+            });
+        });
+    });
+}
+
+void MainContext::tryExpelParticipant(const QString &session_id, const QString &expeled_id)
+{
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    auto &central_server = m_window.GetServerHandle();
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, expeled_id, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            is_ready.store(true);
+            return;
+        }
+
+        NetworkBuffer net_buf(EXPEL_PARTICIPANT_TYPE);
+        net_buf += session_id;
+        net_buf += expeled_id;
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    is_ready.store(true);
+                    return;
+                }
+
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        is_ready.store(true);
+                        return;
+                    }
+                });
+            });
+        });
+    });
+}
+
+void MainContext::tryInviteParticipant(const QString &session_id, const QString &invited_id)
+{
+    static std::atomic_bool is_ready = true;
+
+    bool old_var = true;
+    if (!is_ready.compare_exchange_strong(old_var, false))
+        return;
+
+    auto &central_server = m_window.GetServerHandle();
+
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, invited_id, this](std::shared_ptr<Session> session) -> void {
+        if (!session.get() || !session->IsValid())
+        {
+            is_ready.store(true);
+            return;
+        }
+
+        NetworkBuffer net_buf(EXPEL_PARTICIPANT_TYPE);
+        net_buf += session_id;
+        net_buf += invited_id;
+
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+            {
+                is_ready.store(true);
+                return;
+            }
+
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                {
+                    is_ready.store(true);
+                    return;
+                }
+
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                    if (!session.get() || !session->IsValid())
+                    {
+                        is_ready.store(true);
+                        return;
+                    }
                 });
             });
         });

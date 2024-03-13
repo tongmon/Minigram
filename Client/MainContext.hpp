@@ -46,10 +46,10 @@ class MainContext : public QObject
     // 서버에서 클라로 전송할 때 대응하는 함수들
     void RecieveChat(Service *service);
     void RefreshReaderIds(Service *service);
-    void RecieveContactRequest(Service *service);
-    void RecieveAddSession(Service *service);
-    void RecieveDeleteSession(Service *service);
-    void RecieveDeleteContact(Service *service);
+    void RecieveContactRequest(Service *service); //! 점검 필요
+    void RecieveAddSession(Service *service);     //! 점검 필요
+    void RecieveDeleteSession(Service *service);  //! 점검 필요
+    void RecieveDeleteContact(Service *service);  //! 점검 필요
 
     // 클라에서 서버로 전송하기 위한 함수들
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
@@ -66,6 +66,8 @@ class MainContext : public QObject
     Q_INVOKABLE void trySignUp(const QVariantMap &qvm);
     Q_INVOKABLE void tryAddSession(const QString &session_name, const QString &img_path, const QStringList &participant_ids);
     Q_INVOKABLE void tryDeleteSession(const QString &session_id);
+    Q_INVOKABLE void tryExpelParticipant(const QString &session_id, const QString &expeled_id);  //! 이어서 짜야함
+    Q_INVOKABLE void tryInviteParticipant(const QString &session_id, const QString &invited_id); //! 이어서 짜야함
     Q_INVOKABLE void tryLogOut();
 
     // 유틸 함수
