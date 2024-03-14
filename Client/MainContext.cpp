@@ -150,8 +150,8 @@ void MainContext::RecieveChat(Service *service)
                                          }
                                          else
                                          {
-                                             sender_name = participant_data["participantName"].toString();
-                                             sender_img_path = participant_data["participantImgPath"].toString();
+                                             sender_name = participant_data["participantName"].toString().toUtf8();
+                                             sender_img_path = participant_data["participantImgPath"].toString().toUtf8(); // Utf8ToStr(WStrToUtf8(participant_data["participantImgPath"].toString().toStdWString().c_str())).c_str();
                                          }
 
                                          QVariantMap noti_info;
@@ -483,6 +483,14 @@ void MainContext::RecieveDeleteContact(Service *service)
         std::filesystem::remove_all(contact_cache);
 
     delete service;
+}
+
+void MainContext::RecieveExpelParticipant(Service *service)
+{
+}
+
+void MainContext::RecieveInviteParticipant(Service *service)
+{
 }
 
 // Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
@@ -827,7 +835,7 @@ void MainContext::tryGetSessionList()
                         std::string session_img;
                         std::filesystem::directory_iterator img_dir{session_dir};
                         if (img_dir != std::filesystem::end(img_dir))
-                            session_img = img_dir->path().string().c_str();
+                            session_img = WStrToUtf8(img_dir->path().wstring()); // Utf8ToStr(WStrToUtf8(img_dir->path().wstring())); // string().c_str();
 
                         if (session_data["session_img_name"].as_string().empty())
                         {
@@ -840,12 +848,12 @@ void MainContext::tryGetSessionList()
                             session->GetResponse().GetData(img_data);
 
                             auto session_img_path = session_dir / session_data["session_img_name"].as_string().c_str();
-                            std::ofstream of(session_img_path, std::ios::binary);
+                            std::ofstream of(session_img_path.wstring(), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
 
-                            qvm.insert("sessionImg", session_img_path.string().c_str());
-                            spdlog::trace(session_img_path.string());
+                            qvm.insert("sessionImg", WStrToUtf8(session_img_path.wstring()).c_str());
+                            spdlog::trace(session_img_path.wstring());
                         }
 
                         // 채팅방에 대화가 아무것도 없는 경우

@@ -504,6 +504,9 @@ void ChatModel::append(const QVariantMap &qvm)
 
 void ChatModel::clear()
 {
+    if (m_chats.isEmpty())
+        return;
+
     beginRemoveRows(QModelIndex(), 0, rowCount() - 1);
     endRemoveRows();
     qDeleteAll(m_chats);

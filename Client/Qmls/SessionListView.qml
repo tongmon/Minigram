@@ -111,6 +111,21 @@ Rectangle {
     //    sessionViewMap[sessionId].children[2].model.refreshReaderIds(readerId, messageId)
     //}
 
+    //Popup {
+    //    id: sessionRightClickPopup
+    //    width: 100
+    //    height: 100
+    //    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+    //    modal: true
+    //    background: Rectangle {
+    //        color: "#333366"
+    //        radius: 5
+    //    }
+    //    contentItem: ContextMenu {
+    //        
+    //    }
+    //}
+
     Popup {
         id: sessionNameDecisionPopup
         anchors.centerIn: Overlay.overlay
@@ -798,6 +813,7 @@ Rectangle {
                 id: sessionInfoMouseArea
                 anchors.fill: parent
                 hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                 onEntered: {
                     
@@ -811,21 +827,67 @@ Rectangle {
                     if (mouse.button === Qt.RightButton)
                     {
                         // mouse.x mouse.y 이용
-                        
+                        sessionContextMenu.popup()
                     }
                     else if (mouse.button === Qt.LeftButton)
                     {
-                        if (sessionListView.currentIndex === sessionIndex)
-                            return
+                        sessionOpenAction.triggered()
+                    }
+                }
 
-                        sessionListView.currentIndex = sessionIndex
-                        currentSessionId = sessionInfo.objectName
-                        mainContext.tryRefreshSession(currentSessionId)
+                component SessionMenuItem : MenuItem {
+                    id: sessionMenuItem
+                    implicitHeight: 40
+                    contentItem: Text {
+                        text: sessionMenuItem.text
+                        font: sessionMenuItem.font
+                        color: active ? (sessionMenuItem.highlighted ? "#ffffff" : Qt.rgba(0.8, 0.8, 0.8, 1.0)) : Qt.rgba(0.5, 0.5, 0.5, 1.0)
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+                    background: Rectangle {
+                        anchors.fill: parent
+                        opacity: sessionMenuItem.highlighted ? 0.7 : 1.0
+                        color: "#170624"
+                    }
+                }
 
-                        if(mainView.empty)
-                            mainView.push(sessionViewMap[currentSessionId], StackView.Immediate)
-                        else
-                            mainView.replace(null, sessionViewMap[currentSessionId], StackView.Immediate)
+                Menu {
+                    id: sessionContextMenu
+                    delegate: SessionMenuItem {}
+
+                    Action {
+                        id: sessionOpenAction
+                        text: "Open"
+                        onTriggered: {
+                            if (sessionListView.currentIndex === sessionIndex)
+                                return
+
+                            sessionListView.currentIndex = sessionIndex
+                            currentSessionId = sessionInfo.objectName
+                            mainContext.tryRefreshSession(currentSessionId)
+
+                            if(mainView.empty)
+                                mainView.push(sessionViewMap[currentSessionId], StackView.Immediate)
+                            else
+                                mainView.replace(null, sessionViewMap[currentSessionId], StackView.Immediate)
+                        }
+                    }
+                    // MenuSeparator {
+                    //     contentItem: Rectangle {
+                    //         implicitHeight: 1
+                    //         color: "#21be2b"
+                    //     }
+                    //     background: Rectangle {
+                    //         color: "#170624"
+                    //     }
+                    // }
+                    Action {
+                        text: "Delete"
+                        onTriggered: {
+                            mainContext.tryDeleteSession(sessionInfo.objectName)
+                        }
                     }
                 }
             }

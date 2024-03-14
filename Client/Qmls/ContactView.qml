@@ -620,16 +620,55 @@ Rectangle {
                 id: contactInfoMouseArea
                 anchors.fill: parent
                 hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                 onClicked: {
                     if (mouse.button === Qt.RightButton)
                     {
                         // mouse.x mouse.y 이용
-                        
+                        contactContextMenu.popup()
                     }
                     else if (mouse.button === Qt.LeftButton)
                     {
+                        contactShowInfoAction.triggered()
+                    }
+                }
 
+                component ContactMenuItem : MenuItem {
+                    id: contactMenuItem
+                    implicitHeight: 40
+                    contentItem: Text {
+                        text: contactMenuItem.text
+                        font: contactMenuItem.font
+                        color: active ? (contactMenuItem.highlighted ? "#ffffff" : Qt.rgba(0.8, 0.8, 0.8, 1.0)) : Qt.rgba(0.5, 0.5, 0.5, 1.0)
+                        horizontalAlignment: Text.AlignLeft
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+                    background: Rectangle {
+                        anchors.fill: parent
+                        opacity: contactMenuItem.highlighted ? 0.7 : 1.0
+                        color: "#170624"
+                    }
+                }
+
+                Menu {
+                    id: contactContextMenu
+                    delegate: ContactMenuItem {}
+
+                    Action {
+                        id: contactShowInfoAction
+                        text: "Show Info"
+                        onTriggered: {
+
+                        }
+                    }
+
+                    Action {
+                        text: "Delete"
+                        onTriggered: {
+                            mainContext.tryDeleteContact(contactInfo.objectName)
+                        }
                     }
                 }
             }
