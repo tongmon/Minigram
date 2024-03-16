@@ -33,6 +33,8 @@ class MessengerService : public Service
     void AddSessionHandling();
     void DeleteSessionHandling();
     void SendContactRequestHandling();
+    void ExpelParticipantHandling();
+    void InviteParticipantHandling();
     void LogOutHandling();
 
   public:

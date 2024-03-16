@@ -51,7 +51,8 @@ class MainContext : public QObject
     void RecieveDeleteSession(Service *service);     //! 점검 필요
     void RecieveDeleteContact(Service *service);     //! 점검 필요
     void RecieveExpelParticipant(Service *service);  //! 점검 필요
-    void RecieveInviteParticipant(Service *service); //! 점검 필요
+    void RecieveInviteParticipant(Service *service); //! 점검 필요, 얘는 세션 초대가 발생한 세션에 원래 있던 원주민
+    void RecieveSessionInvitation(Service *service); //! 점검 필요, 얘는 세션 초대받은 주인공
 
     // 클라에서 서버로 전송하기 위한 함수들
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);

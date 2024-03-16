@@ -413,52 +413,73 @@ void MainContext::RecieveAddSession(Service *service)
 
 void MainContext::RecieveDeleteSession(Service *service)
 {
+    // QString deleter_id, session_id;
+    // service->server_response.GetData(deleter_id);
+    // service->server_response.GetData(session_id);
+    //
+    // QVariantMap chat_info;
+    //
+    // QVariant ret;
+    // QMetaObject::invokeMethod(m_main_page,
+    //                           "getSessionData",
+    //                           Qt::BlockingQueuedConnection,
+    //                           Q_RETURN_ARG(QVariant, ret),
+    //                           Q_ARG(QVariant, session_id));
+    // QVariantMap session_data = ret.toMap();
+    //
+    // QMetaObject::invokeMethod(m_main_page,
+    //                           "getParticipantData",
+    //                           Qt::BlockingQueuedConnection,
+    //                           Q_RETURN_ARG(QVariant, ret),
+    //                           Q_ARG(QVariant, session_id),
+    //                           Q_ARG(QVariant, deleter_id));
+    // QVariantMap participant_data = ret.toMap();
+    //
+    // chat_info["messageId"] = session_data["recentMessageId"].toInt() + 0.001;
+    // chat_info["sessionId"] = session_id;
+    // chat_info["senderId"] = "";
+    // chat_info["senderName"] = "";
+    // chat_info["senderImgPath"] = "";
+    // chat_info["timeSinceEpoch"] = 0;
+    // chat_info["contentType"] = INFO_CHAT;
+    // chat_info["content"] = participant_data["participantName"].toString() + " left.";
+    // chat_info["readerIds"] = QStringList();
+    // chat_info["isOpponent"] = false;
+    //
+    // QMetaObject::invokeMethod(m_main_page,
+    //                           "deleteParticipantData",
+    //                           Qt::QueuedConnection,
+    //                           Q_ARG(QVariant, session_id),
+    //                           Q_ARG(QVariant, deleter_id));
+    //
+    // auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
+    // auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
+    //
+    // QMetaObject::invokeMethod(session_view,
+    //                           "addChat",
+    //                           Qt::BlockingQueuedConnection,
+    //                           Q_ARG(QVariant, QVariant::fromValue(chat_info)));
+
     QString deleter_id, session_id;
     service->server_response.GetData(deleter_id);
     service->server_response.GetData(session_id);
 
-    QVariantMap chat_info;
-
-    QVariant ret;
     QMetaObject::invokeMethod(m_main_page,
-                              "getSessionData",
+                              "handleOtherLeftSession",
                               Qt::BlockingQueuedConnection,
-                              Q_RETURN_ARG(QVariant, ret),
-                              Q_ARG(QVariant, session_id));
-    QVariantMap session_data = ret.toMap();
-
-    QMetaObject::invokeMethod(m_main_page,
-                              "getParticipantData",
-                              Qt::BlockingQueuedConnection,
-                              Q_RETURN_ARG(QVariant, ret),
-                              Q_ARG(QVariant, session_id),
-                              Q_ARG(QVariant, deleter_id));
-    QVariantMap participant_data = ret.toMap();
-
-    chat_info["messageId"] = session_data["recentMessageId"].toInt() + 0.001;
-    chat_info["sessionId"] = session_id;
-    chat_info["senderId"] = "";
-    chat_info["senderName"] = "";
-    chat_info["senderImgPath"] = "";
-    chat_info["timeSinceEpoch"] = 0;
-    chat_info["contentType"] = INFO_CHAT;
-    chat_info["content"] = participant_data["participantName"].toString() + " left.";
-    chat_info["readerIds"] = QStringList();
-    chat_info["isOpponent"] = false;
-
-    QMetaObject::invokeMethod(m_main_page,
-                              "deleteParticipantData",
-                              Qt::QueuedConnection,
                               Q_ARG(QVariant, session_id),
                               Q_ARG(QVariant, deleter_id));
 
-    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
-    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
+    std::string participant_cache = boost::dll::program_location().parent_path().string() +
+                                    "\\minigram_cache\\" +
+                                    m_user_id.toStdString() +
+                                    "\\sessions\\" +
+                                    session_id.toStdString() +
+                                    "\\participant_data\\" +
+                                    deleter_id.toStdString();
 
-    QMetaObject::invokeMethod(session_view,
-                              "addChat",
-                              Qt::BlockingQueuedConnection,
-                              Q_ARG(QVariant, QVariant::fromValue(chat_info)));
+    if (std::filesystem::exists(participant_cache))
+        std::filesystem::remove_all(participant_cache);
 
     delete service;
 }
@@ -487,9 +508,42 @@ void MainContext::RecieveDeleteContact(Service *service)
 
 void MainContext::RecieveExpelParticipant(Service *service)
 {
+    QString session_id, expeled_id;
+    service->server_response.GetData(session_id);
+    service->server_response.GetData(expeled_id);
+
+    QMetaObject::invokeMethod(m_main_page,
+                              "handleExpelParticipant",
+                              Qt::BlockingQueuedConnection,
+                              Q_ARG(QVariant, session_id),
+                              Q_ARG(QVariant, expeled_id));
+
+    std::string participant_cache = boost::dll::program_location().parent_path().string() +
+                                    "\\minigram_cache\\" +
+                                    m_user_id.toStdString() +
+                                    "\\sessions\\" +
+                                    session_id.toStdString() +
+                                    "\\participant_data\\" +
+                                    expeled_id.toStdString();
+
+    if (std::filesystem::exists(participant_cache))
+        std::filesystem::remove_all(participant_cache);
+
+    delete service;
 }
 
+// 참가자 추가와 참가자 캐시 파일 생성 두 가지를 모두 해야 함
 void MainContext::RecieveInviteParticipant(Service *service)
+{
+    QString session_id, invited_id;
+    service->server_response.GetData(session_id);
+    service->server_response.GetData(invited_id);
+
+    delete service;
+}
+
+// 얘는 RecieveAddSession와 비슷하게 흘러 갈 것임
+void MainContext::RecieveSessionInvitation(Service *service)
 {
 }
 
@@ -853,7 +907,7 @@ void MainContext::tryGetSessionList()
                                 of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
 
                             qvm.insert("sessionImg", WStrToUtf8(session_img_path.wstring()).c_str());
-                            spdlog::trace(session_img_path.wstring());
+                            spdlog::trace(session_img_path.string());
                         }
 
                         // 채팅방에 대화가 아무것도 없는 경우
@@ -2286,26 +2340,52 @@ void MainContext::tryExpelParticipant(const QString &session_id, const QString &
         net_buf += session_id;
         net_buf += expeled_id;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, expeled_id, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, expeled_id, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, expeled_id, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
                         return;
                     }
+
+                    bool ret;
+                    session->GetResponse().GetData(ret);
+
+                    if (ret)
+                    {
+                        QMetaObject::invokeMethod(m_main_page,
+                                                  "handleExpelParticipant",
+                                                  Qt::BlockingQueuedConnection,
+                                                  Q_ARG(QVariant, session_id),
+                                                  Q_ARG(QVariant, expeled_id));
+
+                        std::string participant_cache = boost::dll::program_location().parent_path().string() +
+                                                        "\\minigram_cache\\" +
+                                                        m_user_id.toStdString() +
+                                                        "\\sessions\\" +
+                                                        session_id.toStdString() +
+                                                        "\\participant_data\\" +
+                                                        expeled_id.toStdString();
+
+                        if (std::filesystem::exists(participant_cache))
+                            std::filesystem::remove_all(participant_cache);
+                    }
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
                 });
             });
         });
@@ -2353,6 +2433,9 @@ void MainContext::tryInviteParticipant(const QString &session_id, const QString 
                         is_ready.store(true);
                         return;
                     }
+
+                    central_server.CloseRequest(session->GetID());
+                    is_ready.store(true);
                 });
             });
         });

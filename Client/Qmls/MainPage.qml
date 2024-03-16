@@ -75,6 +75,44 @@ Rectangle {
         }
     }
 
+    function handleOtherLeftSession(sessionId, deletedId)
+    {
+        var chatInfo = {
+            "messageId": chatSessionModel.get(sessionId).recentMessageId,
+            "sessionId": sessionId,
+            "senderId": "",
+            "senderName": "",
+            "senderImgPath": "",
+            "timeSinceEpoch": "",
+            "contentType": 4,
+            "content": chatSessionModel.getParticipantData(sessionId, deletedId).participantName + " left.",
+            "readerIds": {},
+            "isOpponent": false
+        }
+
+        deleteParticipantData(sessionId, deletedId)
+        sideBarView.sideBarViewMap["session"].sessionViewMap[sessionId].addChat(chatInfo)
+    }
+
+    function handleExpelParticipant(sessionId, expeledId)
+    {
+        var chatInfo = {
+            "messageId": chatSessionModel.get(sessionId).recentMessageId,
+            "sessionId": sessionId,
+            "senderId": "",
+            "senderName": "",
+            "senderImgPath": "",
+            "timeSinceEpoch": "",
+            "contentType": 4,
+            "content": chatSessionModel.getParticipantData(sessionId, expeledId).participantName + " expeled.",
+            "readerIds": {},
+            "isOpponent": false
+        }
+
+        deleteParticipantData(sessionId, expeledId)
+        sideBarView.sideBarViewMap["session"].sessionViewMap[sessionId].addChat(chatInfo)
+    }
+
     TitleBar {
         id: titleBar
         anchors {

@@ -1833,6 +1833,95 @@ void MessengerService::SendContactRequestHandling()
     //                         });
 }
 
+void MessengerService::ExpelParticipantHandling()
+{
+    std::string expeled_id, session_id;
+    m_client_request.GetData(session_id);
+    m_client_request.GetData(expeled_id);
+
+    // participant_tb 삭제
+    *m_sql << "delete from participant_tb where participant_id=:uid and session_id=:sid",
+        soci::use(expeled_id), soci::use(session_id);
+
+    // 로그인 중인 사용자들이라면 추방 내용을 알아야 함
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select login_ip, login_port from user_tb where user_id in (select participant_id from participant_tb where session_id=:sid)",
+                                  soci::use(session_id));
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        if (it->get_indicator(0) == soci::i_null)
+            continue;
+
+        m_peer->AsyncConnect(it->get<std::string>(0), it->get<int>(1), [peer = m_peer, expeled_id, session_id](std::shared_ptr<Session> session) -> void {
+            if (!session.get() || !session->IsValid())
+                return;
+
+            NetworkBuffer net_buf(EXPEL_PARTICIPANT_TYPE);
+            net_buf += session_id;
+            net_buf += expeled_id;
+
+            peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                peer->CloseRequest(session->GetID());
+            });
+        });
+    }
+
+    NetworkBuffer net_buf(EXPEL_PARTICIPANT_TYPE);
+    net_buf += true;
+
+    m_request = std::move(net_buf);
+
+    boost::asio::async_write(*m_sock,
+                             m_request.AsioBuffer(),
+                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                 if (ec != boost::system::errc::success)
+                                 {
+                                     // write에 이상이 있는 경우
+                                 }
+
+                                 delete this;
+                             });
+}
+
+void MessengerService::InviteParticipantHandling()
+{
+    std::string invited_id, session_id;
+    m_client_request.GetData(session_id);
+    m_client_request.GetData(invited_id);
+
+    *m_sql << "insert into participant_tb values(:sid, :pid, :mid)",
+        soci::use(session_id), soci::use(invited_id), soci::use(-1);
+
+    soci::rowset<soci::row> rs = (m_sql->prepare << "select login_ip, login_port, user_id from user_tb where user_id in (select participant_id from participant_tb where session_id=:sid)",
+                                  soci::use(session_id));
+    for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    {
+        if (it->get_indicator(0) == soci::i_null)
+            continue;
+
+        // 초대 받은 당사자의 클라이언트는 세션을 추가해야 하기에 좀 다름
+        if (invited_id == it->get<std::string>(2))
+        {
+        }
+        else
+        {
+            m_peer->AsyncConnect(it->get<std::string>(0), it->get<int>(1), [peer = m_peer](std::shared_ptr<Session> session) -> void {
+                if (!session.get() || !session->IsValid())
+                    return;
+
+                // peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
+                //     if (!session.get() || !session->IsValid())
+                //         return;
+                //
+                //     peer->CloseRequest(session->GetID());
+                // });
+            });
+        }
+    }
+}
+
 void MessengerService::LogOutHandling()
 {
     std::string user_id, none_ip;
