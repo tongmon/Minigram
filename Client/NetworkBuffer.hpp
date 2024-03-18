@@ -90,7 +90,7 @@ class NetworkBuffer
     {
         std::string ret;
         GetData(ret);
-        val.fromStdString(StrToUtf8(ret));
+        val.fromStdString(ret); // ret은 UTF-8이 되어 있는 상태여야 함, 즉 서버에서 utf-8로 인코딩해서 던져줘야 함
 
         // size_t data_size;
         // std::memcpy(&data_size, &m_buf[m_index], type_size);
@@ -156,7 +156,9 @@ class NetworkBuffer
     template <>
     void Append(const QString &str)
     {
-        Append(WStrToStr(str.toStdWString())); // 여기 다시 고치셈... 프로젝트 전체 인코딩 방식은 무조건 Utf8로 한다.
+        Append(str.toUtf8().constData());
+
+        // Append(WStrToStr(str.toStdWString())); // 여기 다시 고치셈... 프로젝트 전체 인코딩 방식은 무조건 Utf8로 한다.
 
         // size_t len = str.size();
         // m_buf.resize(m_index + type_size + len);

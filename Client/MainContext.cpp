@@ -71,7 +71,7 @@ void MainContext::RecieveChat(Service *service)
     switch (content_type)
     {
     case TEXT_CHAT:
-        content = QString::fromWCharArray(Utf8ToWStr(DecodeBase64(content.toStdString())).c_str());
+        // content = QString::fromWCharArray(Utf8ToWStr(DecodeBase64(content.toStdString())).c_str());
         break;
     default:
         break;

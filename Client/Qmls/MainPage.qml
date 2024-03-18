@@ -113,6 +113,11 @@ Rectangle {
         sideBarView.sideBarViewMap["session"].sessionViewMap[sessionId].addChat(chatInfo)
     }
 
+    function updateSessionData(updateInfo)
+    {
+        chatSessionModel.renewSessionInfo(updateInfo)
+    }
+
     TitleBar {
         id: titleBar
         anchors {
