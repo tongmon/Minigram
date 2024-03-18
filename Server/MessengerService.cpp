@@ -1661,8 +1661,8 @@ void MessengerService::DeleteSessionHandling()
                 return;
 
             NetworkBuffer net_buf(DELETE_SESSION_TYPE);
-            net_buf += user_id;
             net_buf += session_id;
+            net_buf += user_id;
 
             peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())

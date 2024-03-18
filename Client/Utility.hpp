@@ -2,6 +2,7 @@
 #define HEADER__FILE__UTILITY
 
 #include <Windows.h>
+
 #include <algorithm>
 #include <chrono>
 #include <ctime>

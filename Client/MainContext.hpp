@@ -46,11 +46,11 @@ class MainContext : public QObject
     // 서버에서 클라로 전송할 때 대응하는 함수들
     void RecieveChat(Service *service);
     void RefreshReaderIds(Service *service);
-    void RecieveContactRequest(Service *service);    //! 점검 필요
-    void RecieveAddSession(Service *service);        //! 점검 필요
-    void RecieveDeleteSession(Service *service);     //! 점검 필요
-    void RecieveDeleteContact(Service *service);     //! 점검 필요
-    void RecieveExpelParticipant(Service *service);  //! 점검 필요
+    void RecieveContactRequest(Service *service);    //! 점검 필요 1
+    void RecieveAddSession(Service *service);        //! 점검 필요 1
+    void RecieveDeleteSession(Service *service);     //! 점검 필요 1 
+    void RecieveDeleteContact(Service *service);     //! 점검 필요 1
+    void RecieveExpelParticipant(Service *service);  //! 점검 필요 1
     void RecieveInviteParticipant(Service *service); //! 점검 필요, 얘는 세션 초대가 발생한 세션에 원래 있던 원주민
     void RecieveSessionInvitation(Service *service); //! 점검 필요, 얘는 세션 초대받은 주인공
 

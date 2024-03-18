@@ -1,4 +1,5 @@
 ﻿#include "ChatSessionModel.hpp"
+#include "Utility.hpp"
 
 ChatSessionModel::ChatSessionModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -286,8 +287,8 @@ QVariantMap ChatSessionModel::getParticipantData(const QString &session_id, cons
     auto index = getIndexFromSessionId(session_id);
     if (index < 0 || m_chat_sessions[index]->participant_datas.find(p_id) == m_chat_sessions[index]->participant_datas.end())
         return ret;
-    ret["participantName"] = m_chat_sessions[index]->participant_datas[p_id].user_name.c_str();
-    ret["participantInfo"] = m_chat_sessions[index]->participant_datas[p_id].user_info.c_str();
-    ret["participantImgPath"] = m_chat_sessions[index]->participant_datas[p_id].user_img_path.c_str();
+    ret["participantName"] = StrToUtf8(m_chat_sessions[index]->participant_datas[p_id].user_name).c_str();
+    ret["participantInfo"] = StrToUtf8(m_chat_sessions[index]->participant_datas[p_id].user_info).c_str();
+    ret["participantImgPath"] = StrToUtf8(m_chat_sessions[index]->participant_datas[p_id].user_img_path).c_str();
     return ret;
 }

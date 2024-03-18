@@ -78,7 +78,7 @@ Rectangle {
     function handleOtherLeftSession(sessionId, deletedId)
     {
         var chatInfo = {
-            "messageId": chatSessionModel.get(sessionId).recentMessageId,
+            "messageId": chatSessionModel.get(sessionId).recentMessageId + 0.001,
             "sessionId": sessionId,
             "senderId": "",
             "senderName": "",
@@ -97,7 +97,7 @@ Rectangle {
     function handleExpelParticipant(sessionId, expeledId)
     {
         var chatInfo = {
-            "messageId": chatSessionModel.get(sessionId).recentMessageId,
+            "messageId": chatSessionModel.get(sessionId).recentMessageId + 0.001,
             "sessionId": sessionId,
             "senderId": "",
             "senderName": "",
