@@ -289,20 +289,20 @@ void MainContext::RecieveContactRequest(Service *service)
     service->server_response.GetData(requester_img_name);
     service->server_response.GetData(requester_img);
 
-    std::filesystem::path req_cache_path = boost::dll::program_location().parent_path().string() +
-                                           "/minigram_cache/" +
-                                           m_user_id.toStdString() +
-                                           "/contact_request/" +
-                                           requester_id.toStdString(),
-                          img_path;
+    QString req_cache_path = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+                             tr("\\minigram_cache\\") +
+                             m_user_id +
+                             tr("\\contact_request\\") +
+                             requester_id,
+            img_path;
 
-    if (!std::filesystem::exists(req_cache_path))
-        std::filesystem::create_directory(req_cache_path);
+    if (!std::filesystem::exists(req_cache_path.toStdU16String()))
+        std::filesystem::create_directory(req_cache_path.toStdU16String());
 
     if (!requester_img_name.isEmpty())
     {
-        img_path = req_cache_path / requester_img_name.toStdString();
-        std::ofstream of(img_path, std::ios::binary);
+        img_path = req_cache_path + tr("\\") + requester_img_name;
+        std::ofstream of(std::filesystem::path(img_path.toStdU16String()), std::ios::binary);
         if (of.is_open())
             of.write(reinterpret_cast<char *>(&requester_img[0]), requester_img.size());
     }
@@ -311,7 +311,7 @@ void MainContext::RecieveContactRequest(Service *service)
     qvm.insert("userId", requester_id);
     qvm.insert("userName", requester_name);
     qvm.insert("userInfo", requester_info);
-    qvm.insert("userImg", img_path.empty() ? "" : StrToUtf8(img_path.string()).c_str());
+    qvm.insert("userImg", img_path.isEmpty() ? "" : img_path);
 
     // requester 추가 함수 호출
     QMetaObject::invokeMethod(m_contact_view,
@@ -331,46 +331,47 @@ void MainContext::RecieveAddSession(Service *service)
     boost::json::value json_data = boost::json::parse(json_txt, ec);
     auto session_data = json_data.as_object();
 
-    QString session_id = session_data["session_id"].as_string().c_str();
-    std::string session_img_path = session_data["session_img_name"].as_string().c_str();
+    QString session_id = QString::fromUtf8(session_data["session_id"].as_string().c_str()),
+            session_img_path = QString::fromUtf8(session_data["session_img_name"].as_string().c_str()),
+            session_name = QString::fromUtf8(session_data["session_name"].as_string().c_str());
     std::vector<unsigned char> session_img;
 
     std::smatch match;
-    const std::string &reg_session = session_id.toStdString();
+    const std::string &reg_session = Utf8ToStr(session_id.toStdString());
     std::regex_search(reg_session, match, std::regex("_"));
     size_t time_since_epoch = std::stoull(match.suffix().str());
 
     QVariantMap qvm;
     qvm.insert("sessionId", session_id);
-    qvm.insert("sessionName", StrToUtf8(session_data["session_name"].as_string().c_str()).c_str());
+    qvm.insert("sessionName", session_name);
     qvm.insert("recentSenderId", "");
     qvm.insert("recentContentType", "");
     qvm.insert("recentContent", "");
     qvm.insert("sessionImg", "");
-    qvm.insert("recentSendDate", StrToUtf8(MillisecondToCurrentDate(time_since_epoch)).c_str());
+    qvm.insert("recentSendDate", QString::fromUtf8(StrToUtf8(MillisecondToCurrentDate(time_since_epoch)).c_str()));
     qvm.insert("recentMessageId", -1);
     qvm.insert("unreadCnt", 0);
 
-    std::string session_cache_path = boost::dll::program_location().parent_path().string() +
-                                     "\\minigram_cache\\" +
-                                     m_user_id.toStdString() +
-                                     "\\sessions\\" +
-                                     session_id.toStdString();
+    QString session_cache_path = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+                                 tr("\\minigram_cache\\") +
+                                 m_user_id +
+                                 tr("\\sessions\\") +
+                                 session_id;
 
-    if (!std::filesystem::exists(session_cache_path))
-        boost::filesystem::create_directories(session_cache_path);
+    if (!std::filesystem::exists(session_cache_path.toStdU16String()))
+        std::filesystem::create_directories(session_cache_path.toStdU16String());
 
-    if (!session_img_path.empty())
+    if (!session_img_path.isEmpty())
     {
         std::vector<unsigned char> session_img;
         service->server_response.GetData(session_img);
 
-        std::string img_full_path = session_cache_path + "\\" + session_img_path;
-        std::ofstream of(img_full_path, std::ios::binary);
+        QString img_full_path = session_cache_path + tr("\\") + session_img_path;
+        std::ofstream of(std::filesystem::path(img_full_path.toStdU16String()), std::ios::binary);
         if (of.is_open())
         {
             of.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
-            qvm.insert("sessionImg", StrToUtf8(img_full_path).c_str());
+            qvm.insert("sessionImg", img_full_path);
         }
     }
 
@@ -378,19 +379,19 @@ void MainContext::RecieveAddSession(Service *service)
     for (int i = 0; i < p_ary.size(); i++)
     {
         auto p_data = p_ary[i].as_object();
-        std::string p_info_path = session_cache_path + "\\participant_data\\" + p_data["user_id"].as_string().c_str(),
-                    p_img_path = p_info_path + "\\profile_img",
-                    p_img_name = p_data["user_img_name"].as_string().c_str();
+        QString p_info_path = session_cache_path + tr("\\participant_data\\") + QString::fromUtf8(p_data["user_id"].as_string().c_str()),
+                p_img_path = p_info_path + tr("\\profile_img"),
+                p_img_name = QString::fromUtf8(p_data["user_img_name"].as_string().c_str());
 
-        if (!std::filesystem::exists(p_img_path))
-            boost::filesystem::create_directories(p_img_path);
+        if (!std::filesystem::exists(p_img_path.toStdU16String()))
+            std::filesystem::create_directories(p_img_path.toStdU16String());
 
-        if (!p_img_name.empty())
+        if (!p_img_name.isEmpty())
         {
             std::vector<unsigned char> user_img;
             service->server_response.GetData(user_img);
 
-            std::ofstream of(p_img_path + "\\" + p_img_name, std::ios::binary);
+            std::ofstream of(std::filesystem::path((p_img_path + tr("\\") + p_img_name).toStdU16String()), std::ios::binary);
             if (of.is_open())
                 of.write(reinterpret_cast<char *>(&user_img[0]), user_img.size());
         }
