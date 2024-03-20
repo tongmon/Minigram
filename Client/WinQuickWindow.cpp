@@ -68,7 +68,7 @@ bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
     if (!QSystemTrayIcon::isSystemTrayAvailable())
         return false;
 
-    QAction *run_action = new QAction("Run", m_quick_window);
+    QAction *run_action = new QAction(tr("Run"), m_quick_window);
     QObject::connect(run_action, &QAction::triggered, [this]() -> void {
         if (GetForegroundWindow() != m_hwnd)
             SetForegroundWindow(m_hwnd);
@@ -79,18 +79,18 @@ bool WinQuickWindow::InitWindow(QQmlApplicationEngine &engine)
             ShowWindow(m_hwnd, SW_SHOW);
     });
 
-    QAction *minimize_action = new QAction("Minimize", m_quick_window);
+    QAction *minimize_action = new QAction(tr("Minimize"), m_quick_window);
     QObject::connect(minimize_action, &QAction::triggered, [this]() -> void {
         onMinimizeButtonClicked();
     });
 
-    QAction *maximize_action = new QAction("Maximize", m_quick_window);
+    QAction *maximize_action = new QAction(tr("Maximize"), m_quick_window);
     QObject::connect(maximize_action, &QAction::triggered, [this]() -> void {
         m_quick_window->findChild<QObject *>("maximumButton")->setProperty("checked", true);
         SendMessage(m_hwnd, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
     });
 
-    QAction *close_action = new QAction("Close", m_quick_window);
+    QAction *close_action = new QAction(tr("Close"), m_quick_window);
     QObject::connect(close_action, &QAction::triggered, [this]() -> void {
         onCloseButtonClicked();
     });

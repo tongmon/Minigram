@@ -156,9 +156,9 @@ class NetworkBuffer
     template <>
     void Append(const QString &str)
     {
-        Append(str.toUtf8().constData());
+        Append(str.toUtf8().constData()); // 서버에 던질 때 QString이면 Utf-8 형식으로 던짐
 
-        // Append(WStrToStr(str.toStdWString())); // 여기 다시 고치셈... 프로젝트 전체 인코딩 방식은 무조건 Utf8로 한다.
+        // Append(WStrToStr(str.toStdWString()));
 
         // size_t len = str.size();
         // m_buf.resize(m_index + type_size + len);

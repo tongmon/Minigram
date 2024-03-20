@@ -77,24 +77,25 @@ void MainContext::RecieveChat(Service *service)
         break;
     }
 
-    auto cur_session_id = m_session_list_view->property("currentSessionId").toString().toStdString();
-    auto recieve_session = session_id.toStdString();
+    QVariant ret;
+    QMetaObject::invokeMethod(m_main_page,
+                              "getCurrentSessionId",
+                              Qt::BlockingQueuedConnection,
+                              Q_RETURN_ARG(QVariant, ret));
+    QString cur_session_id = ret.toString();
 
     // async_write하는 동안 유지되어야 하기에 포인터로 할당
     std::shared_ptr<NetworkBuffer> net_buf(new NetworkBuffer(CHAT_RECIEVE_TYPE));
 
     bool is_foreground = GetForegroundWindow() == m_window.GetHandle(),
-         is_current_session = m_session_list_view->property("currentSessionId").toString() == session_id;
+         is_current_session = cur_session_id == session_id;
 
     // top window고 current session이 여기 도착한 session_id와 같으면 읽음 처리
     *net_buf += ((is_foreground && is_current_session) ? m_user_id : "");
 
-    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
-    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
-
     boost::asio::async_write(*service->sock,
                              net_buf->AsioBuffer(),
-                             [this, service, net_buf, is_foreground, is_current_session, session_view, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
+                             [this, service, net_buf, is_foreground, is_current_session, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
                                  if (ec != boost::system::errc::success)
                                  {
                                      delete service;
@@ -113,8 +114,13 @@ void MainContext::RecieveChat(Service *service)
                                  if (!is_current_session || !is_foreground)
                                      refresh_info.insert("unreadCntIncreament", 1);
 
-                                 QMetaObject::invokeMethod(m_session_list_view,
-                                                           "renewSessionInfo",
+                                 // QMetaObject::invokeMethod(m_session_list_view,
+                                 //                           "renewSessionInfo",
+                                 //                           Qt::QueuedConnection,
+                                 //                           Q_ARG(QVariant, QVariant::fromValue(refresh_info)));
+
+                                 QMetaObject::invokeMethod(m_main_page,
+                                                           "updateSessionData",
                                                            Qt::QueuedConnection,
                                                            Q_ARG(QVariant, QVariant::fromValue(refresh_info)));
 
@@ -123,6 +129,37 @@ void MainContext::RecieveChat(Service *service)
                                      // 채팅 노티를 띄움
                                      if (!is_foreground)
                                      {
+                                         // QVariant ret;
+                                         // QMetaObject::invokeMethod(m_main_page,
+                                         //                           "getParticipantData",
+                                         //                           Qt::BlockingQueuedConnection,
+                                         //                           Q_RETURN_ARG(QVariant, ret),
+                                         //                           Q_ARG(QVariant, session_id),
+                                         //                           Q_ARG(QVariant, sender_id));
+                                         // QVariantMap participant_data = ret.toMap();
+                                         // QString sender_name = "Unknown", sender_img_path = "";
+                                         //
+                                         // if (participant_data.find("participantName") == participant_data.end())
+                                         // {
+                                         //     QMetaObject::invokeMethod(m_contact_view,
+                                         //                               "getContact",
+                                         //                               Qt::BlockingQueuedConnection,
+                                         //                               Q_RETURN_ARG(QVariant, ret),
+                                         //                               Q_ARG(QVariant, sender_id));
+                                         //     QVariantMap contact_data = ret.toMap();
+                                         //
+                                         //     if (contact_data.find("userName") != contact_data.end())
+                                         //     {
+                                         //         sender_name = contact_data["userName"].toString();
+                                         //         sender_img_path = contact_data["userImg"].toString();
+                                         //     }
+                                         // }
+                                         // else
+                                         // {
+                                         //     sender_name = participant_data["participantName"].toString();
+                                         //     sender_img_path = participant_data["participantImgPath"].toString();
+                                         // }
+
                                          QVariant ret;
                                          QMetaObject::invokeMethod(m_main_page,
                                                                    "getParticipantData",
@@ -131,34 +168,13 @@ void MainContext::RecieveChat(Service *service)
                                                                    Q_ARG(QVariant, session_id),
                                                                    Q_ARG(QVariant, sender_id));
                                          QVariantMap participant_data = ret.toMap();
-                                         QString sender_name = "Unknown", sender_img_path = "";
-
-                                         if (participant_data.find("participantName") == participant_data.end())
-                                         {
-                                             QMetaObject::invokeMethod(m_contact_view,
-                                                                       "getContact",
-                                                                       Qt::BlockingQueuedConnection,
-                                                                       Q_RETURN_ARG(QVariant, ret),
-                                                                       Q_ARG(QVariant, sender_id));
-                                             QVariantMap contact_data = ret.toMap();
-
-                                             if (contact_data.find("userName") != contact_data.end())
-                                             {
-                                                 sender_name = contact_data["userName"].toString();
-                                                 sender_img_path = contact_data["userImg"].toString();
-                                             }
-                                         }
-                                         else
-                                         {
-                                             sender_name = participant_data["participantName"].toString();
-                                             sender_img_path = participant_data["participantImgPath"].toString();
-                                         }
 
                                          QVariantMap noti_info;
                                          noti_info["sessionId"] = session_id;
-                                         noti_info["senderName"] = sender_name;
-                                         noti_info["senderImgPath"] = sender_img_path;
+                                         noti_info["senderName"] = participant_data["participantName"].toString();
+                                         noti_info["senderImgPath"] = participant_data["participantImgPath"].toString();
                                          noti_info["content"] = content;
+
                                          m_noti_manager->push(noti_info);
                                      }
 
@@ -168,7 +184,7 @@ void MainContext::RecieveChat(Service *service)
 
                                  boost::asio::async_read(*service->sock,
                                                          service->server_response_buf.prepare(service->server_response.GetHeaderSize()),
-                                                         [this, service, session_view, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
+                                                         [this, service, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
                                                              if (ec != boost::system::errc::success)
                                                              {
                                                                  delete service;
@@ -180,7 +196,7 @@ void MainContext::RecieveChat(Service *service)
 
                                                              boost::asio::async_read(*service->sock,
                                                                                      service->server_response_buf.prepare(service->server_response.GetDataSize()),
-                                                                                     [this, service, session_view, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+                                                                                     [this, service, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) {
                                                                                          if (ec != boost::system::errc::success)
                                                                                          {
                                                                                              delete service;
@@ -201,7 +217,6 @@ void MainContext::RecieveChat(Service *service)
                                                                                              reader_ids.push_back(reader_id);
                                                                                          }
 
-                                                                                         //! 여기서부터...
                                                                                          QVariant ret;
                                                                                          QMetaObject::invokeMethod(m_main_page,
                                                                                                                    "getParticipantData",
@@ -210,46 +225,74 @@ void MainContext::RecieveChat(Service *service)
                                                                                                                    Q_ARG(QVariant, session_id),
                                                                                                                    Q_ARG(QVariant, sender_id));
                                                                                          QVariantMap participant_data = ret.toMap();
-                                                                                         QString sender_name = "Unknown", sender_img_path = "";
-
-                                                                                         if (participant_data.find("participantName") == participant_data.end())
-                                                                                         {
-                                                                                             QMetaObject::invokeMethod(m_contact_view,
-                                                                                                                       "getContact",
-                                                                                                                       Qt::BlockingQueuedConnection,
-                                                                                                                       Q_RETURN_ARG(QVariant, ret),
-                                                                                                                       Q_ARG(QVariant, sender_id));
-                                                                                             QVariantMap contact_data = ret.toMap();
-
-                                                                                             if (contact_data.find("userName") != contact_data.end())
-                                                                                             {
-                                                                                                 sender_name = contact_data["userName"].toString();
-                                                                                                 sender_img_path = contact_data["userImg"].toString();
-                                                                                             }
-                                                                                         }
-                                                                                         else
-                                                                                         {
-                                                                                             sender_name = participant_data["participantName"].toString();
-                                                                                             sender_img_path = participant_data["participantImgPath"].toString();
-                                                                                         }
 
                                                                                          QVariantMap chat_info;
                                                                                          chat_info.insert("messageId", message_id);
                                                                                          chat_info.insert("sessionId", session_id);
                                                                                          chat_info.insert("senderId", sender_id);
-                                                                                         chat_info.insert("senderName", sender_name);
-                                                                                         chat_info.insert("senderImgPath", sender_img_path);
+                                                                                         chat_info.insert("senderName", participant_data["participantName"].toString());
+                                                                                         chat_info.insert("senderImgPath", participant_data["participantImgPath"].toString());
                                                                                          chat_info.insert("timeSinceEpoch", send_date);
                                                                                          chat_info.insert("contentType", static_cast<int>(content_type));
                                                                                          chat_info.insert("content", content);
                                                                                          chat_info.insert("readerIds", reader_ids);
                                                                                          chat_info.insert("isOpponent", true);
 
-                                                                                         QMetaObject::invokeMethod(session_view,
+                                                                                         QMetaObject::invokeMethod(m_main_page,
                                                                                                                    "addChat",
                                                                                                                    Qt::BlockingQueuedConnection,
                                                                                                                    Q_ARG(QVariant, QVariant::fromValue(chat_info)));
-                                                                                         //! 여기까지 줄일 수 있음...
+
+                                                                                         ////! 여기서부터...
+                                                                                         // QVariant ret;
+                                                                                         // QMetaObject::invokeMethod(m_main_page,
+                                                                                         //                           "getParticipantData",
+                                                                                         //                           Qt::BlockingQueuedConnection,
+                                                                                         //                           Q_RETURN_ARG(QVariant, ret),
+                                                                                         //                           Q_ARG(QVariant, session_id),
+                                                                                         //                           Q_ARG(QVariant, sender_id));
+                                                                                         // QVariantMap participant_data = ret.toMap();
+                                                                                         // QString sender_name = "Unknown", sender_img_path = "";
+                                                                                         //
+                                                                                         // if (participant_data.find("participantName") == participant_data.end())
+                                                                                         //{
+                                                                                         //    QMetaObject::invokeMethod(m_contact_view,
+                                                                                         //                              "getContact",
+                                                                                         //                              Qt::BlockingQueuedConnection,
+                                                                                         //                              Q_RETURN_ARG(QVariant, ret),
+                                                                                         //                              Q_ARG(QVariant, sender_id));
+                                                                                         //    QVariantMap contact_data = ret.toMap();
+                                                                                         //
+                                                                                         //    if (contact_data.find("userName") != contact_data.end())
+                                                                                         //    {
+                                                                                         //        sender_name = contact_data["userName"].toString();
+                                                                                         //        sender_img_path = contact_data["userImg"].toString();
+                                                                                         //    }
+                                                                                         //}
+                                                                                         // else
+                                                                                         //{
+                                                                                         //    sender_name = participant_data["participantName"].toString();
+                                                                                         //    sender_img_path = participant_data["participantImgPath"].toString();
+                                                                                         //}
+                                                                                         //
+                                                                                         // QVariantMap chat_info;
+                                                                                         // chat_info.insert("messageId", message_id);
+                                                                                         // chat_info.insert("sessionId", session_id);
+                                                                                         // chat_info.insert("senderId", sender_id);
+                                                                                         // chat_info.insert("senderName", sender_name);
+                                                                                         // chat_info.insert("senderImgPath", sender_img_path);
+                                                                                         // chat_info.insert("timeSinceEpoch", send_date);
+                                                                                         // chat_info.insert("contentType", static_cast<int>(content_type));
+                                                                                         // chat_info.insert("content", content);
+                                                                                         // chat_info.insert("readerIds", reader_ids);
+                                                                                         // chat_info.insert("isOpponent", true);
+                                                                                         //
+                                                                                         // QMetaObject::invokeMethod(session_view,
+                                                                                         //                          "addChat",
+                                                                                         //                          Qt::BlockingQueuedConnection,
+                                                                                         //                          Q_ARG(QVariant, QVariant::fromValue(chat_info)));
+                                                                                         ////! 여기까지 줄일 수 있음...
+
                                                                                          delete service;
                                                                                      });
                                                          });
@@ -266,11 +309,11 @@ void MainContext::RefreshReaderIds(Service *service)
     service->server_response.GetData(reader_id);
     service->server_response.GetData(message_id);
 
-    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
-    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
+    // auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
+    // auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
 
-    QMetaObject::invokeMethod(session_view,
-                              "refreshReaderIds",
+    QMetaObject::invokeMethod(m_main_page,
+                              "updateReaderIds",
                               Q_ARG(QVariant, reader_id),
                               Q_ARG(QVariant, static_cast<int>(message_id)));
 
@@ -314,7 +357,7 @@ void MainContext::RecieveContactRequest(Service *service)
     qvm.insert("userImg", img_path.isEmpty() ? "" : img_path);
 
     // requester 추가 함수 호출
-    QMetaObject::invokeMethod(m_contact_view,
+    QMetaObject::invokeMethod(m_main_page,
                               "addContactRequest",
                               Qt::BlockingQueuedConnection,
                               Q_ARG(QVariant, qvm));
@@ -407,7 +450,7 @@ void MainContext::RecieveAddSession(Service *service)
         // }
     }
 
-    QMetaObject::invokeMethod(m_session_list_view,
+    QMetaObject::invokeMethod(m_main_page,
                               "addSession",
                               Qt::BlockingQueuedConnection,
                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
@@ -474,16 +517,16 @@ void MainContext::RecieveDeleteSession(Service *service)
                               Q_ARG(QVariant, session_id),
                               Q_ARG(QVariant, deleter_id));
 
-    std::string participant_cache = boost::dll::program_location().parent_path().string() +
-                                    "\\minigram_cache\\" +
-                                    m_user_id.toStdString() +
-                                    "\\sessions\\" +
-                                    session_id.toStdString() +
-                                    "\\participant_data\\" +
-                                    deleter_id.toStdString();
+    QString participant_cache = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+                                tr("\\minigram_cache\\") +
+                                m_user_id +
+                                tr("\\sessions\\") +
+                                session_id +
+                                tr("\\participant_data\\") +
+                                deleter_id;
 
-    if (std::filesystem::exists(participant_cache))
-        std::filesystem::remove_all(participant_cache);
+    if (std::filesystem::exists(participant_cache.toStdU16String()))
+        std::filesystem::remove_all(participant_cache.toStdU16String());
 
     delete service;
 }
@@ -493,19 +536,19 @@ void MainContext::RecieveDeleteContact(Service *service)
     QString acq_id;
     service->server_response.GetData(acq_id);
 
-    QMetaObject::invokeMethod(m_contact_view,
+    QMetaObject::invokeMethod(m_main_page,
                               "deleteContact",
                               Qt::QueuedConnection,
                               Q_ARG(QVariant, acq_id));
 
-    std::string contact_cache = boost::dll::program_location().parent_path().string() +
-                                "\\minigram_cache\\" +
-                                m_user_id.toStdString() +
-                                "\\contact\\" +
-                                acq_id.toStdString();
+    QString contact_cache = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+                            tr("\\minigram_cache\\") +
+                            m_user_id +
+                            tr("\\contact\\") +
+                            acq_id;
 
-    if (std::filesystem::exists(contact_cache))
-        std::filesystem::remove_all(contact_cache);
+    if (std::filesystem::exists(contact_cache.toStdU16String()))
+        std::filesystem::remove_all(contact_cache.toStdU16String());
 
     delete service;
 }
@@ -522,16 +565,16 @@ void MainContext::RecieveExpelParticipant(Service *service)
                               Q_ARG(QVariant, session_id),
                               Q_ARG(QVariant, expeled_id));
 
-    std::string participant_cache = boost::dll::program_location().parent_path().string() +
-                                    "\\minigram_cache\\" +
-                                    m_user_id.toStdString() +
-                                    "\\sessions\\" +
-                                    session_id.toStdString() +
-                                    "\\participant_data\\" +
-                                    expeled_id.toStdString();
+    QString participant_cache = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+                                tr("\\minigram_cache\\") +
+                                m_user_id +
+                                tr("\\sessions\\") +
+                                session_id +
+                                tr("\\participant_data\\") +
+                                expeled_id;
 
-    if (std::filesystem::exists(participant_cache))
-        std::filesystem::remove_all(participant_cache);
+    if (std::filesystem::exists(participant_cache.toStdU16String()))
+        std::filesystem::remove_all(participant_cache.toStdU16String());
 
     delete service;
 }
@@ -588,17 +631,21 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
         net_buf += m_user_pw;
 
         uint64_t user_img_date = 0;
-        std::string profile_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\profile_img";
-        if (std::filesystem::exists(profile_path))
+        QString profile_path = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+                               tr("\\minigram_cache\\") +
+                               m_user_id +
+                               tr("\\profile_img");
+
+        if (std::filesystem::exists(profile_path.toStdU16String()))
         {
-            std::filesystem::directory_iterator it{profile_path};
+            std::filesystem::directory_iterator it{profile_path.toStdU16String()};
             if (it != std::filesystem::end(it))
                 user_img_date = std::stoull(it->path().stem().string());
         }
 
         net_buf += user_img_date;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, profile_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, profile_path = std::move(profile_path), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_login_page,
@@ -608,7 +655,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, profile_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, profile_path = std::move(profile_path), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     QMetaObject::invokeMethod(m_login_page,
@@ -618,7 +665,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, profile_path, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, profile_path = std::move(profile_path), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         QMetaObject::invokeMethod(m_login_page,
@@ -633,26 +680,26 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 
                     if (result == LOGIN_SUCCESS)
                     {
-                        std::string img_name, user_info;
+                        QString img_name, user_info;
                         std::vector<unsigned char> raw_img;
                         session->GetResponse().GetData(m_user_name);
                         session->GetResponse().GetData(user_info);
                         session->GetResponse().GetData(raw_img);
                         session->GetResponse().GetData(img_name);
 
-                        if (!std::filesystem::exists(profile_path))
-                            std::filesystem::create_directories(profile_path);
+                        if (!std::filesystem::exists(profile_path.toStdU16String()))
+                            std::filesystem::create_directories(profile_path.toStdU16String());
 
                         if (!raw_img.empty())
                         {
-                            std::ofstream of(profile_path + "\\" + img_name, std::ios::binary);
+                            std::ofstream of(std::filesystem::path((profile_path + tr("\\") + img_name).toStdU16String()), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
                         }
 
-                        std::filesystem::directory_iterator it{profile_path};
+                        std::filesystem::directory_iterator it{profile_path.toStdU16String()};
                         if (it != std::filesystem::end(it))
-                            m_user_img_path = it->path().string().c_str();
+                            m_user_img_path = QString::fromUtf8(StrToUtf8(it->path().string()).c_str());
                     }
 
                     QMetaObject::invokeMethod(m_login_page,

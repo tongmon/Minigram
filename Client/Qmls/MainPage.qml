@@ -28,6 +28,21 @@ Rectangle {
         return notiWindow
     }
 
+    function addSession(sessionInfo)
+    {
+        sideBarView.sideBarViewMap["session"].addSession(sessionInfo)
+    }
+
+    function addChat(chatInfo)
+    {
+        sideBarView.sideBarViewMap["session"].sessionViewMap[chatInfo["sessionId"]].addChat(chatInfo)
+    }
+
+    function updateReaderIds(readerId, messageId)
+    {
+        sideBarView.sideBarViewMap["session"].refreshReaderIds(readerId, messageId)
+    }
+
     function selectCurrentView(currentView)
     {
         if (sideBarView.currentView !== currentView)
@@ -53,7 +68,28 @@ Rectangle {
 
     function getParticipantData(sessionId, participantId)
     {
-        return chatSessionModel.getParticipantData(sessionId, participantId)
+        var pData = chatSessionModel.getParticipantData(sessionId, participantId)
+        
+        if (!pData.hasOwnProperty("participantName"))
+        {
+            var cData = getContactData(participantId)
+
+            if (cData.hasOwnProperty("userName"))
+            {
+                pData["participantName"] = cData["userName"]
+                pData["participantImgPath"] = cData["userImg"]
+            }
+        }
+
+        if (!pData.hasOwnProperty("participantName"))
+        {
+            pData["participantName"] = qsTr("Unknown")
+            pData["participantImgPath"] = ""
+        }
+
+        return pData
+
+        // return chatSessionModel.getParticipantData(sessionId, participantId)
     }
 
     function getSessionData(sessionId)
@@ -73,6 +109,16 @@ Rectangle {
             "recentMessageId": obj.recentMessageId,
             "unreadCnt": obj.unreadCnt
         }
+    }
+
+    function getCurrentSessionId()
+    {
+        return sideBarView.sideBarViewMap["session"].currentSessionId
+    }
+
+    function getContactData(userId)
+    {
+        return contactModel.getContact(userId)
     }
 
     function handleOtherLeftSession(sessionId, deletedId)
@@ -116,6 +162,16 @@ Rectangle {
     function updateSessionData(updateInfo)
     {
         chatSessionModel.renewSessionInfo(updateInfo)
+    }
+
+    function addContactRequest(requesterInfo)
+    {
+        contactRequestModel.append(requesterInfo)
+    }
+
+    function deleteContact(userId)
+    {
+        contactModel.remove(acqId)
     }
 
     TitleBar {
