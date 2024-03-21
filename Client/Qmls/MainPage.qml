@@ -38,6 +38,16 @@ Rectangle {
         sideBarView.sideBarViewMap["session"].sessionViewMap[chatInfo["sessionId"]].addChat(chatInfo)
     }
 
+    function insertOrderedChats(sessionId, index, chats)
+    {
+        sideBarView.sideBarViewMap["session"].sessionViewMap[sessionId].insertOrderedChats(index, chats)
+    }
+
+    function clearChat(sessionId)
+    {
+        sideBarView.sideBarViewMap["session"].sessionViewMap[sessionId].clearChat()
+    }
+
     function updateReaderIds(readerId, messageId)
     {
         sideBarView.sideBarViewMap["session"].refreshReaderIds(readerId, messageId)
@@ -52,6 +62,7 @@ Rectangle {
     function updateParticipantData(participantInfo)
     {
         chatSessionModel.updateParticipantData(participantInfo)
+        sideBarView.sideBarViewMap["session"].sessionViewMap[participantInfo["sessionId"]].updateParticipantInfo(participantInfo)
     }
 
     function insertParticipantData(participantInfo)
@@ -69,7 +80,8 @@ Rectangle {
     function getParticipantData(sessionId, participantId)
     {
         var pData = chatSessionModel.getParticipantData(sessionId, participantId)
-        
+        pData["getType"] = "Participant"
+
         if (!pData.hasOwnProperty("participantName"))
         {
             var cData = getContactData(participantId)
@@ -78,6 +90,7 @@ Rectangle {
             {
                 pData["participantName"] = cData["userName"]
                 pData["participantImgPath"] = cData["userImg"]
+                pData["getType"] = "Contact"
             }
         }
 
@@ -85,11 +98,17 @@ Rectangle {
         {
             pData["participantName"] = qsTr("Unknown")
             pData["participantImgPath"] = ""
+            pData["getType"] = "None"
         }
 
         return pData
 
         // return chatSessionModel.getParticipantData(sessionId, participantId)
+    }
+
+    function addSessions(sessions)
+    {
+        sideBarView.sideBarViewMap["session"].addSessions(sessions)
     }
 
     function getSessionData(sessionId)
@@ -107,7 +126,8 @@ Rectangle {
             "recentContentType": obj.recentContentType,
             "recentContent": obj.recentContent,
             "recentMessageId": obj.recentMessageId,
-            "unreadCnt": obj.unreadCnt
+            "unreadCnt": obj.unreadCnt,
+            "chatCnt": sideBarView.sideBarViewMap["session"].sessionViewMap[sessionId].children[2].count
         }
     }
 
@@ -162,6 +182,11 @@ Rectangle {
     function updateSessionData(updateInfo)
     {
         chatSessionModel.renewSessionInfo(updateInfo)
+    }
+
+    function addContacts(contactsInfo)
+    {
+        contactModel.addContacts(contacts)
     }
 
     function addContactRequest(requesterInfo)

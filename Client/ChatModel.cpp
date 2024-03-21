@@ -567,6 +567,9 @@ void ChatModel::updateParticipantInfo(const QVariantMap &qvm)
             sender_name = qvm.find("participantName") != qvm.end() ? qvm["participantName"].toString() : "",
             sender_img_path = qvm.find("participantImgPath") != qvm.end() ? qvm["participantImgPath"].toString() : "";
 
+    if (sender_name.isEmpty() && sender_img_path.isEmpty())
+        return;
+
     for (size_t i = 0; i < m_chats.size(); i++)
     {
         if (sender_id != m_chats[i]->sender_id)

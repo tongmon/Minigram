@@ -11,6 +11,7 @@
 
 #include <QApplication>
 #include <QBuffer>
+#include <QDir>
 #include <QImage>
 #include <QMetaObject>
 #include <QQmlContext>
@@ -332,7 +333,7 @@ void MainContext::RecieveContactRequest(Service *service)
     service->server_response.GetData(requester_img_name);
     service->server_response.GetData(requester_img);
 
-    QString req_cache_path = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+    QString req_cache_path = QDir::currentPath() +
                              tr("\\minigram_cache\\") +
                              m_user_id +
                              tr("\\contact_request\\") +
@@ -395,7 +396,7 @@ void MainContext::RecieveAddSession(Service *service)
     qvm.insert("recentMessageId", -1);
     qvm.insert("unreadCnt", 0);
 
-    QString session_cache_path = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+    QString session_cache_path = QDir::currentPath() +
                                  tr("\\minigram_cache\\") +
                                  m_user_id +
                                  tr("\\sessions\\") +
@@ -517,7 +518,7 @@ void MainContext::RecieveDeleteSession(Service *service)
                               Q_ARG(QVariant, session_id),
                               Q_ARG(QVariant, deleter_id));
 
-    QString participant_cache = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+    QString participant_cache = QDir::currentPath() +
                                 tr("\\minigram_cache\\") +
                                 m_user_id +
                                 tr("\\sessions\\") +
@@ -541,7 +542,7 @@ void MainContext::RecieveDeleteContact(Service *service)
                               Qt::QueuedConnection,
                               Q_ARG(QVariant, acq_id));
 
-    QString contact_cache = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+    QString contact_cache = QDir::currentPath() +
                             tr("\\minigram_cache\\") +
                             m_user_id +
                             tr("\\contact\\") +
@@ -565,7 +566,7 @@ void MainContext::RecieveExpelParticipant(Service *service)
                               Q_ARG(QVariant, session_id),
                               Q_ARG(QVariant, expeled_id));
 
-    QString participant_cache = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+    QString participant_cache = QDir::currentPath() +
                                 tr("\\minigram_cache\\") +
                                 m_user_id +
                                 tr("\\sessions\\") +
@@ -631,7 +632,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
         net_buf += m_user_pw;
 
         uint64_t user_img_date = 0;
-        QString profile_path = QString::fromUtf8(StrToUtf8(boost::dll::program_location().parent_path().string()).c_str()) +
+        QString profile_path = QDir::currentPath() +
                                tr("\\minigram_cache\\") +
                                m_user_id +
                                tr("\\profile_img");
@@ -726,10 +727,10 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
 
     auto &central_server = m_window.GetServerHandle();
 
-    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
-    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
+    // auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
+    // auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [session_view, &central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -744,27 +745,27 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
         switch (content_type)
         {
         case TEXT_CHAT:
-            net_buf += EncodeBase64(WStrToUtf8(content.toStdWString())); // StrToUtf8(content.toStdString())
+            net_buf += content; // Utf-8로 NetworkBuffer에서 내부적으로 변환함 // EncodeBase64(WStrToUtf8(content.toStdWString())); // StrToUtf8(content.toStdString())
             break;
         default:
             break;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [session_view, &central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [session_view, &central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [session_view, &central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, content_type, session_id = std::move(session_id), content = std::move(content), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -796,32 +797,32 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
                     chat_info.insert("readerIds", reader_ids);
                     chat_info.insert("isOpponent", false);
 
-                    QVariantMap renew_info;
-                    renew_info.insert("sessionId", session_id);
-                    renew_info.insert("recentSenderId", m_user_id);
-                    renew_info.insert("recentSendDate", StrToUtf8(MillisecondToCurrentDate(send_date)).c_str());
-                    renew_info.insert("recentContentType", static_cast<int>(content_type));
-                    renew_info.insert("recentMessageId", message_id);
+                    QVariantMap update_info;
+                    update_info.insert("sessionId", session_id);
+                    update_info.insert("recentSenderId", m_user_id);
+                    update_info.insert("recentSendDate", QString::fromUtf8(StrToUtf8(MillisecondToCurrentDate(send_date)).c_str()));
+                    update_info.insert("recentContentType", static_cast<int>(content_type));
+                    update_info.insert("recentMessageId", message_id);
 
                     switch (content_type)
                     {
                     case TEXT_CHAT:
                         chat_info.insert("content", content);
-                        renew_info.insert("recentContent", content);
+                        update_info.insert("recentContent", content);
                         break;
                     default:
                         break;
                     }
 
-                    QMetaObject::invokeMethod(session_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "addChat",
                                               Qt::BlockingQueuedConnection,
                                               Q_ARG(QVariant, QVariant::fromValue(chat_info)));
 
-                    QMetaObject::invokeMethod(m_session_list_view,
-                                              "renewSessionInfo",
+                    QMetaObject::invokeMethod(m_main_page,
+                                              "updateSessionData",
                                               Qt::QueuedConnection,
-                                              Q_ARG(QVariant, QVariant::fromValue(renew_info)));
+                                              Q_ARG(QVariant, QVariant::fromValue(update_info)));
 
                     central_server.CloseRequest(session->GetID());
                     is_ready.store(true);
@@ -850,14 +851,14 @@ void MainContext::tryGetSessionList()
             return;
         }
 
-        std::string file_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\sessions";
-        std::vector<std::pair<std::string, int64_t>> session_data;
+        QString file_path = QDir::currentPath() + tr("\\minigram_cache\\") + m_user_id + tr("\\sessions");
+        std::vector<std::pair<QString, int64_t>> session_data;
 
-        if (!std::filesystem::exists(file_path))
-            std::filesystem::create_directories(file_path);
+        if (!std::filesystem::exists(file_path.toStdU16String()))
+            std::filesystem::create_directories(file_path.toStdU16String());
 
         // 세션 이미지가 저장되어 있는지 캐시 파일을 찾아봄
-        std::filesystem::directory_iterator it{file_path};
+        std::filesystem::directory_iterator it{file_path.toStdU16String()};
         while (it != std::filesystem::end(it))
         {
             int64_t img_update_date = 0;
@@ -873,7 +874,7 @@ void MainContext::tryGetSessionList()
                 }
 
                 if (img_update_date)
-                    session_data.push_back({it->path().filename().string(), img_update_date});
+                    session_data.push_back({QString::fromStdU16String(it->path().filename().u16string()), img_update_date});
             }
             it++;
         }
@@ -887,21 +888,21 @@ void MainContext::tryGetSessionList()
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -909,7 +910,7 @@ void MainContext::tryGetSessionList()
                     }
 
                     std::string json_txt;
-                    session->GetResponse().GetData(json_txt);
+                    session->GetResponse().GetData(json_txt); // json은 이미 UTF-8 인코딩이 되어 있는 상태라 그냥 받음
 
                     boost::json::error_code ec;
                     boost::json::value json_data = boost::json::parse(json_txt, ec);
@@ -926,23 +927,27 @@ void MainContext::tryGetSessionList()
                             continue;
                         }
 
+                        QString session_id = QString::fromUtf8(session_data["session_id"].as_string().c_str()),
+                                session_name = QString::fromUtf8(session_data["session_name"].as_string().c_str()),
+                                session_img_name = QString::fromUtf8(session_data["session_img_name"].as_string().c_str());
+
                         QVariantMap qvm;
-                        qvm.insert("sessionId", StrToUtf8(session_data["session_id"].as_string().c_str()).c_str());
-                        qvm.insert("sessionName", StrToUtf8(session_data["session_name"].as_string().c_str()).c_str());
+                        qvm.insert("sessionId", session_id);
+                        qvm.insert("sessionName", session_name);
                         qvm.insert("unreadCnt", session_data["unread_count"].as_int64());
 
-                        std::filesystem::path session_dir = file_path + "\\" + session_data["session_id"].as_string().c_str();
+                        QString session_dir = file_path + tr("\\") + session_id;
 
                         // 세션 캐시가 없으면 생성함
-                        if (!std::filesystem::exists(session_dir))
-                            std::filesystem::create_directories(session_dir);
+                        if (!std::filesystem::exists(session_dir.toStdU16String()))
+                            std::filesystem::create_directories(session_dir.toStdU16String());
 
                         QString session_img;
-                        std::filesystem::directory_iterator img_dir{session_dir};
+                        std::filesystem::directory_iterator img_dir{session_dir.toStdU16String()};
                         if (img_dir != std::filesystem::end(img_dir))
-                            session_img = StrToUtf8(img_dir->path().string()).c_str(); // WStrToUtf8(img_dir->path().wstring()); // Utf8ToStr(WStrToUtf8(img_dir->path().wstring())); // string().c_str();
+                            session_img = QString::fromStdU16String(img_dir->path().u16string()); // WStrToUtf8(img_dir->path().wstring()); // Utf8ToStr(WStrToUtf8(img_dir->path().wstring())); // string().c_str();
 
-                        if (session_data["session_img_name"].as_string().empty())
+                        if (session_img_name.isEmpty())
                         {
                             qvm.insert("sessionImg", session_img);
                             spdlog::trace(session_img.toStdString());
@@ -952,13 +957,12 @@ void MainContext::tryGetSessionList()
                             std::vector<unsigned char> img_data;
                             session->GetResponse().GetData(img_data);
 
-                            auto session_img_path = session_dir / session_data["session_img_name"].as_string().c_str();
-                            std::ofstream of(session_img_path.wstring(), std::ios::binary);
+                            QString session_img_path = session_dir + tr("\\") + session_img_name; // session_dir / session_data["session_img_name"].as_string().c_str();
+                            std::ofstream of(std::filesystem::path(session_img_path.toStdU16String()), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
 
-                            qvm.insert("sessionImg", StrToUtf8(session_img_path.string()).c_str());
-                            spdlog::trace(session_img_path.string());
+                            qvm.insert("sessionImg", session_img_path);
                         }
 
                         // 채팅방에 대화가 아무것도 없는 경우
@@ -973,18 +977,19 @@ void MainContext::tryGetSessionList()
                         else
                         {
                             auto chat_info = session_data["chat_info"].as_object();
-                            qvm.insert("recentSendDate", StrToUtf8(MillisecondToCurrentDate(chat_info["send_date"].as_int64())).c_str());
-                            qvm.insert("recentSenderId", StrToUtf8(chat_info["sender_id"].as_string().c_str()).c_str());
+
+                            qvm.insert("recentSendDate", QString::fromUtf8(StrToUtf8(MillisecondToCurrentDate(chat_info["send_date"].as_int64())).c_str()));
+                            qvm.insert("recentSenderId", QString::fromUtf8(chat_info["sender_id"].as_string().c_str()));
                             qvm.insert("recentContentType", chat_info["content_type"].as_int64());
 
                             switch (chat_info["content_type"].as_int64())
                             {
                             case TEXT_CHAT:
-                                qvm.insert("recentContent", QString::fromWCharArray(Utf8ToWStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str()));
+                                qvm.insert("recentContent", QString::fromUtf8(chat_info["content"].as_string().c_str()));
                                 break;
                             case IMG_CHAT:
                             case VIDEO_CHAT:
-                                qvm.insert("recentContent", StrToUtf8(chat_info["content"].as_string().c_str()).c_str()); // 그냥 보여주기용 텍스트
+                                qvm.insert("recentContent", QString::fromUtf8(chat_info["content"].as_string().c_str())); // 그냥 보여주기용 텍스트
                                 break;
                             default:
                                 break;
@@ -999,7 +1004,7 @@ void MainContext::tryGetSessionList()
                         //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
-                    QMetaObject::invokeMethod(m_session_list_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "addSessions",
                                               Qt::QueuedConnection,
                                               Q_ARG(QVariant, QVariant::fromValue(sessions)));
@@ -1022,11 +1027,9 @@ void MainContext::tryRefreshSession(const QString &session_id)
     if (!is_ready.compare_exchange_strong(old_var, false))
         return;
 
-    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
-    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id = std::move(session_id), this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -1042,14 +1045,8 @@ void MainContext::tryRefreshSession(const QString &session_id)
         QVariantMap session_data = ret.toMap();
 
         int unread_cnt = session_data["unreadCnt"].toInt(),
-            recent_message_id = session_data["recentMessageId"].toInt();
-
-        QMetaObject::invokeMethod(m_session_list_view,
-                                  "getChatCnt",
-                                  Qt::BlockingQueuedConnection,
-                                  Q_RETURN_ARG(QVariant, ret),
-                                  Q_ARG(QVariant, session_id));
-        int chat_cnt = ret.toInt();
+            recent_message_id = session_data["recentMessageId"].toInt(),
+            chat_cnt = session_data["chatCnt"].toInt();
 
         if (!unread_cnt && chat_cnt)
         {
@@ -1072,24 +1069,31 @@ void MainContext::tryRefreshSession(const QString &session_id)
         // 500개가 넘으면 해당 세션의 채팅 기록 초기화 후 최대 100개 채팅만 서버에서 가져와서 채움
         else
         {
-            QMetaObject::invokeMethod(session_view,
+            // QMetaObject::invokeMethod(session_view,
+            //                           "clearChat",
+            //                           Qt::QueuedConnection);
+
+            QMetaObject::invokeMethod(m_main_page,
                                       "clearChat",
-                                      Qt::QueuedConnection);
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QVariant, session_id));
+
             net_buf += static_cast<int64_t>(100);
         }
 
-        std::string p_path = boost::dll::program_location().parent_path().string() +
-                             "\\minigram_cache\\" +
-                             m_user_id.toStdString() +
-                             "\\sessions\\" +
-                             session_id.toStdString() +
-                             "\\participant_data";
-        std::vector<std::pair<std::string, int64_t>> p_data;
+        QString p_path = QDir::currentPath() +
+                         tr("\\minigram_cache\\") +
+                         m_user_id +
+                         tr("\\sessions\\") +
+                         session_id +
+                         tr("\\participant_data");
 
-        if (!std::filesystem::exists(p_path))
-            std::filesystem::create_directories(p_path);
+        std::vector<std::pair<QString, int64_t>> p_data;
 
-        std::filesystem::directory_iterator it{p_path};
+        if (!std::filesystem::exists(p_path.toStdU16String()))
+            std::filesystem::create_directories(p_path.toStdU16String());
+
+        std::filesystem::directory_iterator it{p_path.toStdU16String()};
         while (it != std::filesystem::end(it))
         {
             int64_t img_update_date = 0;
@@ -1100,7 +1104,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                     img_update_date = std::stoull(child->path().stem().string());
 
                 if (img_update_date)
-                    p_data.push_back({it->path().filename().string(), img_update_date});
+                    p_data.push_back({QString::fromStdU16String(it->path().filename().u16string()), img_update_date});
             }
             it++;
         }
@@ -1112,21 +1116,21 @@ void MainContext::tryRefreshSession(const QString &session_id)
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id = std::move(session_id), p_path = std::move(p_path), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id = std::move(session_id), p_path = std::move(p_path), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id = std::move(session_id), p_path = std::move(p_path), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -1141,21 +1145,22 @@ void MainContext::tryRefreshSession(const QString &session_id)
                     auto fetch_list = json_data.as_object()["fetched_chat_list"].as_array();
                     auto participant_list = json_data.as_object()["participant_infos"].as_array();
 
-                    std::string p_path = boost::dll::program_location().parent_path().string() +
-                                         "\\minigram_cache\\" +
-                                         m_user_id.toStdString() +
-                                         "\\sessions\\" +
-                                         session_id.toStdString() +
-                                         "\\participant_data";
+                    // std::string p_path = boost::dll::program_location().parent_path().string() +
+                    //                      "\\minigram_cache\\" +
+                    //                      m_user_id.toStdString() +
+                    //                      "\\sessions\\" +
+                    //                      session_id.toStdString() +
+                    //                      "\\participant_data";
 
                     for (size_t i = 0; i < participant_list.size(); i++)
                     {
                         auto participant_info = participant_list[i].as_object();
-                        QString user_id = StrToUtf8(participant_info["user_id"].as_string().c_str()).c_str(),
-                                user_name = StrToUtf8(participant_info["user_name"].as_string().c_str()).c_str(),
-                                user_info = StrToUtf8(participant_info["user_info"].as_string().c_str()).c_str(),
-                                user_img_name = StrToUtf8(participant_info["user_img_name"].as_string().c_str()).c_str();
-                        std::filesystem::path p_id_path = p_path + "\\" + user_id.toStdString();
+                        QString user_id = QString::fromUtf8(participant_info["user_id"].as_string().c_str()),
+                                user_name = QString::fromUtf8(participant_info["user_name"].as_string().c_str()),
+                                user_info = QString::fromUtf8(participant_info["user_info"].as_string().c_str()),
+                                user_img_name = QString::fromUtf8(participant_info["user_img_name"].as_string().c_str()),
+                                p_id_path = p_path + tr("\\") + user_id;
+
                         QVariantMap qvm;
                         qvm["sessionId"] = session_id;
                         qvm["participantId"] = user_id;
@@ -1170,7 +1175,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         QVariantMap participant_data = ret.toMap();
 
                         // 처음 넣는 경우
-                        if (participant_data.find("participantName") == participant_data.end())
+                        if (participant_data["getType"].toString() == tr("None"))
                         {
                             QVariantMap insert_info;
                             insert_info["sessionId"] = session_id;
@@ -1192,35 +1197,35 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                 qvm["participantInfo"] = user_info;
                         }
 
-                        if (!std::filesystem::exists(p_id_path))
-                            std::filesystem::create_directories(p_id_path / "profile_img");
+                        if (!std::filesystem::exists(p_id_path.toStdU16String()))
+                            std::filesystem::create_directories((p_id_path + tr("\\profile_img")).toStdU16String());
 
                         if (!user_img_name.isEmpty())
                         {
                             std::vector<unsigned char> raw_img;
                             session->GetResponse().GetData(raw_img);
 
-                            auto p_img_path = p_id_path / "profile_img" / user_img_name.toStdString();
-                            std::ofstream of(p_img_path, std::ios::binary);
+                            auto p_img_path = p_id_path + tr("\\profile_img\\") + user_img_name;
+                            std::ofstream of(std::filesystem::path(p_img_path.toStdU16String()), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
 
-                            qvm["participantImgPath"] = StrToUtf8(p_img_path.string()).c_str();
+                            qvm["participantImgPath"] = p_img_path;
                         }
                         else
                         {
-                            std::filesystem::directory_iterator it{p_id_path / "profile_img"};
+                            std::filesystem::directory_iterator it{(p_id_path + tr("\\profile_img")).toStdU16String()};
                             if (it != std::filesystem::end(it) &&
                                 (participant_data.find("participantImgPath") == participant_data.end() ||
-                                 participant_data["participantImgPath"].toString() != it->path().string().c_str()))
-                                qvm["participantImgPath"] = StrToUtf8(it->path().string()).c_str();
+                                 participant_data["participantImgPath"].toString() != QString::fromStdU16String(it->path().u16string())))
+                                qvm["participantImgPath"] = QString::fromStdU16String(it->path().u16string());
                         }
 
                         // 채팅방의 챗 버블과 관련된 것들을 바꾸는 녀석
-                        QMetaObject::invokeMethod(session_view,
-                                                  "updateParticipantInfo",
-                                                  Qt::QueuedConnection,
-                                                  Q_ARG(QVariant, QVariant::fromValue(qvm)));
+                        // QMetaObject::invokeMethod(session_view,
+                        //                           "updateParticipantInfo",
+                        //                           Qt::QueuedConnection,
+                        //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
 
                         // 채팅방에 활용할 참가자 변수를 바꾸는 녀석
                         QMetaObject::invokeMethod(m_main_page,
@@ -1248,35 +1253,13 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                                   Q_ARG(QVariant, session_id),
                                                   Q_ARG(QVariant, sender_id));
                         QVariantMap participant_data = ret.toMap();
-                        QString sender_name = "Unknown", sender_img_path = "";
-
-                        if (participant_data.find("participantName") == participant_data.end())
-                        {
-                            QMetaObject::invokeMethod(m_contact_view,
-                                                      "getContact",
-                                                      Qt::BlockingQueuedConnection,
-                                                      Q_RETURN_ARG(QVariant, ret),
-                                                      Q_ARG(QVariant, sender_id));
-                            QVariantMap contact_data = ret.toMap();
-
-                            if (contact_data.find("userName") != contact_data.end())
-                            {
-                                sender_name = contact_data["userName"].toString();
-                                sender_img_path = contact_data["userImg"].toString();
-                            }
-                        }
-                        else
-                        {
-                            sender_name = participant_data["participantName"].toString();
-                            sender_img_path = participant_data["participantImgPath"].toString();
-                        }
 
                         QVariantMap qvm;
                         qvm.insert("messageId", chat_info["message_id"].as_int64());
                         qvm.insert("sessionId", session_id);
                         qvm.insert("senderId", sender_id);
-                        qvm.insert("senderName", sender_name);
-                        qvm.insert("senderImgPath", sender_img_path);
+                        qvm.insert("senderName", participant_data["participantName"].toString());
+                        qvm.insert("senderImgPath", participant_data["participantImgPath"].toString());
                         qvm.insert("contentType", chat_info["content_type"].as_int64());
                         qvm.insert("timeSinceEpoch", chat_info["send_date"].as_int64());
                         qvm.insert("isOpponent", m_user_id != sender_id);
@@ -1284,7 +1267,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         switch (chat_info["content_type"].as_int64())
                         {
                         case TEXT_CHAT: {
-                            qvm.insert("content", QString::fromWCharArray(Utf8ToWStr(DecodeBase64(chat_info["content"].as_string().c_str())).c_str()));
+                            qvm.insert("content", QString::fromUtf8(chat_info["content"].as_string().c_str()));
                             break;
                         }
                         default:
@@ -1294,7 +1277,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         auto reader_ids = chat_info["reader_id"].as_array();
                         QStringList readers;
                         for (int j = 0; j < reader_ids.size(); j++)
-                            readers.push_back(StrToUtf8(reader_ids[j].as_string().c_str()).c_str());
+                            readers.push_back(QString::fromUtf8(reader_ids[j].as_string().c_str()));
                         qvm.insert("readerIds", readers);
 
                         chats.append(qvm);
@@ -1304,17 +1287,18 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
-                    QMetaObject::invokeMethod(session_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "insertOrderedChats",
                                               Qt::QueuedConnection,
+                                              Q_ARG(QVariant, session_id),
                                               Q_ARG(QVariant, -1),
                                               Q_ARG(QVariant, QVariant::fromValue(chats)));
 
                     QVariantMap renew_info;
                     renew_info.insert("sessionId", session_id);
                     renew_info.insert("unreadCnt", 0);
-                    QMetaObject::invokeMethod(m_session_list_view,
-                                              "renewSessionInfo",
+                    QMetaObject::invokeMethod(m_main_page,
+                                              "updateSessionData",
                                               Qt::QueuedConnection,
                                               Q_ARG(QVariant, QVariant::fromValue(renew_info)));
 
@@ -1339,11 +1323,9 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
     if (!is_ready.compare_exchange_strong(old_var, false))
         return;
 
-    auto session_view_map = m_session_list_view->property("sessionViewMap").toMap();
-    auto session_view = qvariant_cast<QObject *>(session_view_map[session_id]);
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, front_message_id, session_view, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id = std::move(session_id), front_message_id, this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -1355,21 +1337,21 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
         net_buf += static_cast<int64_t>(front_message_id);
         net_buf += static_cast<int64_t>(100); // 100개씩 가져옴
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id = std::move(session_id), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id = std::move(session_id), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, session_view, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id = std::move(session_id), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -1389,7 +1371,7 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
                         auto &chat_data = fetched_chat_ary[i].as_object();
 
                         QVariant ret;
-                        QString sender_name = "Unknown", sender_img_path = "", sender_id = StrToUtf8(chat_data["sender_id"].as_string().c_str()).c_str();
+                        QString sender_id = QString::fromUtf8(chat_data["sender_id"].as_string().c_str());
                         QMetaObject::invokeMethod(m_main_page,
                                                   "getParticipantData",
                                                   Qt::BlockingQueuedConnection,
@@ -1398,33 +1380,33 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
                                                   Q_ARG(QVariant, sender_id));
                         QVariantMap participant_data = ret.toMap();
 
-                        if (participant_data.find("participantName") == participant_data.end())
-                        {
-                            QMetaObject::invokeMethod(m_contact_view,
-                                                      "getContact",
-                                                      Qt::BlockingQueuedConnection,
-                                                      Q_RETURN_ARG(QVariant, ret),
-                                                      Q_ARG(QVariant, sender_id));
-                            QVariantMap contact_data = ret.toMap();
-
-                            if (contact_data.find("userName") != contact_data.end())
-                            {
-                                sender_name = contact_data["userName"].toString();
-                                sender_img_path = contact_data["userImg"].toString();
-                            }
-                        }
-                        else
-                        {
-                            sender_name = participant_data["participantName"].toString();
-                            sender_img_path = participant_data["participantImgPath"].toString();
-                        }
+                        // if (participant_data.find("participantName") == participant_data.end())
+                        //{
+                        //     QMetaObject::invokeMethod(m_contact_view,
+                        //                               "getContact",
+                        //                               Qt::BlockingQueuedConnection,
+                        //                               Q_RETURN_ARG(QVariant, ret),
+                        //                               Q_ARG(QVariant, sender_id));
+                        //     QVariantMap contact_data = ret.toMap();
+                        //
+                        //    if (contact_data.find("userName") != contact_data.end())
+                        //    {
+                        //        sender_name = contact_data["userName"].toString();
+                        //        sender_img_path = contact_data["userImg"].toString();
+                        //    }
+                        //}
+                        // else
+                        //{
+                        //    sender_name = participant_data["participantName"].toString();
+                        //    sender_img_path = participant_data["participantImgPath"].toString();
+                        //}
 
                         QVariantMap chat_info;
                         chat_info.insert("messageId", chat_data["message_id"].as_int64());
                         chat_info.insert("sessionId", session_id);
                         chat_info.insert("senderId", sender_id);
-                        chat_info.insert("senderName", sender_name);
-                        chat_info.insert("senderImgPath", sender_img_path);
+                        chat_info.insert("senderName", participant_data["participantName"].toString());
+                        chat_info.insert("senderImgPath", participant_data["participantImgPath"].toString());
                         chat_info.insert("timeSinceEpoch", chat_data["send_date"].as_int64());
                         chat_info.insert("contentType", static_cast<int>(chat_data["content_type"].as_int64()));
                         chat_info.insert("isOpponent", m_user_id != sender_id);
@@ -1432,13 +1414,13 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
                         auto reader_ids = chat_data["reader_id"].as_array();
                         QStringList readers;
                         for (int j = 0; j < reader_ids.size(); j++)
-                            readers.push_back(StrToUtf8(reader_ids[j].as_string().c_str()).c_str());
+                            readers.push_back(QString::fromUtf8(reader_ids[j].as_string().c_str()));
                         chat_info.insert("readerIds", readers);
 
                         switch (chat_data["content_type"].as_int64())
                         {
                         case TEXT_CHAT:
-                            chat_info.insert("content", QString::fromWCharArray(Utf8ToWStr(DecodeBase64(chat_data["content"].as_string().c_str())).c_str()));
+                            chat_info.insert("content", QString::fromUtf8(chat_data["content"].as_string().c_str()));
                             break;
                         default:
                             break;
@@ -1451,9 +1433,10 @@ void MainContext::tryFetchMoreMessage(const QString &session_id, int front_messa
                         //                           Q_ARG(QVariant, QVariant::fromValue(chat_info)));
                     }
 
-                    QMetaObject::invokeMethod(session_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "insertOrderedChats",
                                               Qt::QueuedConnection,
+                                              Q_ARG(QVariant, session_id),
                                               Q_ARG(QVariant, 0),
                                               Q_ARG(QVariant, QVariant::fromValue(chats)));
 
@@ -1484,13 +1467,13 @@ void MainContext::tryGetContactList()
             return;
         }
 
-        std::filesystem::path file_path = boost::dll::program_location().parent_path().string() + "\\minigram_cache\\" + m_user_id.toStdString() + "\\contact";
-        std::vector<std::pair<std::string, int64_t>> acq_data;
+        QString file_path = QDir::currentPath() + tr("\\minigram_cache\\") + m_user_id + tr("\\contact");
+        std::vector<std::pair<QString, int64_t>> acq_data;
 
-        if (!std::filesystem::exists(file_path))
-            std::filesystem::create_directories(file_path);
+        if (!std::filesystem::exists(file_path.toStdU16String()))
+            std::filesystem::create_directories(file_path.toStdU16String());
 
-        std::filesystem::directory_iterator it{file_path};
+        std::filesystem::directory_iterator it{file_path.toStdU16String()};
         while (it != std::filesystem::end(it))
         {
             int64_t img_update_date = 0;
@@ -1508,7 +1491,7 @@ void MainContext::tryGetContactList()
                 }
 
                 if (img_update_date)
-                    acq_data.push_back({it->path().filename().string(), img_update_date});
+                    acq_data.push_back({QString::fromStdU16String(it->path().filename().u16string()), img_update_date});
             }
             it++;
         }
@@ -1522,21 +1505,21 @@ void MainContext::tryGetContactList()
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -1555,35 +1538,37 @@ void MainContext::tryGetContactList()
                     {
                         auto acquaintance_data = contact_array[i].as_object();
 
+                        QString user_id = QString::fromUtf8(acquaintance_data["user_id"].as_string().c_str()),
+                                user_img = QString::fromUtf8(acquaintance_data["user_img"].as_string().c_str());
                         QVariantMap qvm;
-                        qvm.insert("userId", StrToUtf8(acquaintance_data["user_id"].as_string().c_str()).c_str());
-                        qvm.insert("userName", StrToUtf8(acquaintance_data["user_name"].as_string().c_str()).c_str());
-                        qvm.insert("userInfo", StrToUtf8(acquaintance_data["user_info"].as_string().c_str()).c_str());
+                        qvm.insert("userId", user_id);
+                        qvm.insert("userName", QString::fromUtf8(acquaintance_data["user_name"].as_string().c_str()));
+                        qvm.insert("userInfo", QString::fromUtf8(acquaintance_data["user_info"].as_string().c_str()));
 
-                        auto acq_dir = file_path / acquaintance_data["user_id"].as_string().c_str();
+                        auto acq_dir = file_path + tr("\\") + user_id;
 
                         // 친구 user에 대한 캐시가 없으면 생성함
-                        if (!std::filesystem::exists(acq_dir))
-                            std::filesystem::create_directories(acq_dir / "profile_img");
+                        if (!std::filesystem::exists(acq_dir.toStdU16String()))
+                            std::filesystem::create_directories((acq_dir + tr("\\profile_img")).toStdU16String());
 
                         QString profile_img;
-                        std::filesystem::directory_iterator img_dir{acq_dir / "profile_img"};
+                        std::filesystem::directory_iterator img_dir{(acq_dir + "\\profile_img").toStdU16String()};
                         if (img_dir != std::filesystem::end(img_dir))
-                            profile_img = StrToUtf8(img_dir->path().string()).c_str();
+                            profile_img = QString::fromStdU16String(img_dir->path().u16string()); // StrToUtf8(img_dir->path().string()).c_str();
 
-                        if (acquaintance_data["user_img"].as_string().empty())
+                        if (user_img.isEmpty())
                             qvm.insert("userImg", profile_img);
                         else
                         {
                             std::vector<unsigned char> img_data;
                             session->GetResponse().GetData(img_data);
 
-                            auto profile_img_path = acq_dir / "profile_img" / acquaintance_data["user_img"].as_string().c_str();
-                            std::ofstream of(profile_img_path, std::ios::binary);
+                            auto profile_img_path = acq_dir + "\\profile_img\\" + user_img;
+                            std::ofstream of(std::filesystem::path(profile_img_path.toStdU16String()), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
 
-                            qvm.insert("userImg", StrToUtf8(profile_img_path.string()).c_str());
+                            qvm.insert("userImg", profile_img_path);
                         }
 
                         contacts.append(qvm);
@@ -1593,7 +1578,7 @@ void MainContext::tryGetContactList()
                         //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
-                    QMetaObject::invokeMethod(m_contact_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "addContacts",
                                               Q_ARG(QVariant, QVariant::fromValue(contacts)));
 
