@@ -102,6 +102,8 @@ std::string이나 const char*를 그대로 박아버리고 싶다면 QByteArray�
 
 클라에서 서버로 QString 넣어 보내는 경우도 따져줘야함..., += 기호 다 봐야함
 
+클라 QString <-> NetworkBuffer(UTF-8) <-> UTF-8 std::string
+
 4. 인코딩 방식 하나 정해라....
 서버와의 통신은 무조건 raw data가 아니라면 utf-8 인코딩한 상태로 보내라, json 주고 받을 때는 인코딩 없이 하되 json 내부 스트링은 인코딩해라
 
@@ -111,7 +113,7 @@ std::string이나 const char*를 그대로 박아버리고 싶다면 QByteArray�
 
 6. 모든 qml 함수 main_page로 이동
 
-7. Utf8ToStr -> Utf8ToANSI 
+7. Utf8ToStr -> Utf8ToANSI / boost::dll::program_location().parent_path().string() -> QDir::currentPath()
 
 - 아직 남은 기능
 1. 채팅 더 불러오기 -> done
@@ -123,3 +125,6 @@ std::string이나 const char*를 그대로 박아버리고 싶다면 QByteArray�
 7. login id db 구조 바꾸기
 
 세션을 나갈때 세션을 나갔습니다 채팅을 뿌려야됨, 세션 나간 사용자는 현재 세션 스택을 비워야됨
+
+
+trySignUp, executeFileDialog 다루는 곳 qvm 인자만 소문자임...

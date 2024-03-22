@@ -1602,7 +1602,7 @@ void MainContext::tryDeleteContact(const QString &del_user_id)
     if (!is_ready.compare_exchange_strong(old_var, false))
         return;
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, del_user_id, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, del_user_id = std::move(del_user_id), this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -1613,14 +1613,14 @@ void MainContext::tryDeleteContact(const QString &del_user_id)
         net_buf += m_user_id;
         net_buf += del_user_id;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, del_user_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, del_user_id = std::move(del_user_id), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, del_user_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, del_user_id = std::move(del_user_id), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
@@ -1639,19 +1639,19 @@ void MainContext::tryDeleteContact(const QString &del_user_id)
 
                     if (ret)
                     {
-                        QMetaObject::invokeMethod(m_contact_view,
+                        QMetaObject::invokeMethod(m_main_page,
                                                   "deleteContact",
                                                   Qt::BlockingQueuedConnection,
                                                   Q_ARG(QVariant, del_user_id));
 
-                        std::string contact_cache = boost::dll::program_location().parent_path().string() +
-                                                    "\\minigram_cache\\" +
-                                                    m_user_id.toStdString() +
-                                                    "\\contact\\" +
-                                                    del_user_id.toStdString();
+                        QString contact_cache = QDir::currentPath() +
+                                                tr("\\minigram_cache\\") +
+                                                m_user_id +
+                                                tr("\\contact\\") +
+                                                del_user_id;
 
-                        if (std::filesystem::exists(contact_cache))
-                            std::filesystem::remove_all(contact_cache);
+                        if (std::filesystem::exists(contact_cache.toStdU16String()))
+                            std::filesystem::remove_all(contact_cache.toStdU16String());
                     }
 
                     central_server.CloseRequest(session->GetID());
@@ -1677,7 +1677,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
     central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, user_id, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
-            QMetaObject::invokeMethod(m_contact_view,
+            QMetaObject::invokeMethod(m_main_page,
                                       "processSendContactRequest",
                                       Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
             is_ready.store(true);
@@ -1691,7 +1691,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
         central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
             {
-                QMetaObject::invokeMethod(m_contact_view,
+                QMetaObject::invokeMethod(m_main_page,
                                           "processSendContactRequest",
                                           Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                 is_ready.store(true);
@@ -1701,7 +1701,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
             central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                 {
-                    QMetaObject::invokeMethod(m_contact_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "processSendContactRequest",
                                               Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                     is_ready.store(true);
@@ -1711,7 +1711,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                 central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
-                        QMetaObject::invokeMethod(m_contact_view,
+                        QMetaObject::invokeMethod(m_main_page,
                                                   "processSendContactRequest",
                                                   Q_ARG(QVariant, CONTACTADD_CONNECTION_FAIL));
                         is_ready.store(true);
@@ -1721,7 +1721,7 @@ void MainContext::trySendContactRequest(const QString &user_id)
                     int64_t result;
                     session->GetResponse().GetData(result);
 
-                    QMetaObject::invokeMethod(m_contact_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "processSendContactRequest",
                                               Q_ARG(QVariant, result));
 
@@ -1752,23 +1752,21 @@ void MainContext::tryGetContactRequestList()
             return;
         }
 
-        std::string file_path = boost::dll::program_location().parent_path().string() + "/minigram_cache/" + m_user_id.toStdString() + "/contact_request";
-        std::vector<std::pair<std::string, int64_t>> acq_data;
+        QString file_path = QDir::currentPath() + tr("/minigram_cache/") + m_user_id + tr("/contact_request");
+        std::vector<std::pair<QString, int64_t>> acq_data;
 
-        if (!std::filesystem::exists(file_path))
-            std::filesystem::create_directories(file_path);
+        if (!std::filesystem::exists(file_path.toStdU16String()))
+            std::filesystem::create_directories(file_path.toStdU16String());
 
-        std::filesystem::directory_iterator it{file_path};
+        std::filesystem::directory_iterator it{file_path.toStdU16String()};
         while (it != std::filesystem::end(it))
         {
             if (std::filesystem::is_directory(it->path()))
             {
                 std::filesystem::directory_iterator di{it->path()};
                 if (di != std::filesystem::end(di))
-                {
-                    acq_data.push_back({it->path().filename().string(),
+                    acq_data.push_back({QString::fromStdU16String(it->path().filename().u16string()),
                                         std::atoll(di->path().stem().string().c_str())});
-                }
             }
 
             it++;
@@ -1783,21 +1781,21 @@ void MainContext::tryGetContactRequestList()
             net_buf += data.second;
         }
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -1816,34 +1814,40 @@ void MainContext::tryGetContactRequestList()
                     {
                         auto requester_data = request_array[i].as_object();
 
+                        QString user_id = QString::fromUtf8(requester_data["user_id"].as_string().c_str()),
+                                user_name = QString::fromUtf8(requester_data["user_name"].as_string().c_str()),
+                                user_info = QString::fromUtf8(requester_data["user_info"].as_string().c_str()),
+                                user_img_name = QString::fromUtf8(requester_data["user_img"].as_string().c_str()),
+                                requester_dir = file_path + tr("\\") + user_id;
+
                         QVariantMap qvm;
-                        qvm.insert("userId", StrToUtf8(requester_data["user_id"].as_string().c_str()).c_str());
-                        qvm.insert("userName", StrToUtf8(requester_data["user_name"].as_string().c_str()).c_str());
-                        qvm.insert("userInfo", StrToUtf8(requester_data["user_info"].as_string().c_str()).c_str());
+                        qvm.insert("userId", user_id);
+                        qvm.insert("userName", user_name);
+                        qvm.insert("userInfo", user_info);
 
-                        std::filesystem::path requester_dir{file_path + "/" + requester_data["user_id"].as_string().c_str()};
+                        const std::u16string &requester_dir_u16 = requester_dir.toStdU16String();
 
-                        if (!std::filesystem::exists(requester_dir))
-                            std::filesystem::create_directory(requester_dir);
+                        if (!std::filesystem::exists(requester_dir_u16))
+                            std::filesystem::create_directory(requester_dir_u16);
 
                         QString profile_img;
-                        std::filesystem::directory_iterator img_dir{requester_dir};
+                        std::filesystem::directory_iterator img_dir{requester_dir_u16};
                         if (img_dir != std::filesystem::end(img_dir))
-                            profile_img = StrToUtf8(img_dir->path().string()).c_str();
+                            profile_img = QString::fromStdU16String(img_dir->path().u16string()); // StrToUtf8(img_dir->path().string()).c_str();
 
-                        if (requester_data["user_img"].as_string().empty())
+                        if (user_img_name.isEmpty())
                             qvm.insert("userImg", profile_img);
                         else
                         {
                             std::vector<unsigned char> img_data;
                             session->GetResponse().GetData(img_data);
 
-                            auto profile_img_path = requester_dir / requester_data["user_img"].as_string().c_str();
-                            std::ofstream of(profile_img_path, std::ios::binary);
+                            auto profile_img_path = requester_dir + tr("\\") + user_img_name; // / requester_data["user_img"].as_string().c_str();
+                            std::ofstream of(std::filesystem::path(profile_img_path.toStdU16String()), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
 
-                            qvm.insert("userImg", StrToUtf8(profile_img_path.string()).c_str());
+                            qvm.insert("userImg", profile_img_path);
                         }
 
                         contact_reqs.append(qvm);
@@ -1854,7 +1858,7 @@ void MainContext::tryGetContactRequestList()
                         //                           Q_ARG(QVariant, qvm));
                     }
 
-                    QMetaObject::invokeMethod(m_contact_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "addContactRequests",
                                               Q_ARG(QVariant, QVariant::fromValue(contact_reqs)));
 
@@ -1878,7 +1882,7 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
 
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, acq_id, is_accepted, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, acq_id = std::move(acq_id), is_accepted, this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -1918,9 +1922,9 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
                     session->GetResponse().GetData(acceptance);
                     session->GetResponse().GetData(user_id);
 
-                    std::filesystem::path user_cahe_path = boost::dll::program_location().parent_path().string() +
-                                                           "/minigram_cache/" +
-                                                           m_user_id.toStdString();
+                    QString user_cahe_path = QDir::currentPath() +
+                                             tr("\\minigram_cache\\") +
+                                             m_user_id;
 
                     if (acceptance)
                     {
@@ -1938,31 +1942,33 @@ void MainContext::tryProcessContactRequest(const QString &acq_id, bool is_accept
                         if (!user_img_name.isEmpty())
                             session->GetResponse().GetData(raw_img);
 
-                        auto contact_path = user_cahe_path / "contact" / user_id.toStdString() / "profile_img";
+                        auto contact_path = user_cahe_path + tr("\\contact\\") + user_id + tr("\\profile_img\\");
+                        const std::u16string &contact_path_u16 = contact_path.toStdU16String();
 
-                        if (!std::filesystem::exists(contact_path))
-                            std::filesystem::create_directories(contact_path);
+                        if (!std::filesystem::exists(contact_path_u16))
+                            std::filesystem::create_directories(contact_path_u16);
 
                         if (!raw_img.empty())
                         {
-                            auto img_path = contact_path / user_img_name.toStdString();
-                            std::ofstream of(img_path, std::ios::binary);
+                            auto img_path = contact_path + tr("\\") + user_img_name;
+                            std::ofstream of(std::filesystem::path(img_path.toStdU16String()), std::ios::binary);
                             if (of.is_open())
                             {
                                 of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
                             }
-                            qvm.insert("userImg", StrToUtf8(img_path.string()).c_str());
+                            qvm.insert("userImg", img_path);
                         }
                         else
                             qvm.insert("userImg", "");
                     }
 
-                    auto requester_path = user_cahe_path / "contact_request" / user_id.toStdString();
-                    if (std::filesystem::exists(requester_path))
-                        std::filesystem::remove_all(requester_path);
+                    auto requester_path = user_cahe_path + tr("\\contact_request\\") + user_id;
+                    const std::u16string &requester_path_u16 = requester_path.toStdU16String();
+                    if (std::filesystem::exists(requester_path_u16))
+                        std::filesystem::remove_all(requester_path_u16);
 
                     // qml에서 request list와 contact list 변경
-                    QMetaObject::invokeMethod(m_contact_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "processContactRequest",
                                               Q_ARG(QVariant, acceptance),
                                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
@@ -2007,18 +2013,33 @@ void MainContext::trySignUp(const QVariantMap &qvm)
 
         if (!qvm["img_path"].toString().isEmpty())
         {
-            std::wstring img_path = qvm["img_path"].toString().toStdWString(); // 한글 처리를 위함
-            img_data = std::make_shared<QImage>(QString::fromWCharArray(img_path.c_str()));
-            img_type = std::filesystem::path(img_path).extension().string();
+            auto img_path = qvm["img_path"].toString();
+            img_data = std::make_shared<QImage>(img_path);
+            img_type = std::filesystem::path(img_path.toStdU16String()).extension().string();
+
+            // erase dot in extension string
             if (!img_type.empty())
                 img_type.erase(img_type.begin());
-
+            //
             size_t img_size = img_data->byteCount();
             while (5242880 < img_size) // 이미지 크기가 5MB를 초과하면 계속 축소함
             {
                 *img_data = img_data->scaled(img_data->width() * 0.75, img_data->height() * 0.75, Qt::KeepAspectRatio);
                 img_size = img_data->byteCount();
             }
+
+            // std::wstring img_path = qvm["img_path"].toString().toStdWString(); // 한글 처리를 위함
+            // img_data = std::make_shared<QImage>(QString::fromWCharArray(img_path.c_str()));
+            // img_type = std::filesystem::path(img_path).extension().string();
+            // if (!img_type.empty())
+            //     img_type.erase(img_type.begin());
+            //
+            // size_t img_size = img_data->byteCount();
+            // while (5242880 < img_size) // 이미지 크기가 5MB를 초과하면 계속 축소함
+            //{
+            //    *img_data = img_data->scaled(img_data->width() * 0.75, img_data->height() * 0.75, Qt::KeepAspectRatio);
+            //    img_size = img_data->byteCount();
+            //}
         }
 
         auto user_id = qvm["id"].toString();
@@ -2036,11 +2057,11 @@ void MainContext::trySignUp(const QVariantMap &qvm)
             net_buf += buf.data();
         }
         else
-            net_buf += std::string();
+            net_buf += "";
 
         net_buf += img_type;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, img_data, img_type, user_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, img_data, img_type = std::move(img_type), user_id = std::move(user_id), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 QMetaObject::invokeMethod(m_login_page,
@@ -2050,7 +2071,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, img_data, img_type, user_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, img_data, img_type = std::move(img_type), user_id = std::move(user_id), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     QMetaObject::invokeMethod(m_login_page,
@@ -2060,7 +2081,7 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, img_data, img_type, user_id, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, img_data, img_type = std::move(img_type), user_id = std::move(user_id), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         QMetaObject::invokeMethod(m_login_page,
@@ -2080,13 +2101,13 @@ void MainContext::trySignUp(const QVariantMap &qvm)
                     // 가입 성공시 유저 프로필 이미지 캐시 파일 생성 후 저장
                     if (result == REGISTER_SUCCESS)
                     {
-                        std::string user_cache_path = boost::dll::program_location().parent_path().string() + "/minigram_cache/" + user_id.toStdString() + "/profile_img";
-                        std::filesystem::create_directories(user_cache_path);
+                        QString user_cache_path = QDir::currentPath() + tr("\\minigram_cache\\") + user_id + tr("\\profile_img");
+                        std::filesystem::create_directories(user_cache_path.toStdU16String());
 
                         if (img_data)
                         {
-                            std::string file_path = user_cache_path + "/" + std::to_string(register_date) + "." + img_type;
-                            img_data->save(file_path.c_str(), img_type.c_str());
+                            QString file_path = user_cache_path + tr("\\") + QString::number(register_date) + tr(".") + QString::fromStdString(img_type);
+                            img_data->save(file_path, img_type.c_str());
                         }
                     }
 
@@ -2114,7 +2135,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
 
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_name, img_path, participant_ids, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_name = std::move(session_name), img_path = std::move(img_path), participant_ids = std::move(participant_ids), this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -2126,11 +2147,13 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
 
         if (!img_path.isEmpty())
         {
-            std::wstring img_wpath = img_path.toStdWString();
-            img_data.load(QString::fromWCharArray(img_wpath.c_str()));
-            img_type = std::filesystem::path(img_wpath).extension().string();
-            if (!img_type.empty())
-                img_type.erase(img_type.begin());
+            // std::wstring img_wpath = img_path.toStdWString();
+            // img_data.load(QString::fromWCharArray(img_wpath.c_str()));
+            // img_type = std::filesystem::path(img_wpath).extension().string();
+            // if (!img_type.empty())
+            //     img_type.erase(img_type.begin());
+
+            img_data.load(img_path);
 
             size_t img_size = img_data.byteCount();
             while (5242880 < img_size) // 이미지 크기가 5MB를 초과하면 계속 축소함
@@ -2187,8 +2210,9 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
 
                     if (json_txt.empty())
                     {
-                        QMetaObject::invokeMethod(m_session_list_view,
+                        QMetaObject::invokeMethod(m_main_page,
                                                   "addSession",
+                                                  Qt::BlockingQueuedConnection,
                                                   Q_ARG(QVariant, QVariant::fromValue(qvm)));
                         central_server.CloseRequest(session->GetID());
                         is_ready.store(true);
@@ -2199,13 +2223,13 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                     boost::json::value json_data = boost::json::parse(json_txt, ec);
                     auto session_data = json_data.as_object();
 
-                    QString session_id = StrToUtf8(session_data["session_id"].as_string().c_str()).c_str(),
-                            session_name = StrToUtf8(session_data["session_name"].as_string().c_str()).c_str(),
-                            session_img_path = StrToUtf8(session_data["session_img_name"].as_string().c_str()).c_str();
+                    QString session_id = QString::fromUtf8(session_data["session_id"].as_string().c_str()),
+                            session_name = QString::fromUtf8(session_data["session_name"].as_string().c_str()),
+                            session_img_name = QString::fromUtf8(session_data["session_img_name"].as_string().c_str());
                     std::vector<unsigned char> session_img;
 
                     std::smatch match;
-                    const std::string &reg_session = session_id.toStdString();
+                    const std::string &reg_session = Utf8ToStr(session_id.toStdString());
                     std::regex_search(reg_session, match, std::regex("_"));
                     size_t time_since_epoch = std::stoull(match.suffix().str());
 
@@ -2215,30 +2239,31 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                     qvm.insert("recentContentType", "");
                     qvm.insert("recentContent", "");
                     qvm.insert("sessionImg", "");
-                    qvm.insert("recentSendDate", StrToUtf8(MillisecondToCurrentDate(time_since_epoch)).c_str());
+                    qvm.insert("recentSendDate", QString::fromUtf8(StrToUtf8(MillisecondToCurrentDate(time_since_epoch)).c_str()));
                     qvm.insert("recentMessageId", -1);
                     qvm.insert("unreadCnt", 0);
 
-                    std::string session_cache_path = boost::dll::program_location().parent_path().string() +
-                                                     "\\minigram_cache\\" +
-                                                     m_user_id.toStdString() +
-                                                     "\\sessions\\" +
-                                                     session_id.toStdString();
+                    QString session_cache_path = QDir::currentPath() +
+                                                 tr("\\minigram_cache\\") +
+                                                 m_user_id +
+                                                 tr("\\sessions\\") +
+                                                 session_id;
 
-                    if (!std::filesystem::exists(session_cache_path))
-                        boost::filesystem::create_directories(session_cache_path);
+                    const std::u16string &session_cache_u16 = session_cache_path.toStdU16String();
+                    if (!std::filesystem::exists(session_cache_u16))
+                        std::filesystem::create_directories(session_cache_u16);
 
-                    if (!session_img_path.isEmpty())
+                    if (!session_img_name.isEmpty())
                     {
                         std::vector<unsigned char> session_img;
                         session->GetResponse().GetData(session_img);
 
-                        std::string img_full_path = session_cache_path + "\\" + session_img_path.toStdString();
-                        std::ofstream of(img_full_path, std::ios::binary);
+                        auto img_full_path = session_cache_path + tr("\\") + session_img_name;
+                        std::ofstream of(std::filesystem::path(img_full_path.toStdU16String()), std::ios::binary);
                         if (of.is_open())
                         {
                             of.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
-                            qvm.insert("sessionImg", StrToUtf8(img_full_path).c_str());
+                            qvm.insert("sessionImg", img_full_path);
                         }
                     }
 
@@ -2246,19 +2271,19 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                     for (int i = 0; i < p_ary.size(); i++)
                     {
                         auto p_data = p_ary[i].as_object();
-                        std::string p_info_path = session_cache_path + "\\participant_data\\" + p_data["user_id"].as_string().c_str(),
-                                    p_img_path = p_info_path + "\\profile_img",
-                                    p_img_name = p_data["user_img_name"].as_string().c_str();
+                        QString p_info_path = session_cache_path + tr("\\participant_data\\") + QString::fromUtf8(p_data["user_id"].as_string().c_str()),
+                                p_img_path = p_info_path + tr("\\profile_img"),
+                                p_img_name = QString::fromUtf8(p_data["user_img_name"].as_string().c_str());
 
-                        if (!std::filesystem::exists(p_img_path))
-                            boost::filesystem::create_directories(p_img_path);
+                        if (!std::filesystem::exists(p_img_path.toStdU16String()))
+                            std::filesystem::create_directories(p_img_path.toStdU16String());
 
-                        if (!p_img_name.empty())
+                        if (!p_img_name.isEmpty())
                         {
                             std::vector<unsigned char> user_img;
                             session->GetResponse().GetData(user_img);
 
-                            std::ofstream of(p_img_path + "\\" + p_img_name, std::ios::binary);
+                            std::ofstream of(std::filesystem::path((p_img_path + tr("\\") + p_img_name).toStdU16String()), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&user_img[0]), user_img.size());
                         }
@@ -2274,7 +2299,7 @@ void MainContext::tryAddSession(const QString &session_name, const QString &img_
                         // }
                     }
 
-                    QMetaObject::invokeMethod(m_session_list_view,
+                    QMetaObject::invokeMethod(m_main_page,
                                               "addSession",
                                               Qt::BlockingQueuedConnection,
                                               Q_ARG(QVariant, QVariant::fromValue(qvm)));
@@ -2297,7 +2322,7 @@ void MainContext::tryDeleteSession(const QString &session_id)
 
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id = std::move(session_id), this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -2308,21 +2333,21 @@ void MainContext::tryDeleteSession(const QString &session_id)
         net_buf += m_user_id;
         net_buf += session_id;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id = std::move(session_id), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id = std::move(session_id), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id = std::move(session_id), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -2334,19 +2359,20 @@ void MainContext::tryDeleteSession(const QString &session_id)
 
                     if (ret)
                     {
-                        QMetaObject::invokeMethod(m_session_list_view,
+                        QMetaObject::invokeMethod(m_main_page,
                                                   "deleteSession",
                                                   Qt::BlockingQueuedConnection,
                                                   Q_ARG(QVariant, session_id));
 
-                        std::string session_cache_path = boost::dll::program_location().parent_path().string() +
-                                                         "\\minigram_cache\\" +
-                                                         m_user_id.toStdString() +
-                                                         "\\sessions\\" +
-                                                         session_id.toStdString();
+                        QString session_cache_path = QDir::currentPath() +
+                                                     tr("\\minigram_cache\\") +
+                                                     m_user_id +
+                                                     tr("\\sessions\\") +
+                                                     session_id;
 
-                        if (std::filesystem::exists(session_cache_path))
-                            std::filesystem::remove_all(session_cache_path);
+                        const std::u16string &session_cache_u16 = session_cache_path.toStdU16String();
+                        if (std::filesystem::exists(session_cache_u16))
+                            std::filesystem::remove_all(session_cache_u16);
                     }
 
                     central_server.CloseRequest(session->GetID());
@@ -2367,7 +2393,7 @@ void MainContext::tryExpelParticipant(const QString &session_id, const QString &
 
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, expeled_id, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id = std::move(session_id), expeled_id = std::move(expeled_id), this](std::shared_ptr<Session> session) mutable -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);
@@ -2378,21 +2404,21 @@ void MainContext::tryExpelParticipant(const QString &session_id, const QString &
         net_buf += session_id;
         net_buf += expeled_id;
 
-        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id, expeled_id, this](std::shared_ptr<Session> session) -> void {
+        central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, session_id = std::move(session_id), expeled_id = std::move(expeled_id), this](std::shared_ptr<Session> session) mutable -> void {
             if (!session.get() || !session->IsValid())
             {
                 is_ready.store(true);
                 return;
             }
 
-            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id, expeled_id, this](std::shared_ptr<Session> session) -> void {
+            central_server.AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [&central_server, session_id = std::move(session_id), expeled_id = std::move(expeled_id), this](std::shared_ptr<Session> session) mutable -> void {
                 if (!session.get() || !session->IsValid())
                 {
                     is_ready.store(true);
                     return;
                 }
 
-                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id, expeled_id, this](std::shared_ptr<Session> session) -> void {
+                central_server.AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [&central_server, session_id = std::move(session_id), expeled_id = std::move(expeled_id), this](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                     {
                         is_ready.store(true);
@@ -2410,16 +2436,17 @@ void MainContext::tryExpelParticipant(const QString &session_id, const QString &
                                                   Q_ARG(QVariant, session_id),
                                                   Q_ARG(QVariant, expeled_id));
 
-                        std::string participant_cache = boost::dll::program_location().parent_path().string() +
-                                                        "\\minigram_cache\\" +
-                                                        m_user_id.toStdString() +
-                                                        "\\sessions\\" +
-                                                        session_id.toStdString() +
-                                                        "\\participant_data\\" +
-                                                        expeled_id.toStdString();
+                        QString participant_cache = QDir::currentPath() +
+                                                    tr("\\minigram_cache\\") +
+                                                    m_user_id +
+                                                    tr("\\sessions\\") +
+                                                    session_id +
+                                                    tr("\\participant_data\\") +
+                                                    expeled_id;
 
-                        if (std::filesystem::exists(participant_cache))
-                            std::filesystem::remove_all(participant_cache);
+                        const std::u16string &participant_cache_u16 = participant_cache.toStdU16String();
+                        if (std::filesystem::exists(participant_cache_u16))
+                            std::filesystem::remove_all(participant_cache_u16);
                     }
 
                     central_server.CloseRequest(session->GetID());
@@ -2440,7 +2467,7 @@ void MainContext::tryInviteParticipant(const QString &session_id, const QString 
 
     auto &central_server = m_window.GetServerHandle();
 
-    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id, invited_id, this](std::shared_ptr<Session> session) -> void {
+    central_server.AsyncConnect(SERVER_IP, SERVER_PORT, [&central_server, session_id = std::move(session_id), invited_id = std::move(invited_id), this](std::shared_ptr<Session> session) -> void {
         if (!session.get() || !session->IsValid())
         {
             is_ready.store(true);

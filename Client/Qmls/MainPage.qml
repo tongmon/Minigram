@@ -33,6 +33,11 @@ Rectangle {
         sideBarView.sideBarViewMap["session"].addSession(sessionInfo)
     }
 
+    function deleteSession(sessionId)
+    {
+        sideBarView.sideBarViewMap["session"].deleteSession(sessionId)
+    }
+
     function addChat(chatInfo)
     {
         sideBarView.sideBarViewMap["session"].sessionViewMap[chatInfo["sessionId"]].addChat(chatInfo)
@@ -192,6 +197,16 @@ Rectangle {
     function addContactRequest(requesterInfo)
     {
         contactRequestModel.append(requesterInfo)
+    }
+
+    function processSendContactRequest(result)
+    {
+        sideBarView.sideBarViewMap["contact"].processSendContactRequest(result)
+    }
+
+    function processContactRequest(acceptance, reqInfo)
+    {
+        sideBarView.sideBarViewMap["contact"].processContactRequest(acceptance, reqInfo)
     }
 
     function deleteContact(userId)
