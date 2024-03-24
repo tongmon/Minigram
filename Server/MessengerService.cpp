@@ -81,7 +81,7 @@ void MessengerService::LoginHandling()
         *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
             soci::use(ip), soci::use(port), soci::use(id);
 
-        std::filesystem::path path_info = img_path;
+        std::filesystem::path path_info{reinterpret_cast<const char8_t *>(img_path.c_str())};
         std::vector<unsigned char> raw_img;
         if (!img_path.empty() && user_img_date < std::stoull(path_info.stem().string()))
         {
@@ -773,14 +773,14 @@ void MessengerService::RefreshSessionHandling()
         std::filesystem::path path_data;
         if (!p_img_path.empty())
         {
-            path_data = p_img_path;
+            path_data = reinterpret_cast<const char8_t *>(p_img_path.c_str());
             img_update_date = std::stoull(path_data.stem().string());
         }
 
         if ((p_img_cache.find(participant_id) != p_img_cache.end() && img_update_date > p_img_cache[participant_id]) ||
             (p_img_cache.find(participant_id) == p_img_cache.end() && img_update_date))
         {
-            std::ifstream inf(p_img_path, std::ios::binary);
+            std::ifstream inf(path_data, std::ios::binary);
             if (inf.is_open())
             {
                 p_obj["user_img_name"] = path_data.filename().string();

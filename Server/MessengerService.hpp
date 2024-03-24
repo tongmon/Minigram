@@ -23,7 +23,7 @@ class MessengerService : public Service
     // void TextMessageHandling();
     void ChatHandling();
     void RefreshSessionHandling(); // reader id 갱신을 위해 각 클라로 정보 갱신 소식을 쏴줘야 함
-    void FetchMoreMessageHandling();
+    void FetchMoreMessageHandling(); //! 여기서 부터 Utf-8 작업 시작해야 됨
     void GetSessionListHandling();
     void GetContactListHandling();
     void DeleteContactHandling();
