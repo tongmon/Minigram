@@ -7,79 +7,83 @@
 #include <string>
 #include <vector>
 
-inline std::wstring StrToWStr(const std::string &str)
+// windows only
+inline std::u16string AnsiToUtf16(const std::string &str)
 {
     if (str.empty())
-        return L"";
+        return u"";
 
     int len = MultiByteToWideChar(CP_ACP, 0, str.c_str(), (int)str.size(), nullptr, 0);
     if (len <= 0)
-        return L"";
+        return u"";
 
-    std::wstring wstr(len, 0);
-    MultiByteToWideChar(CP_ACP, 0, str.c_str(), (int)str.size(), &wstr.at(0), len);
-    return wstr;
+    std::u16string u16str(len, 0);
+    MultiByteToWideChar(CP_ACP, 0, str.c_str(), (int)str.size(), reinterpret_cast<wchar_t *>(&u16str.at(0)), len);
+    return u16str;
 }
 
-inline std::string WStrToStr(const std::wstring &wstr)
+// windows only
+inline std::string Utf16ToAnsi(const std::u16string &u16str)
 {
-    if (wstr.empty())
+    if (u16str.empty())
         return "";
 
-    int len = WideCharToMultiByte(CP_ACP, 0, &wstr.at(0), (int)wstr.length(), nullptr, 0, nullptr, nullptr);
+    int len = WideCharToMultiByte(CP_ACP, 0, reinterpret_cast<const wchar_t *>(&u16str.at(0)), (int)u16str.length(), nullptr, 0, nullptr, nullptr);
     if (len <= 0)
         return "";
 
     std::string str(len, 0);
-    WideCharToMultiByte(CP_ACP, 0, &wstr.at(0), (int)wstr.length(), &str.at(0), len, nullptr, nullptr);
+    WideCharToMultiByte(CP_ACP, 0, reinterpret_cast<const wchar_t *>(&u16str.at(0)), (int)u16str.length(), &str.at(0), len, nullptr, nullptr);
     return str;
 }
 
-inline std::string StrToUtf8(const std::string &str)
+// windows only
+inline std::u8string AnsiToUtf8(const std::string &str)
 {
-    std::wstring wstr = std::move(StrToWStr(str));
-    if (wstr.empty())
-        return "";
+    std::u16string u16str = std::move(AnsiToUtf16(str));
+    if (u16str.empty())
+        return u8"";
 
-    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), NULL, 0, NULL, NULL);
+    int len = WideCharToMultiByte(CP_UTF8, 0, reinterpret_cast<const wchar_t *>(u16str.c_str()), (int)u16str.length(), NULL, 0, NULL, NULL);
     if (len <= 0)
-        return "";
+        return u8"";
 
-    std::string utf_8(len, 0);
-    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), &utf_8.at(0), len, NULL, NULL);
+    std::u8string utf_8(len, 0);
+    WideCharToMultiByte(CP_UTF8, 0, reinterpret_cast<const wchar_t *>(u16str.c_str()), (int)u16str.length(), reinterpret_cast<char *>(&utf_8.at(0)), len, NULL, NULL);
     return utf_8;
 }
 
-inline std::wstring Utf8ToWStr(const std::string &utf_8)
+// windows only
+inline std::u16string Utf8ToUtf16(const std::u8string &utf_8)
 {
     if (utf_8.empty())
-        return L"";
+        return u"";
 
-    int len = MultiByteToWideChar(CP_UTF8, 0, utf_8.c_str(), (int)utf_8.length(), NULL, NULL);
+    int len = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char *>(utf_8.c_str()), (int)utf_8.length(), NULL, NULL);
     if (len <= 0)
-        return L"";
+        return u"";
 
-    std::wstring wstr(len, 0);
-    MultiByteToWideChar(CP_UTF8, 0, utf_8.c_str(), (int)utf_8.length(), &wstr.at(0), len);
-    return wstr;
+    std::u16string u16str(len, 0);
+    MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char *>(utf_8.c_str()), (int)utf_8.length(), reinterpret_cast<wchar_t *>(&u16str.at(0)), len);
+    return u16str;
 }
 
-inline std::string Utf8ToStr(const std::string &utf_8)
+inline std::string Utf8ToStr(const std::u8string &utf_8)
 {
-    return WStrToStr(Utf8ToWStr(utf_8));
+    return Utf16ToAnsi(Utf8ToUtf16(utf_8));
 }
 
-inline std::string WStrToUtf8(const std::wstring &wstr)
+inline std::u8string Utf16ToUtf8(const std::u16string &u16str)
 {
-    if (wstr.empty())
-        return "";
+    if (u16str.empty())
+        return u8"";
 
-    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), NULL, 0, NULL, NULL);
+    int len = WideCharToMultiByte(CP_UTF8, 0, reinterpret_cast<const wchar_t *>(u16str.c_str()), (int)u16str.length(), NULL, 0, NULL, NULL);
     if (len <= 0)
-        return "";
+        return u8"";
 
-    std::string uft_8(len, 0);
-    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.length(), &uft_8.at(0), len, NULL, NULL);
+    std::u8string uft_8(len, 0);
+    WideCharToMultiByte(CP_UTF8, 0, reinterpret_cast<const wchar_t *>(u16str.c_str()), (int)u16str.length(), reinterpret_cast<char *>(&uft_8.at(0)), len, NULL, NULL);
     return uft_8;
 }
 

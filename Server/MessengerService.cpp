@@ -93,7 +93,7 @@ void MessengerService::LoginHandling()
         net_buf += user_name;
         net_buf += user_info;
         net_buf += raw_img;
-        net_buf += img_path.empty() ? img_path : path_info.filename().string();
+        net_buf += img_path.empty() ? "" : reinterpret_cast<const char *>(path_info.filename().u8string().c_str());
     }
 
     m_request = std::move(net_buf);
@@ -783,7 +783,7 @@ void MessengerService::RefreshSessionHandling()
             std::ifstream inf(path_data, std::ios::binary);
             if (inf.is_open())
             {
-                p_obj["user_img_name"] = path_data.filename().string();
+                p_obj["user_img_name"] = reinterpret_cast<const char *>(path_data.filename().u8string().c_str());
                 p_raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
             }
         }
@@ -970,7 +970,7 @@ void MessengerService::GetSessionListHandling()
         std::filesystem::path path_data;
         if (!img_path.empty())
         {
-            path_data = img_path;
+            path_data = reinterpret_cast<const char8_t *>(img_path.c_str());
             img_update_date = std::stoull(path_data.stem().string());
         }
 
@@ -978,10 +978,10 @@ void MessengerService::GetSessionListHandling()
         if ((session_cache.find(session_id) != session_cache.end() && img_update_date > session_cache[session_id]) ||
             (session_cache.find(session_id) == session_cache.end() && img_update_date))
         {
-            std::ifstream inf(img_path, std::ios::binary);
+            std::ifstream inf(path_data, std::ios::binary);
             if (inf.is_open())
             {
-                session_data["session_img_name"] = path_data.filename().string();
+                session_data["session_img_name"] = reinterpret_cast<const char *>(path_data.filename().u8string().c_str());
                 raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
             }
         }
@@ -1107,7 +1107,7 @@ void MessengerService::GetContactListHandling()
         std::filesystem::path path_data;
         if (!img_path.empty())
         {
-            path_data = img_path;
+            path_data = reinterpret_cast<const char8_t *>(img_path.c_str());
             img_update_date = std::stoull(path_data.stem().string());
         }
 
@@ -1115,10 +1115,10 @@ void MessengerService::GetContactListHandling()
         if ((contact_cache.find(acquaintance_id) != contact_cache.end() && img_update_date > contact_cache[acquaintance_id]) ||
             (contact_cache.find(acquaintance_id) == contact_cache.end() && img_update_date))
         {
-            std::ifstream inf(img_path, std::ios::binary);
+            std::ifstream inf(path_data, std::ios::binary);
             if (inf.is_open())
             {
-                acquaintance_data["user_img"] = path_data.filename().string();
+                acquaintance_data["user_img"] = reinterpret_cast<const char *>(path_data.filename().u8string().c_str());
                 raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
             }
         }
@@ -1250,7 +1250,7 @@ void MessengerService::GetContactRequestListHandling()
         std::filesystem::path path_data;
         if (!profile_path.empty())
         {
-            path_data = profile_path;
+            path_data = reinterpret_cast<const char8_t *>(profile_path.c_str());
             img_update_date = std::atoll(path_data.stem().string().c_str());
         }
 
@@ -1260,10 +1260,10 @@ void MessengerService::GetContactRequestListHandling()
         if ((requester_cache.find(acq_id) != requester_cache.end() && img_update_date > requester_cache[acq_id]) ||
             (requester_cache.find(acq_id) == requester_cache.end() && img_update_date))
         {
-            std::ifstream inf(profile_path, std::ios::binary);
+            std::ifstream inf(path_data, std::ios::binary);
             if (inf.is_open())
             {
-                requester_info["user_img"] = path_data.filename().string();
+                requester_info["user_img"] = reinterpret_cast<const char *>(path_data.filename().u8string().c_str());
                 raw_imgs.push_back(std::move(std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {})));
             }
         }
@@ -1323,13 +1323,15 @@ void MessengerService::ProcessContactRequestHandling()
         *m_sql << "select user_nm, user_info, img_path from user_tb where user_id=:uid",
             soci::into(req_name), soci::into(req_info), soci::into(req_img_path), soci::use(req_id);
 
+        std::filesystem::path req_img_fpath = reinterpret_cast<const char8_t *>(req_img_path.c_str());
+
         net_buf += req_name;
         net_buf += req_info;
-        net_buf += std::filesystem::path(req_img_path).filename().string();
+        net_buf += reinterpret_cast<const char *>(req_img_fpath.filename().u8string().c_str());
 
         if (!req_img_path.empty())
         {
-            std::ifstream inf(req_img_path, std::ios::binary);
+            std::ifstream inf(req_img_fpath, std::ios::binary);
             if (inf.is_open())
                 net_buf += std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {});
         }
@@ -1390,12 +1392,13 @@ void MessengerService::SignUpHandling()
 
         if (!user_img.empty())
         {
-            img_path = boost::dll::program_location().parent_path().string() + "\\server_data\\" + user_id + "\\profile_img";
-            boost::filesystem::create_directories(img_path);
+            img_path = reinterpret_cast<const char *>(AnsiToUtf8(boost::dll::program_location().parent_path().string()).c_str()); // + "\\server_data\\" + user_id + "\\profile_img";
+            img_path += ("\\server_data\\" + user_id + "\\profile_img");
+            std::filesystem::create_directories(img_path);
 
             img_path += ("\\" + std::to_string(cur_date) + "." + img_type);
 
-            std::ofstream img_file(img_path, std::ios::binary | std::ios::trunc);
+            std::ofstream img_file(std::filesystem::path(reinterpret_cast<const char8_t *>(img_path.c_str())), std::ios::binary | std::ios::trunc);
             if (img_file.is_open())
                 img_file.write(reinterpret_cast<char *>(&user_img[0]), user_img.size());
         }

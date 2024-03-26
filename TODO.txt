@@ -115,6 +115,10 @@ std::string이나 const char*를 그대로 박아버리고 싶다면 QByteArray�
 
 7. Utf8ToStr -> Utf8ToANSI / boost::dll::program_location().parent_path().string() -> QDir::currentPath()
 
+std::filesystem::path, std::ifstream, std::ofstream 
+
+boost::filesystem -> std::filesystem
+
 - 아직 남은 기능
 1. 채팅 더 불러오기 -> done
 2. 친구 삭제 -> done
