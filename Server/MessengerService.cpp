@@ -1503,7 +1503,7 @@ void MessengerService::AddSessionHandling()
         // 이미 같은 세션이 있으면 바로 종료
         if (same_cnt == participant_ary.size())
         {
-            *net_buf += std::string();
+            *net_buf += "";
             m_request = std::move(*net_buf);
 
             boost::asio::async_write(*m_sock,
@@ -1520,7 +1520,10 @@ void MessengerService::AddSessionHandling()
         }
     }
 
-    auto img_path = boost::dll::program_location().parent_path().string() + "\\server_data\\sessions\\" + session_id + "\\session_img";
+    // std::string img_path = reinterpret_cast<const char *>(AnsiToUtf8(boost::dll::program_location().parent_path().string()).c_str());
+    // img_path += ("\\server_data\\sessions\\" + session_id + "\\session_img");
+
+    std::filesystem::path img_path = AnsiToUtf8(boost::dll::program_location().parent_path().string());
 
     // 세션 이미지 경로 생성
     if (!std::filesystem::exists(img_path))
@@ -1528,7 +1531,7 @@ void MessengerService::AddSessionHandling()
 
     if (!session_img.empty())
     {
-        img_path += ("\\" + cur_date + "." + img_type);
+        img_path /= cur_date + "." + img_type;
         std::ofstream img_file(img_path, std::ios::binary);
         if (img_file.is_open())
             img_file.write(reinterpret_cast<char *>(&session_img[0]), session_img.size());
@@ -1536,8 +1539,10 @@ void MessengerService::AddSessionHandling()
     else
         img_path.clear();
 
+    std::string img_path_db = reinterpret_cast<const char *>(img_path.u8string().c_str());
+
     *m_sql << "insert into session_tb values(:sid, :sname, :sinfo, :simgpath)",
-        soci::use(session_id), soci::use(session_name), soci::use(session_info), soci::use(img_path);
+        soci::use(session_id), soci::use(session_name), soci::use(session_info), soci::use(img_path_db);
 
     std::vector<LoginData> login_data(participant_ary.size());
 
@@ -1565,7 +1570,7 @@ void MessengerService::AddSessionHandling()
     session_data["session_id"] = session_id;
     session_data["session_name"] = session_name;
     session_data["session_info"] = session_info;
-    session_data["session_img_name"] = img_path.empty() ? img_path : std::filesystem::path(img_path).filename().string();
+    session_data["session_img_name"] = img_path.empty() ? "" : reinterpret_cast<const char *>(img_path.filename().u8string().c_str()); // std::filesystem::path(img_path).filename().string();
 
     for (const auto &p_data : participant_ary)
     {
@@ -1586,7 +1591,7 @@ void MessengerService::AddSessionHandling()
         if (p_data.user_img_path.empty())
             continue;
 
-        std::ifstream inf(p_data.user_img_path, std::ios::binary);
+        std::ifstream inf(std::filesystem::path(reinterpret_cast<const char8_t *>(p_data.user_img_path.c_str())), std::ios::binary);
         if (inf.is_open())
             *net_buf += std::vector<unsigned char>(std::istreambuf_iterator<char>(inf), {});
     }
