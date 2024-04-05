@@ -1524,6 +1524,7 @@ void MessengerService::AddSessionHandling()
     // img_path += ("\\server_data\\sessions\\" + session_id + "\\session_img");
 
     std::filesystem::path img_path = AnsiToUtf8(boost::dll::program_location().parent_path().string());
+    img_path = img_path / "server_data" / "sessions" / session_id / "session_img";
 
     // 세션 이미지 경로 생성
     if (!std::filesystem::exists(img_path))
@@ -1578,7 +1579,7 @@ void MessengerService::AddSessionHandling()
         p_obj["user_id"] = p_data.user_id;
         p_obj["user_name"] = p_data.user_name;
         p_obj["user_info"] = p_data.user_info;
-        p_obj["user_img_name"] = p_data.user_img_path.empty() ? p_data.user_img_path : std::filesystem::path(p_data.user_img_path).filename().string();
+        p_obj["user_img_name"] = p_data.user_img_path.empty() ? "" : reinterpret_cast<const char *>(std::filesystem::path(reinterpret_cast<const char8_t *>(p_data.user_img_path.c_str())).filename().u8string().c_str());
         p_ary.push_back(p_obj);
     }
 
