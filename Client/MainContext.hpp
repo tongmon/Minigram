@@ -44,7 +44,7 @@ class MainContext : public QObject
     void StartScreen();
 
     // 서버에서 클라로 전송할 때 대응하는 함수들
-    void RecieveChat(Service *service);
+    void RecieveChat(Service *service); //! 다시 점검
     void RefreshReaderIds(Service *service);
     void RecieveContactRequest(Service *service);
     void RecieveAddSession(Service *service);

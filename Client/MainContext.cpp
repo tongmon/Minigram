@@ -107,7 +107,7 @@ void MainContext::RecieveChat(Service *service)
                                  QVariantMap refresh_info;
                                  refresh_info.insert("sessionId", session_id);
                                  refresh_info.insert("recentSenderId", sender_id);
-                                 refresh_info.insert("recentSendDate", StrToUtf8(MillisecondToCurrentDate(send_date)).c_str());
+                                 refresh_info.insert("recentSendDate", MillisecondToCurrentDate(send_date));
                                  refresh_info.insert("recentContentType", static_cast<int>(content_type));
                                  refresh_info.insert("recentMessageId", message_id);
                                  refresh_info.insert("recentContent", content);

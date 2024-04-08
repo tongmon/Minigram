@@ -5,12 +5,43 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstring>
 #include <ctime>
 #include <map>
 #include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include <QString>
+
+inline std::string QStringToAnsi(const QString &qstr)
+{
+    if (qstr.isEmpty())
+        return "";
+
+    int len = WideCharToMultiByte(CP_ACP, 0, reinterpret_cast<const wchar_t *>(qstr.utf16()), qstr.length(), nullptr, 0, nullptr, nullptr);
+    if (len <= 0)
+        return "";
+
+    std::string ansi(len, 0);
+    WideCharToMultiByte(CP_ACP, 0, reinterpret_cast<const wchar_t *>(qstr.utf16()), qstr.length(), &ansi.at(0), len, nullptr, nullptr);
+    return ansi;
+}
+
+inline QString AnsiToQString(const std::string &ansi)
+{
+    if (ansi.empty())
+        return QString();
+
+    int len = MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), (int)ansi.size(), nullptr, 0);
+    if (len <= 0)
+        return QString();
+
+    std::wstring wstr(len, 0);
+    MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), (int)ansi.size(), &wstr.at(0), len);
+    return QString::fromStdWString(wstr);
+}
 
 inline std::wstring StrToWStr(const std::string &str)
 {
@@ -203,7 +234,7 @@ inline std::string DecodeURL(const std::string &str)
     return result;
 }
 
-inline std::string MillisecondToCurrentDate(long long time_since_epoch, const std::string time_format = "%y-%m-%d %H:%M") // "%F %T"
+inline QString MillisecondToCurrentDate(long long time_since_epoch, const QString &time_format = u8"%y-%m-%d %H:%M") // "%F %T"
 {
     using namespace std::chrono;
 
@@ -215,11 +246,12 @@ inline std::string MillisecondToCurrentDate(long long time_since_epoch, const st
     localtime_s(&t, &cur_time_t); // Don't use this with fork() function!
 
     char buf[MAX_PATH];
-    std::strftime(buf, MAX_PATH, time_format.c_str(), &t);
-    std::string time_buf = buf;
+    auto ansi_format = QStringToAnsi(time_format);
+    std::strftime(buf, MAX_PATH, ansi_format.c_str(), &t);
+    QString time_buf = AnsiToQString(buf);
 
-    if (time_format.back() == 'T' || time_format.back() == 'S')
-        time_buf += ("." + std::to_string(f_sec));
+    if (ansi_format.back() == 'T' || ansi_format.back() == 'S')
+        time_buf += ("." + QString::number(f_sec));
 
     return time_buf;
 }
