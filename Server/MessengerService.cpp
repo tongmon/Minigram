@@ -1763,7 +1763,7 @@ void MessengerService::SendContactRequestHandling()
                 std::vector<unsigned char> raw_img;
                 if (!profile_path.empty())
                 {
-                    std::ifstream inf(profile_path, std::ios::binary);
+                    std::ifstream inf(std::filesystem::path(reinterpret_cast<const char8_t *>(profile_path.c_str())), std::ios::binary);
                     if (inf.is_open())
                         raw_img.assign(std::istreambuf_iterator<char>(inf), {});
                 }
@@ -1772,7 +1772,7 @@ void MessengerService::SendContactRequestHandling()
                 net_buf += user_id_to_add;
                 net_buf += user_name;
                 net_buf += user_info;
-                net_buf += profile_path.empty() ? std::string() : std::filesystem::path(profile_path).filename().string();
+                net_buf += profile_path.empty() ? "" : reinterpret_cast<const char *>(std::filesystem::path(reinterpret_cast<const char8_t *>(profile_path.c_str())).filename().u8string().c_str());
                 net_buf += raw_img;
 
                 peer->AsyncWrite(session->GetID(), std::move(net_buf), [peer](std::shared_ptr<Session> session) -> void {
