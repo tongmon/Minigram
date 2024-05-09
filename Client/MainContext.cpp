@@ -96,7 +96,7 @@ void MainContext::RecieveChat(Service *service)
 
     boost::asio::async_write(*service->sock,
                              net_buf->AsioBuffer(),
-                             [this, service, net_buf, is_foreground, is_current_session, message_id, session_id = std::move(session_id), sender_id = std::move(sender_id), send_date, content_type, content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
+                             [this, service, net_buf, is_foreground, is_current_session, message_id, send_date, content_type, session_id = std::move(session_id), sender_id = std::move(sender_id), content = std::move(content)](const boost::system::error_code &ec, std::size_t bytes_transferred) mutable {
                                  if (ec != boost::system::errc::success)
                                  {
                                      delete service;
