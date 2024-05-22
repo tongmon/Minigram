@@ -82,6 +82,17 @@ Rectangle {
         chatSessionModel.deleteParticipantData(sessionId, participantId)
     }
 
+    // 세션 참가자의 정보 혹은 주소록의 정보를 획득한다.
+    // 매칭되는 세션 참가자가 있다면 해당 참가자의 정보를 반환한다.
+    // 매칭되는 세션 참가자가 없다면 주소록에서 정보를 가져와 반환한다.
+    // 세션 참가자와 주소록 모두 매칭되는 것이 없다면 Unknown 값을 반환한다.
+    // 반환 값은 밑과 같음
+    // {
+	//     getType: "Participant, Contact, UnKnown 중 하나",
+	//     participantName: "참가자 이름",
+	//     participantInfo: "참가자 정보",
+	//     participantImgPath: "참가자 이미지 경로"
+    // }
     function getParticipantData(sessionId, participantId)
     {
         var pData = chatSessionModel.getParticipantData(sessionId, participantId)
