@@ -877,7 +877,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
                     QVariantMap update_info;
                     update_info.insert("sessionId", session_id);
                     update_info.insert("recentSenderId", m_user_id);
-                    update_info.insert("recentSendDate", QString::fromUtf8(StrToUtf8(MillisecondToCurrentDate(send_date)).c_str()));
+                    update_info.insert("recentSendDate", MillisecondToCurrentDate(send_date));
                     update_info.insert("recentContentType", static_cast<int>(content_type));
                     update_info.insert("recentMessageId", message_id);
 
@@ -891,11 +891,13 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
                         break;
                     }
 
+                    // 세션 뷰에 채팅 추가
                     QMetaObject::invokeMethod(m_main_page,
                                               "addChat",
                                               Qt::BlockingQueuedConnection,
                                               Q_ARG(QVariant, QVariant::fromValue(chat_info)));
 
+                    // 사이드 뷰에 해당 세션 정보 갱신
                     QMetaObject::invokeMethod(m_main_page,
                                               "updateSessionData",
                                               Qt::QueuedConnection,
@@ -909,6 +911,7 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
     });
 }
 
+// 사이드 뷰에 있는 사용자가 참가중인 세션의 리스트 정보들을 서버에서 받아와 초기화하는 경우
 // Server에 전달하는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryGetSessionList()
@@ -928,13 +931,13 @@ void MainContext::tryGetSessionList()
             return;
         }
 
-        QString file_path = QDir::currentPath() + tr("\\minigram_cache\\") + m_user_id + tr("\\sessions");
+        QString file_path = QDir::currentPath() + "\\minigram_cache\\" + m_user_id + "\\sessions";
         std::vector<std::pair<QString, int64_t>> session_data;
 
         if (!std::filesystem::exists(file_path.toStdU16String()))
             std::filesystem::create_directories(file_path.toStdU16String());
 
-        // 세션 이미지가 저장되어 있는지 캐시 파일을 찾아봄
+        // 이미 저장된 세션 이미지가 존재하는지 확인함
         std::filesystem::directory_iterator it{file_path.toStdU16String()};
         while (it != std::filesystem::end(it))
         {
@@ -950,6 +953,7 @@ void MainContext::tryGetSessionList()
                         img_update_date = std::atoll(child->path().stem().string().c_str());
                 }
 
+                // 이미 세션 이미지가 존재하면 서버에 해당 이미지가 언제 생성되었는지 정보를 알려주고 더 최신 이미지가 서버에 존재한다면 이미지를 갈아껴줌
                 if (img_update_date)
                     session_data.push_back({QString::fromStdU16String(it->path().filename().u16string()), img_update_date});
             }
@@ -957,12 +961,12 @@ void MainContext::tryGetSessionList()
         }
 
         NetworkBuffer net_buf(SESSIONLIST_INITIAL_TYPE);
-        net_buf += m_user_id;
-        net_buf += session_data.size();
+        net_buf += m_user_id;           // 세션 리스트를 받을 사용자 ID
+        net_buf += session_data.size(); // 세션 캐시 데이타 개수
         for (const auto &data : session_data)
         {
-            net_buf += data.first;
-            net_buf += data.second;
+            net_buf += data.first;  // 세션 이미지 이름 (사실상 이미지 파일 확장자를 알기 위함)
+            net_buf += data.second; // 세션 이미지 갱신 날짜
         }
 
         central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, file_path = std::move(file_path), this](std::shared_ptr<Session> session) mutable -> void {
@@ -986,8 +990,30 @@ void MainContext::tryGetSessionList()
                         return;
                     }
 
+                    // json 구조
+                    // {
+                    //     "session_init_data" : [
+                    //         {
+                    //             "session_id" : "세션 id",
+                    //             "session_name" : "세션 이름",
+                    //             "session_img_name" : "이미지 이름",
+                    //             "session_info" : "",
+                    //             "unread_count" : int
+                    //
+                    //             * 마지막으로 생성된 채팅 정보 *
+                    //             "chat_info" : {
+                    //                 "sender_id" : "보낸 사람 USER_ID",
+                    //                 "send_date" : int64(since_epoch_time),
+                    //                 "message_id" : int64,
+                    //                 "content_type" : int,
+                    //                 "content" : "7LGE7YyF7J2EIOyzkOuztOyekH4"
+                    //             }
+                    //         },
+                    //         ...
+                    //     ]
+                    // }
                     std::string json_txt;
-                    session->GetResponse().GetData(json_txt); // json은 이미 UTF-8 인코딩이 되어 있는 상태라 그냥 받음
+                    session->GetResponse().GetData(json_txt);
 
                     boost::json::error_code ec;
                     boost::json::value json_data = boost::json::parse(json_txt, ec);
@@ -998,9 +1024,9 @@ void MainContext::tryGetSessionList()
                     {
                         auto session_data = session_array[i].as_object();
 
+                        // unread_count가 0 미만이면 추방된 것으로 간주
                         if (session_data["unread_count"].as_int64() < 0)
                         {
-                            // 채팅방 추방 처리
                             continue;
                         }
 
@@ -1013,7 +1039,7 @@ void MainContext::tryGetSessionList()
                         qvm.insert("sessionName", session_name);
                         qvm.insert("unreadCnt", session_data["unread_count"].as_int64());
 
-                        QString session_dir = file_path + tr("\\") + session_id;
+                        QString session_dir = file_path + "\\" + session_id;
 
                         // 세션 캐시가 없으면 생성함
                         if (!std::filesystem::exists(session_dir.toStdU16String()))
@@ -1022,19 +1048,19 @@ void MainContext::tryGetSessionList()
                         QString session_img;
                         std::filesystem::directory_iterator img_dir{session_dir.toStdU16String()};
                         if (img_dir != std::filesystem::end(img_dir))
-                            session_img = QString::fromStdU16String(img_dir->path().u16string()); // WStrToUtf8(img_dir->path().wstring()); // Utf8ToStr(WStrToUtf8(img_dir->path().wstring())); // string().c_str();
+                            session_img = AnsiToQString(img_dir->path().string());
 
                         if (session_img_name.isEmpty())
                         {
-                            qvm.insert("sessionImg", session_img);
-                            spdlog::trace(session_img.toStdString());
+                            qvm.insert("sessionImg", session_img); // 서버에서 전달한 세션 이미지가 따로 없으면 캐시되어있는 세션 이미지를 사용
+                            spdlog::trace(QStringToAnsi(session_img));
                         }
                         else
                         {
                             std::vector<unsigned char> img_data;
-                            session->GetResponse().GetData(img_data);
+                            session->GetResponse().GetData(img_data); // 서버에서 별도의 세션 이미지를 받은 경우 캐시 이미지를 새로 저장함
 
-                            QString session_img_path = session_dir + tr("\\") + session_img_name; // session_dir / session_data["session_img_name"].as_string().c_str();
+                            QString session_img_path = session_dir + "\\" + session_img_name;
                             std::ofstream of(std::filesystem::path(session_img_path.toStdU16String()), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&img_data[0]), img_data.size());
@@ -1042,8 +1068,10 @@ void MainContext::tryGetSessionList()
                             qvm.insert("sessionImg", session_img_path);
                         }
 
+                        auto &chat_info = session_data["chat_info"].as_object();
+
                         // 채팅방에 대화가 아무것도 없는 경우
-                        if (session_data["chat_info"].as_object().empty())
+                        if (chat_info.empty())
                         {
                             qvm.insert("recentSendDate", "");
                             qvm.insert("recentSenderId", "");
@@ -1053,9 +1081,7 @@ void MainContext::tryGetSessionList()
                         }
                         else
                         {
-                            auto chat_info = session_data["chat_info"].as_object();
-
-                            qvm.insert("recentSendDate", QString::fromUtf8(StrToUtf8(MillisecondToCurrentDate(chat_info["send_date"].as_int64())).c_str()));
+                            qvm.insert("recentSendDate", MillisecondToCurrentDate(chat_info["send_date"].as_int64()));
                             qvm.insert("recentSenderId", QString::fromUtf8(chat_info["sender_id"].as_string().c_str()));
                             qvm.insert("recentContentType", chat_info["content_type"].as_int64());
 
@@ -1081,6 +1107,7 @@ void MainContext::tryGetSessionList()
                         //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
+                    // 세션 정보들 한 번에 사이드 뷰 세션 리스트에 추가
                     QMetaObject::invokeMethod(m_main_page,
                                               "addSessions",
                                               Qt::QueuedConnection,
@@ -1094,6 +1121,8 @@ void MainContext::tryGetSessionList()
     });
 }
 
+// 사용자가 다른 프로세스를 이용하다가 메신저 창을 누르면서 다시 이용하는 경우 켜져있는 현재 세션 최신화가 안되어있기에 새로 세션 정보를 받아야 하는데 이런 경우
+// 사이드 뷰의 세션 리스트 최신화는 안하고 메인 뷰의 채팅 내역 최신화를 하며 해당 세션에 참가자 변동이 있을 수도 있기에 참가자 정보도 서버에서 받아와 재설정함
 // Server에 전달하는 버퍼 형식: user_id | session_id | 읽어올 메시지 수 | 배열 수 | [ participant id, img date ]
 // Server에서 받는 버퍼 형식: DB Info.txt 참고
 void MainContext::tryRefreshSession(const QString &session_id)
@@ -1113,6 +1142,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
             return;
         }
 
+        // 현재 세션 데이터 획득
         QVariant ret;
         QMetaObject::invokeMethod(m_main_page,
                                   "getSessionData",
@@ -1121,10 +1151,11 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                   Q_ARG(QVariant, session_id));
         QVariantMap session_data = ret.toMap();
 
-        int unread_cnt = session_data["unreadCnt"].toInt(),
-            recent_message_id = session_data["recentMessageId"].toInt(),
-            chat_cnt = session_data["chatCnt"].toInt();
+        int unread_cnt = session_data["unreadCnt"].toInt(),              // 읽지 않은 메시지 개수
+            recent_message_id = session_data["recentMessageId"].toInt(), // 최신 메시지 ID
+            chat_cnt = session_data["chatCnt"].toInt();                  // 메인 뷰 채팅방에 들어있는 채팅 개수 (DB에 있는 전체 채팅 개수가 아니라 클라에서 부분적으로 읽어온 채팅 개수)
 
+        // 읽지 않은 채팅이 없고 채팅 개수가 1 이상인 세션은 최신 상태이기에 최신화를 해줄 필요가 없다.
         if (!unread_cnt && chat_cnt)
         {
             central_server.CloseRequest(session->GetID());
@@ -1132,12 +1163,12 @@ void MainContext::tryRefreshSession(const QString &session_id)
             return;
         }
 
+        // 세션 초기화를 원하는 사용자 ID, 어떤 세션을 초기화할 것인지 세션 ID, 채팅을 최대 몇개 읽어올 것인지 개수, 참가자 캐시 이미지 파일 정보 등을 서버에 넘겨준다.
         NetworkBuffer net_buf(SESSION_REFRESH_TYPE);
         net_buf += m_user_id;
         net_buf += session_id;
 
-        // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 최대 100개 채팅만 가져옴
-        // 메신저 사용자가 해당 세션을 처음 입장하는 경우 최대 100개 채팅만 가져옴
+        // 메신저를 켜고 해당 채팅방에 처음 입장하는 경우 혹은 메신저 사용자가 해당 세션을 처음 입장하는 경우 최대 100개 채팅만 가져옴
         if (!chat_cnt || recent_message_id < 0)
             net_buf += static_cast<int64_t>(100);
         // 읽지 않은 메시지가 500개 이하면 그 내역을 서버에서 모두 가져옴
@@ -1159,17 +1190,19 @@ void MainContext::tryRefreshSession(const QString &session_id)
         }
 
         QString p_path = QDir::currentPath() +
-                         tr("\\minigram_cache\\") +
+                         "\\minigram_cache\\" +
                          m_user_id +
-                         tr("\\sessions\\") +
+                         "\\sessions\\" +
                          session_id +
-                         tr("\\participant_data");
+                         "\\participant_data";
 
         std::vector<std::pair<QString, int64_t>> p_data;
 
+        // 참가자 캐시 파일이 없으면 만듦
         if (!std::filesystem::exists(p_path.toStdU16String()))
             std::filesystem::create_directories(p_path.toStdU16String());
 
+        // 이미 참가자 캐시 이미지가 있는지 검사
         std::filesystem::directory_iterator it{p_path.toStdU16String()};
         while (it != std::filesystem::end(it))
         {
@@ -1180,12 +1213,14 @@ void MainContext::tryRefreshSession(const QString &session_id)
                 if (child != std::filesystem::end(child))
                     img_update_date = std::stoull(child->path().stem().string());
 
+                // 참가자 캐시 이미지가 이미 존재한다면 해당 이미지 생성일과 이미지 이름을 서버에 전달함
                 if (img_update_date)
                     p_data.push_back({QString::fromStdU16String(it->path().filename().u16string()), img_update_date});
             }
             it++;
         }
 
+        // 참가자 캐시 이미지 정보들을 서버에 넘긴다.
         net_buf += p_data.size();
         for (const auto &data : p_data)
         {
@@ -1214,6 +1249,30 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         return;
                     }
 
+                    // json 형식
+                    // {
+                    //     "fetched_chat_list" : [
+                    //         {
+                    //             "sender_id" : "보낸 사람 USER_ID",
+                    //             "send_date" : time since epoch,
+                    //             "message_id" : int64,
+                    //             "content_type" : int,
+                    //             "content" : "utf-8 encoded string",
+                    //             "reader_id" : [ "tongstar", "yellowjam" ... ]
+                    //         },
+                    //         ...
+                    //     ],
+                    //
+                    //     "participant_infos" : [
+                    //         {
+                    //             "user_id" : "참가자 id",
+                    //             "user_name" : "참가자 이름",
+                    //             "user_info" : "참가자 정보",
+                    //             "user_img_name" : "참가자 이미지 이름",
+                    //         },
+                    //         ...
+                    //     ]
+                    // }
                     std::string json_txt;
                     session->GetResponse().GetData(json_txt);
 
@@ -1236,12 +1295,13 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                 user_name = QString::fromUtf8(participant_info["user_name"].as_string().c_str()),
                                 user_info = QString::fromUtf8(participant_info["user_info"].as_string().c_str()),
                                 user_img_name = QString::fromUtf8(participant_info["user_img_name"].as_string().c_str()),
-                                p_id_path = p_path + tr("\\") + user_id;
+                                p_id_path = p_path + "\\" + user_id;
 
                         QVariantMap qvm;
                         qvm["sessionId"] = session_id;
                         qvm["participantId"] = user_id;
 
+                        // 서버에서 받은 참가자 ID로 해당 참가자 정보가 메모리이 있는지 확인함
                         QVariant ret;
                         QMetaObject::invokeMethod(m_main_page,
                                                   "getParticipantData",
@@ -1251,7 +1311,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                                   Q_ARG(QVariant, user_id));
                         QVariantMap participant_data = ret.toMap();
 
-                        // 처음 넣는 경우
+                        // 메모리에 참가자 정보가 없는 경우 해당 참가자를 추가함
                         if (participant_data["getType"].toString() == tr("None"))
                         {
                             QVariantMap insert_info;
@@ -1260,12 +1320,13 @@ void MainContext::tryRefreshSession(const QString &session_id)
                             insert_info["participantName"] = user_name;
                             insert_info["participantInfo"] = user_info;
                             insert_info["participantImgPath"] = "";
+
                             QMetaObject::invokeMethod(m_main_page,
                                                       "insertParticipantData",
                                                       Qt::BlockingQueuedConnection,
                                                       Q_ARG(QVariant, QVariant::fromValue(insert_info)));
                         }
-                        // 이미 있던 경우
+                        // 해당 참가자 정보가 메모리에 있는 경우 참가자 정보에 변동이 있는 부분만 수정함
                         else
                         {
                             if (participant_data["participantName"].toString() != user_name)
@@ -1274,15 +1335,17 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                 qvm["participantInfo"] = user_info;
                         }
 
+                        // 참가자 캐시 폴더가 없다면 생성
                         if (!std::filesystem::exists(p_id_path.toStdU16String()))
-                            std::filesystem::create_directories((p_id_path + tr("\\profile_img")).toStdU16String());
+                            std::filesystem::create_directories((p_id_path + "\\profile_img").toStdU16String());
 
+                        // 서버에서 참가자 이미지 정보를 별도로 제공했다면 해당 이미지를 새로 저장함
                         if (!user_img_name.isEmpty())
                         {
                             std::vector<unsigned char> raw_img;
                             session->GetResponse().GetData(raw_img);
 
-                            auto p_img_path = p_id_path + tr("\\profile_img\\") + user_img_name;
+                            auto p_img_path = p_id_path + "\\profile_img\\" + user_img_name;
                             std::ofstream of(std::filesystem::path(p_img_path.toStdU16String()), std::ios::binary);
                             if (of.is_open())
                                 of.write(reinterpret_cast<char *>(&raw_img[0]), raw_img.size());
@@ -1291,11 +1354,12 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         }
                         else
                         {
-                            std::filesystem::directory_iterator it{(p_id_path + tr("\\profile_img")).toStdU16String()};
+                            // 서버에서 제공한 이미지가 따로 없다면 캐시 파일에서 찾아 qml에 전달함
+                            std::filesystem::directory_iterator it{(p_id_path + "\\profile_img").toStdU16String()};
                             if (it != std::filesystem::end(it) &&
                                 (participant_data.find("participantImgPath") == participant_data.end() ||
-                                 participant_data["participantImgPath"].toString() != QString::fromStdU16String(it->path().u16string())))
-                                qvm["participantImgPath"] = QString::fromStdU16String(it->path().u16string());
+                                 participant_data["participantImgPath"].toString() != AnsiToQString(it->path().string())))
+                                qvm["participantImgPath"] = AnsiToQString(it->path().string());
                         }
 
                         // 채팅방의 챗 버블과 관련된 것들을 바꾸는 녀석
@@ -1316,11 +1380,12 @@ void MainContext::tryRefreshSession(const QString &session_id)
                     //                           Qt::QueuedConnection,
                     //                           Q_ARG(QVariant, static_cast<int>(participant_list.size())));
 
+                    // 서버에서 던져준 세션에 담긴 채팅 내역 읽어오는 로직
                     QVariantList chats;
                     for (auto i = static_cast<int64_t>(fetch_list.size()) - 1; i >= 0; i--)
                     {
                         auto chat_info = fetch_list[i].as_object();
-                        QString sender_id = StrToUtf8(chat_info["sender_id"].as_string().c_str()).c_str();
+                        QString sender_id = AnsiToQString(chat_info["sender_id"].as_string().c_str());
 
                         QVariant ret;
                         QMetaObject::invokeMethod(m_main_page,
@@ -1364,6 +1429,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         //                           Q_ARG(QVariant, QVariant::fromValue(qvm)));
                     }
 
+                    // 메인 뷰 채팅 리스트에 채팅 내역 추가
                     QMetaObject::invokeMethod(m_main_page,
                                               "insertOrderedChats",
                                               Qt::QueuedConnection,
@@ -1371,6 +1437,7 @@ void MainContext::tryRefreshSession(const QString &session_id)
                                               Q_ARG(QVariant, -1),
                                               Q_ARG(QVariant, QVariant::fromValue(chats)));
 
+                    // 메신저 사용자가 세션을 확인한 것이니 사이드 뷰 세션 리스트에서 해당 세션의 읽지 않은 채팅 개수를 0으로 만듦
                     QVariantMap renew_info;
                     renew_info.insert("sessionId", session_id);
                     renew_info.insert("unreadCnt", 0);

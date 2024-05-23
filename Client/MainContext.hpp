@@ -56,10 +56,10 @@ class MainContext : public QObject
 
     // 클라에서 서버로 전송하기 위한 함수들
     Q_INVOKABLE void tryLogin(const QString &id, const QString &pw);
-    Q_INVOKABLE void trySendChat(const QString &session_id, unsigned char content_type, const QString &content); 
+    Q_INVOKABLE void trySendChat(const QString &session_id, unsigned char content_type, const QString &content);
     Q_INVOKABLE void tryGetSessionList();
     Q_INVOKABLE void tryRefreshSession(const QString &session_id);
-    Q_INVOKABLE void tryFetchMoreMessage(const QString &session_id, int front_message_id); // 스크롤바 올리는 경우 과거 채팅 받아오는 함수
+    Q_INVOKABLE void tryFetchMoreMessage(const QString &session_id, int front_message_id); // 스크롤바 올리는 경우 과거 채팅 받아오는 함수 //! 여기서 부터 주석 달아라
     Q_INVOKABLE void tryGetContactList();
     Q_INVOKABLE void tryDeleteContact(const QString &del_user_id);
     Q_INVOKABLE void trySendContactRequest(const QString &user_id);
