@@ -199,7 +199,7 @@ raw data: participant_img 01 | participant_img 02 ...
 클라이언트 채팅방에서 스크롤을 계속 위로 올리면 발생하게 되는 과거 채팅 이력 서버에서 가져오는 경우
 
 {
-	"fetched_chat_list" [
+	"fetched_chat_list": [
 		{
 			"sender_id": 	"보낸 사람 USER_ID",
 			"send_date": 	time since epoch,
@@ -234,7 +234,7 @@ raw data: participant_img 01 | participant_img 02 ...
 	"contact_request_init_data": [
 		{
 			"user_id": "tongstar",
-			"user_name": "KyungJoonLee"
+			"user_name": "KyungJoonLee",
 			"user_img": 이미지 이름(확장자 포함),
 			"user_info": "어쩌구 저쩌구 블라블라"
 		},

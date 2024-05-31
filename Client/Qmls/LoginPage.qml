@@ -318,9 +318,9 @@ Item {
                 onClicked: {
                     var selectedFiles = mainContext.executeFileDialog({
                         "title": "Select profile image",
-                        "init_dir": ".",
+                        "initDir": ".",
                         "filter": "Image File(*.png)\0*.png\0",
-                        "max_file_cnt": 1
+                        "maxFileCnt": 1
                     })
                     if(selectedFiles.length)
                         source = "file:///" + selectedFiles[0]
@@ -438,21 +438,21 @@ Item {
                         //    return
                         //}
 
-                        var img_path = registerImgButton.source.toString()
-                        switch (img_path[0])
+                        var imgPath = registerImgButton.source.toString()
+                        switch (imgPath[0])
                         {
                         // 파일 선택한 경우
                         case 'f':
-                            img_path = decodeURIComponent(img_path.replace(/^(file:\/{3})/, ""));
+                            imgPath = decodeURIComponent(imgPath.replace(/^(file:\/{3})/, ""));
                             break
                         // qrc, http 등... 유저가 세션 이미지를 따로 선택하지 않은 경우
                         default:
-                            img_path = ""
+                            imgPath = ""
                             break
                         }
 
                         mainContext.trySignUp({
-                            "img_path": img_path,
+                            "imgPath": imgPath,
                             "id": registerIdField.text,
                             "pw": registerPwField.text,
                             "name": registerNameField.text

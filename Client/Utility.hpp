@@ -29,6 +29,7 @@ inline std::string QStringToAnsi(const QString &qstr)
     return ansi;
 }
 
+// 해당 함수 잘 사용되고 있는지 점검하기
 inline QString AnsiToQString(const std::string &ansi)
 {
     if (ansi.empty())

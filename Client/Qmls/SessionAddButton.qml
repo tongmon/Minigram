@@ -50,9 +50,9 @@ Image {
                             onClicked: {
                                 var selected_files = mainContext.executeFileDialog({
                                     "title": "Selete profile image",
-                                    "init_dir": ".",
+                                    "initDir": ".",
                                     "filter": "Image File(*.png)\0*.png\0",
-                                    "max_file_cnt": 1
+                                    "maxFileCnt": 1
                                 })
                                 if(selected_files.length)
                                     source = "file:///" + selected_files[0]

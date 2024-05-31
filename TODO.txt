@@ -132,3 +132,5 @@ boost::filesystem -> std::filesystem
 
 
 trySignUp, executeFileDialog 다루는 곳 qvm 인자만 소문자임...
+
+시간 정보, 누구 들어온 정보 추방된 정보도 그냥 서버 채팅 로그에 남겨버리는 방식으로 변경해야 됨 (예전 소수점을 이용한 방식은 폐기)

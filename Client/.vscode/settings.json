@@ -98,6 +98,7 @@
         "xmemory": "cpp",
         "xtr1common": "cpp",
         "xutility": "cpp",
-        "qquickview": "cpp"
+        "qquickview": "cpp",
+        "stdfloat": "cpp"
     }
 }

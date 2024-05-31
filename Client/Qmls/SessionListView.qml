@@ -164,9 +164,9 @@ Rectangle {
                     onClicked: {
                         var selectedFiles = mainContext.executeFileDialog({
                             "title": "Select profile image",
-                            "init_dir": ".",
+                            "initDir": ".",
                             "filter": "Image File(*.png)\0*.png\0",
-                            "max_file_cnt": 1
+                            "maxFileCnt": 1
                         })
                         if(selectedFiles.length)
                             source = "file:///" + selectedFiles[0]
