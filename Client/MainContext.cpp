@@ -1355,10 +1355,11 @@ void MainContext::tryRefreshSession(const QString &session_id)
                         {
                             // 서버에서 제공한 이미지가 따로 없다면 캐시 파일에서 찾아 qml에 전달함
                             std::filesystem::directory_iterator it{(p_id_path + "\\profile_img").toStdU16String()};
+                            const auto &img_path = AnsiToQString(it->path().string());
                             if (it != std::filesystem::end(it) &&
                                 (participant_data.find("participantImgPath") == participant_data.end() ||
-                                 participant_data["participantImgPath"].toString() != AnsiToQString(it->path().string())))
-                                qvm["participantImgPath"] = AnsiToQString(it->path().string());
+                                 participant_data["participantImgPath"].toString() != img_path))
+                                qvm["participantImgPath"] = img_path;
                         }
 
                         // 채팅방의 챗 버블과 관련된 것들을 바꾸는 녀석
@@ -2612,11 +2613,11 @@ void MainContext::tryDeleteSession(const QString &session_id)
                                                   Qt::BlockingQueuedConnection,
                                                   Q_ARG(QVariant, session_id));
 
-                        QString session_cache_path = QDir::currentPath() +
-                                                     "\\minigram_cache\\" +
-                                                     m_user_id +
-                                                     "\\sessions\\" +
-                                                     session_id;
+                        const QString &session_cache_path = QDir::currentPath() +
+                                                            "\\minigram_cache\\" +
+                                                            m_user_id +
+                                                            "\\sessions\\" +
+                                                            session_id;
 
                         // 해당 세션에 대한 캐시 폴더를 삭제함
                         const std::u16string &session_cache_u16 = session_cache_path.toStdU16String();
@@ -2687,13 +2688,13 @@ void MainContext::tryExpelParticipant(const QString &session_id, const QString &
                                                   Q_ARG(QVariant, session_id),
                                                   Q_ARG(QVariant, expeled_id));
 
-                        QString participant_cache = QDir::currentPath() +
-                                                    tr("\\minigram_cache\\") +
-                                                    m_user_id +
-                                                    tr("\\sessions\\") +
-                                                    session_id +
-                                                    tr("\\participant_data\\") +
-                                                    expeled_id;
+                        const QString &participant_cache = QDir::currentPath() +
+                                                           "\\minigram_cache\\" +
+                                                           m_user_id +
+                                                           "\\sessions\\" +
+                                                           session_id +
+                                                           "\\participant_data\\" +
+                                                           expeled_id;
 
                         const std::u16string &participant_cache_u16 = participant_cache.toStdU16String();
                         if (std::filesystem::exists(participant_cache_u16))
