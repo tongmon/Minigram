@@ -30,6 +30,8 @@ class NetworkBuffer
 
     auto end() const;
 
+    void SetConnectionType(ConnectionType connection_type);
+
     size_t GetConnectionType();
 
     size_t GetDataSize() const;

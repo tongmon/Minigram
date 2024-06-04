@@ -82,14 +82,28 @@ void MongoDBTestZone()
     auto db = client["Minigram"];
     auto col = db["test_collection"];
 
-    auto ret = col.update_many(basic::make_document(basic::kvp("message_id",
-                                                               basic::make_document(basic::kvp("$gt", 100)))),
-                               basic::make_document(basic::kvp("$inc",
-                                                               basic::make_document(basic::kvp("message_id", 100)))));
+    col.update_one(basic::make_document(basic::kvp("login_id", "tongstar")),
+                   basic::make_document(basic::kvp("$pull",
+                                                   basic::make_document(basic::kvp("login_info",
+                                                                                   basic::make_document(basic::kvp("ip", "345.345.345")))))));
 
-    auto cnt = ret.value().modified_count();
+    // col.update_one(basic::make_document(basic::kvp("login_id", "tongstar")),
+    //                basic::make_document(basic::kvp("$push",
+    //                                                basic::make_document(basic::kvp("login_info",
+    //                                                                                basic::make_document(basic::kvp("ip", "345.345.345"), basic::kvp("port", 98764)))))));
 
-    int i = 0;
+    // col.insert_one(basic::make_document(basic::kvp("login_id", "tongstar"),
+    //                                     basic::kvp("login_info", basic::make_array(basic::make_document(basic::kvp("ip", "123.123.123"), basic::kvp("port", 11234))))));
+    //
+    //
+    // auto ret = col.update_many(basic::make_document(basic::kvp("message_id",
+    //                                                           basic::make_document(basic::kvp("$gt", 100)))),
+    //                           basic::make_document(basic::kvp("$inc",
+    //                                                           basic::make_document(basic::kvp("message_id", 100)))));
+    //
+    // auto cnt = ret.value().modified_count();
+    //
+    // int i = 0;
 
     // col.update_one(basic::make_document(basic::kvp("message_cnt",
     //                                                basic::make_document(basic::kvp("$gt", -1)))),

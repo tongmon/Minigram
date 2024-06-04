@@ -19,6 +19,8 @@ class MessengerService : public Service
 
     std::unique_ptr<mongocxx::pool::entry> m_mongo_ent;
 
+    inline static bool m_logging_mode = true;
+
     void LoginHandling();
     // void TextMessageHandling();
     void ChatHandling();

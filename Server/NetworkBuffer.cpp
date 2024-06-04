@@ -36,6 +36,11 @@ auto NetworkBuffer::end() const
     return m_buf.end();
 }
 
+void NetworkBuffer::SetConnectionType(ConnectionType connection_type)
+{
+    std::memcpy(&m_buf[0], &connection_type, type_size);
+}
+
 size_t NetworkBuffer::GetConnectionType()
 {
     size_t connection_type;

@@ -114,6 +114,13 @@ sender_id와 send_date를 조합하면 고유하기에 key로 작동할 수 있�
 원자적으로 관리되는 변수로 해당 컬렉션에는 단 하나의 document만 존재함
 find_one_and_update()를 이용하여 원자적 연산을 해야됨
 
+### user_login_info
+설명: 로그인된 사용자들의 ip를 저장해두고 있는 collection
+{
+	"login_id": "사용자 id",
+	"login_info": [ { "ip": ip_01, "port": port_01 }, { "ip": ip_02, "port": port_02 } ]
+}
+
 ## Client - Server 통신 규격
 
 ### Server -> Client

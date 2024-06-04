@@ -37,35 +37,48 @@ MessengerService::~MessengerService()
 {
 }
 
-// Client에서 받는 버퍼 형식: Client IP | Client Port | ID | PW
+// Client에서 받는 버퍼 형식: Client IP | Client Port | ID | PW | user img date
 // Client에 전달하는 버퍼 형식: 로그인 성공 여부
 void MessengerService::LoginHandling()
 {
+    using namespace bsoncxx;
+    using namespace bsoncxx::builder;
+
+    soci::indicator pw_ind, info_ind, img_ind;
     std::string ip, id, pw, img_path, user_info, user_name;
     int port;
-    uint64_t user_img_date;
-    m_client_request.GetData(ip);
-    m_client_request.GetData(port);
-    m_client_request.GetData(id);
-    m_client_request.GetData(pw);
-    m_client_request.GetData(user_img_date);
+    uint64_t user_img_date, cnt;
+    m_client_request.GetData(ip);            // 로그인 ip
+    m_client_request.GetData(port);          // 로그인 port
+    m_client_request.GetData(id);            // 로그인한 사람 id
+    m_client_request.GetData(pw);            // 로그인한 사람 pw
+    m_client_request.GetData(user_img_date); // 로그인한 사람 프로필 이미지 갱신 날짜
 
-    std::cout << "ID: " << id << "  Password: " << pw << "\n";
+    if (m_logging_mode)
+    {
+        std::stringstream ss;
+        ss << std::this_thread::get_id();
+        std::wprintf(L"Thread id: %s / LoginHandling function called! => ip: %s, port: %d, id: %s, pw: %s\n",
+                     Utf8ToUtf16(reinterpret_cast<const char8_t *>(ss.str().c_str())),
+                     Utf8ToUtf16(reinterpret_cast<const char8_t *>(ip.c_str())),
+                     port,
+                     Utf8ToUtf16(reinterpret_cast<const char8_t *>(id.c_str())),
+                     Utf8ToUtf16(reinterpret_cast<const char8_t *>(pw.c_str())));
+    }
 
-    NetworkBuffer net_buf(LOGIN_CONNECTION_TYPE);
     int64_t login_result;
-    size_t cnt;
     *m_sql << "select count(*) from user_tb where exists(select 1 from user_tb where user_id=:uid)",
         soci::into(cnt), soci::use(id);
 
+    // id에 부합하는 사용자가 존재하는 경우
     if (cnt)
     {
-        soci::indicator ind;
         std::string pw_from_db;
         *m_sql << "select password, user_nm, user_info, img_path from user_tb where user_id=:id",
-            soci::into(pw_from_db, ind), soci::into(user_name), soci::into(user_info), soci::into(img_path), soci::use(id);
+            soci::into(pw_from_db, pw_ind), soci::into(user_name), soci::into(user_info, info_ind), soci::into(img_path, img_ind), soci::use(id);
 
-        if (ind == soci::i_ok)
+        // 비밀번호가 올바른지 확인
+        if (pw_ind == soci::i_ok)
             login_result = (pw_from_db == pw ? LOGIN_SUCCESS : LOGIN_FAIL);
         else
             login_result = LOGIN_FAIL;
@@ -73,30 +86,63 @@ void MessengerService::LoginHandling()
     else
         login_result = LOGIN_FAIL;
 
-    net_buf += login_result;
+    m_request.SetConnectionType(LOGIN_CONNECTION_TYPE);
+    m_request += login_result;
 
     // 로그인한 사람의 정보 갱신
     if (login_result == LOGIN_SUCCESS)
     {
-        *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
-            soci::use(ip), soci::use(port), soci::use(id);
+        auto &mongo_client = MongoDBClient::Get();
+        auto mongo_db = mongo_client["Minigram"];
+        auto login_user_coll = mongo_db["user_login_info"];
+
+        // 사용자 한명이 다른 여러 기기에서 접속할 수도 있기에 ip, port 여러개를 저장해놓는다.
+        auto cursor = login_user_coll.find(basic::make_document(basic::kvp("login_id", id)));
+        if (cursor.begin() != cursor.end())
+            login_user_coll.update_one(basic::make_document(basic::kvp("login_id", id)),
+                                       basic::make_document(basic::kvp("$push",
+                                                                       basic::make_document(basic::kvp("login_info",
+                                                                                                       basic::make_document(basic::kvp("ip", ip), basic::kvp("port", port)))))));
+        else
+            login_user_coll.insert_one(basic::make_document(basic::kvp("login_id", id),
+                                                            basic::kvp("login_info", basic::make_array(basic::make_document(basic::kvp("ip", ip), basic::kvp("port", port))))));
+
+        MongoDBClient::Free();
 
         std::filesystem::path path_info{reinterpret_cast<const char8_t *>(img_path.c_str())};
         std::vector<unsigned char> raw_img;
-        if (!img_path.empty() && user_img_date < std::stoull(path_info.stem().string()))
+
+        // 사용자 프로필 이미지가 존재하는 경우
+        // 기존 서버에 저장된 사용자 이미지가 최신인 경우 해당 이미지를 사용
+        if (img_ind == soci::i_ok && user_img_date < std::stoull(path_info.stem().string()))
         {
             std::ifstream inf(path_info, std::ios::binary);
             if (inf.is_open())
                 raw_img.assign(std::istreambuf_iterator<char>(inf), {});
         }
 
-        net_buf += user_name;
-        net_buf += user_info;
-        net_buf += raw_img;
-        net_buf += img_path.empty() ? "" : reinterpret_cast<const char *>(path_info.filename().u8string().c_str());
-    }
+        m_request += user_name;
+        m_request += user_info;
+        m_request += raw_img;
+        m_request += img_path.empty() ? "" : reinterpret_cast<const char *>(path_info.filename().u8string().c_str());
 
-    m_request = std::move(net_buf);
+        // *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
+        //     soci::use(ip), soci::use(port), soci::use(id);
+        //
+        // std::filesystem::path path_info{reinterpret_cast<const char8_t *>(img_path.c_str())};
+        // std::vector<unsigned char> raw_img;
+        // if (!img_path.empty() && user_img_date < std::stoull(path_info.stem().string()))
+        // {
+        //     std::ifstream inf(path_info, std::ios::binary);
+        //     if (inf.is_open())
+        //         raw_img.assign(std::istreambuf_iterator<char>(inf), {});
+        // }
+        //
+        // net_buf += user_name;
+        // net_buf += user_info;
+        // net_buf += raw_img;
+        // net_buf += img_path.empty() ? "" : reinterpret_cast<const char *>(path_info.filename().u8string().c_str());
+    }
 
     boost::asio::async_write(*m_sock,
                              m_request.AsioBuffer(),
@@ -233,19 +279,37 @@ void MessengerService::ChatHandling()
     unsigned char content_type;
     std::string sender_id, session_id, content;
 
-    m_client_request.GetData(sender_id);
-    m_client_request.GetData(session_id);
-    m_client_request.GetData(content_type);
-    m_client_request.GetData(content);
+    m_client_request.GetData(sender_id);    // 보낸 사람 id
+    m_client_request.GetData(session_id);   // 세션 id
+    m_client_request.GetData(content_type); // 채팅 유형
+    m_client_request.GetData(content);      // 채팅 내용
 
-    if (content_type == TEXT_CHAT)
-        std::cout << "sender: " << sender_id << " msg: " << content << std::endl;
+    if (m_logging_mode)
+    {
+        switch (content_type)
+        {
+        case TEXT_CHAT: {
+            std::stringstream ss;
+            ss << std::this_thread::get_id();
+            std::wprintf(L"Thread id: %s / ChatHandling function called! => sender id: %s, session id: %s, message: %s\n",
+                         Utf8ToUtf16(reinterpret_cast<const char8_t *>(ss.str().c_str())),
+                         Utf8ToUtf16(reinterpret_cast<const char8_t *>(sender_id.c_str())),
+                         Utf8ToUtf16(reinterpret_cast<const char8_t *>(session_id.c_str())),
+                         Utf8ToUtf16(reinterpret_cast<const char8_t *>(content.c_str())));
+            break;
+        }
+        default:
+            break;
+        }
+    }
 
     auto &mongo_client = MongoDBClient::Get();
     auto mongo_db = mongo_client["Minigram"];
-    auto chat_coll = mongo_db[session_id + "_log"];
-    auto cnt_coll = mongo_db[session_id + "_cnt"];
+    auto chat_coll = mongo_db[session_id + "_log"],
+         cnt_coll = mongo_db[session_id + "_cnt"],
+         login_coll = mongo_db["user_login_info"];
 
+    // 해당 세션의 채팅 개수 증가 시킴
     auto cnt_ret = cnt_coll.find_one_and_update(basic::make_document(basic::kvp("message_cnt",
                                                                                 basic::make_document(basic::kvp("$gt", -1)))),
                                                 basic::make_document(basic::kvp("$inc",
@@ -275,6 +339,7 @@ void MessengerService::ChatHandling()
     auto cur_msg_id = cnt_ret.value()["message_cnt"].get_int64().value,
          cur_date = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 
+    // 채팅 내용 추가
     chat_coll.insert_one(basic::make_document(basic::kvp("message_id", cur_msg_id),
                                               basic::kvp("sender_id", sender_id),
                                               basic::kvp("send_date", cur_date),
@@ -282,137 +347,192 @@ void MessengerService::ChatHandling()
                                               basic::kvp("content", mongo_content),
                                               basic::kvp("reader_id", basic::make_array(sender_id))));
 
-    MongoDBClient::Free();
-
-    // 보낸 사람은 자신이 보낸 메시지를 즉시 읽게 됨
+    // 보낸 사람은 자신이 보낸 메시지를 즉시 읽게 되고 그 메시지가 가장 최신임
     *m_sql << "update participant_tb set message_id=:mid where participant_id=:pid",
         soci::use(cur_msg_id), soci::use(sender_id);
 
-    // 채팅 내용 다른 사람에게 전송
+    // 채팅 내용을 해당 세션의 다른 참가자들에게 전송
     std::shared_ptr<NetworkBuffer> send_buf(new NetworkBuffer(CHAT_RECEIVE_TYPE));
-    *send_buf += cur_msg_id;
-    *send_buf += session_id;
-    *send_buf += sender_id;
-    *send_buf += cur_date;
-    *send_buf += content_type;
-    *send_buf += content;
+    *send_buf += cur_msg_id;   // 보낸 메시지 id
+    *send_buf += session_id;   // 세션 id
+    *send_buf += sender_id;    // 보낸 사람 id
+    *send_buf += cur_date;     // 보낸 날짜
+    *send_buf += content_type; // 보낸 채팅 유형
+    *send_buf += content;      // 보낸 채팅 내용
 
     soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
                                   soci::use(session_id, "sid"));
 
-    // 로그인 중인 다른 사용자를 구함
-    std::vector<LoginData> logged_in;
+    std::vector<std::vector<std::pair<std::string, int>>> logged_in;
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
-        std::string participant_id = it->get<std::string>(0), login_ip;
-        int login_port;
+        const std::string &participant_id = it->get<std::string>(0);
 
-        if (participant_id != sender_id)
+        // 채팅 보낸 사람은 따로 처리
+        if (participant_id == sender_id)
         {
-            soci::indicator ip_ind, port_ind;
-            *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
-                soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(participant_id);
+            //! 로직 추가 해야함, 클라 로직에서 추가해야 할 수도...
+            continue;
+        }
 
-            if (ip_ind != soci::i_null)
-                logged_in.push_back({login_ip, login_port});
+        auto cursor = login_coll.find(basic::make_document(basic::kvp("login_id", participant_id)));
+        for (auto &&doc : cursor)
+        {
+            auto login_info = doc["login_info"].get_array().value;
+            for (auto &&ip_port_doc : login_info)
+                logged_in.push_back({{ip_port_doc["ip"].get_string().value.data(), ip_port_doc["port"].get_int32().value}}); // 로그인된 모든 ip, port 가져옴
         }
     }
 
+    MongoDBClient::Free();
+
+    //! 다중 로그인 로직 적용을 위해 새로 짜야 됨... 밑에꺼는 버림
+    // 로그인 중인 다른 사용자를 구함
+    // std::vector<LoginData> logged_in;
+    // for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
+    //{
+    //    std::string participant_id = it->get<std::string>(0), login_ip;
+    //    int login_port;
+    //
+    //    if (participant_id != sender_id)
+    //    {
+    //        soci::indicator ip_ind, port_ind;
+    //        *m_sql << "select login_ip, login_port from user_tb where user_id=:id",
+    //            soci::into(login_ip, ip_ind), soci::into(login_port, port_ind), soci::use(participant_id);
+    //
+    //        if (ip_ind != soci::i_null)
+    //            logged_in.push_back({login_ip, login_port});
+    //    }
+    //}
+
     std::shared_ptr<std::mutex> mut(new std::mutex);
     std::shared_ptr<std::atomic_int32_t> remaining_participant_cnt(new std::atomic_int32_t{static_cast<int>(logged_in.size())});
-    std::shared_ptr<std::vector<std::pair<int64_t, std::string>>> reader_ids(new std::vector<std::pair<int64_t, std::string>>);
-    reader_ids->reserve(logged_in.size() + 1);
-    reader_ids->push_back({-1, sender_id});
+    std::shared_ptr<std::unordered_map<std::string, std::vector<int64_t>>> reader_ids(new std::unordered_map<std::string, std::vector<int64_t>>);
+    (*reader_ids)[sender_id] = {-1};
+
+    // std::shared_ptr<std::mutex> mut(new std::mutex);
+    // std::shared_ptr<std::atomic_int32_t> remaining_participant_cnt(new std::atomic_int32_t{static_cast<int>(logged_in.size())});
+    // std::shared_ptr<std::vector<std::pair<int64_t, std::string>>> reader_ids(new std::vector<std::pair<int64_t, std::string>>);
+    // reader_ids->reserve(logged_in.size() + 1);
+    // reader_ids->push_back({-1, sender_id});
 
     for (const auto &login_data : logged_in)
     {
-        m_peer->AsyncConnect(login_data.ip, login_data.port, [this, send_buf, peer = m_peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
-            if (!session.get() || !session->IsValid())
-                return;
-
-            peer->AsyncWrite(session->GetID(), *send_buf, [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+        for (const auto &ip_port_data : login_data)
+        {
+            m_peer->AsyncConnect(ip_port_data.first, ip_port_data.second, [this, send_buf, peer = m_peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
                 if (!session.get() || !session->IsValid())
                     return;
 
-                peer->AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+                peer->AsyncWrite(session->GetID(), *send_buf, [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
                     if (!session.get() || !session->IsValid())
                         return;
 
-                    peer->AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+                    peer->AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
                         if (!session.get() || !session->IsValid())
                             return;
 
-                        std::string participant_id;
-                        session->GetResponse().GetData(participant_id);
+                        peer->AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+                            if (!session.get() || !session->IsValid())
+                                return;
 
-                        if (!participant_id.empty())
-                        {
-                            auto sql = std::make_unique<soci::session>(PostgreDBPool::Get());
-                            *sql << "update participant_tb set message_id=:mid where participant_id=:pid",
-                                soci::use(cur_msg_id), soci::use(participant_id);
+                            std::string participant_id;
+                            session->GetResponse().GetData(participant_id);
 
-                            mut->lock();
-                            reader_ids->push_back({session->GetID(), participant_id});
-                            mut->unlock();
-                        }
-                        else
-                            peer->CloseRequest(session->GetID());
-
-                        if (remaining_participant_cnt->fetch_sub(1) == 1)
-                        {
-                            basic::array readers;
-                            NetworkBuffer buf(CHAT_RECEIVE_TYPE);
-                            buf += reader_ids->size();
-                            for (const auto &r_id : *reader_ids)
-                            {
-                                buf += r_id.second;
-
-                                // 보낸 사람은 db에 추가할 필요 없음
-                                if (r_id.first >= 0)
-                                    readers.append(r_id.second);
-                            }
-
-                            auto &mongo_client = MongoDBClient::Get();
-                            auto mongo_db = mongo_client["Minigram"];
-                            auto chat_coll = mongo_db[session_id + "_log"];
-
-                            chat_coll.update_one(basic::make_document(basic::kvp("message_id",
-                                                                                 cur_msg_id)),
-                                                 basic::make_document(basic::kvp("$push",
-                                                                                 basic::make_document(basic::kvp("reader_id",
-                                                                                                                 basic::make_document(basic::kvp("$each",
-                                                                                                                                                 readers)))))));
-
-                            MongoDBClient::Free();
-
-                            for (const auto &reader_info : *reader_ids)
-                                if (reader_info.first >= 0)
-                                {
-                                    peer->AsyncWrite(reader_info.first, buf, [peer](std::shared_ptr<Session> session) -> void {
-                                        if (!session.get() || !session->IsValid())
-                                            return;
-                                        peer->CloseRequest(session->GetID());
-                                    });
-                                }
-
-                            buf += cur_msg_id;
-                            buf += cur_date;
-
-                            m_request = std::move(buf);
-                            boost::asio::async_write(*m_sock,
-                                                     m_request.AsioBuffer(),
-                                                     [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
-                                                         if (ec != boost::system::errc::success)
-                                                         {
-                                                             // write에 이상이 있는 경우
-                                                         }
-                                                         delete this;
-                                                     });
-                        }
+                            //! 여기서부터 이어서 짜기
+                        });
                     });
                 });
             });
-        });
+        }
+
+        // m_peer->AsyncConnect(login_data.ip, login_data.port, [this, send_buf, peer = m_peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+        //     if (!session.get() || !session->IsValid())
+        //         return;
+        //
+        //    peer->AsyncWrite(session->GetID(), *send_buf, [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+        //        if (!session.get() || !session->IsValid())
+        //            return;
+        //
+        //        peer->AsyncRead(session->GetID(), NetworkBuffer::GetHeaderSize(), [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+        //            if (!session.get() || !session->IsValid())
+        //                return;
+        //
+        //            peer->AsyncRead(session->GetID(), session->GetResponse().GetDataSize(), [this, peer, cur_date, cur_msg_id, mut, reader_ids, session_id, remaining_participant_cnt](std::shared_ptr<Session> session) -> void {
+        //                if (!session.get() || !session->IsValid())
+        //                    return;
+        //
+        //                std::string participant_id;
+        //                session->GetResponse().GetData(participant_id);
+        //
+        //                if (!participant_id.empty())
+        //                {
+        //                    auto sql = std::make_unique<soci::session>(PostgreDBPool::Get());
+        //                    *sql << "update participant_tb set message_id=:mid where participant_id=:pid",
+        //                        soci::use(cur_msg_id), soci::use(participant_id);
+        //
+        //                    mut->lock();
+        //                    reader_ids->push_back({session->GetID(), participant_id});
+        //                    mut->unlock();
+        //                }
+        //                else
+        //                    peer->CloseRequest(session->GetID());
+        //
+        //                if (remaining_participant_cnt->fetch_sub(1) == 1)
+        //                {
+        //                    basic::array readers;
+        //                    NetworkBuffer buf(CHAT_RECEIVE_TYPE);
+        //                    buf += reader_ids->size();
+        //                    for (const auto &r_id : *reader_ids)
+        //                    {
+        //                        buf += r_id.second;
+        //
+        //                        // 보낸 사람은 db에 추가할 필요 없음
+        //                        if (r_id.first >= 0)
+        //                            readers.append(r_id.second);
+        //                    }
+        //
+        //                    auto &mongo_client = MongoDBClient::Get();
+        //                    auto mongo_db = mongo_client["Minigram"];
+        //                    auto chat_coll = mongo_db[session_id + "_log"];
+        //
+        //                    chat_coll.update_one(basic::make_document(basic::kvp("message_id",
+        //                                                                         cur_msg_id)),
+        //                                         basic::make_document(basic::kvp("$push",
+        //                                                                         basic::make_document(basic::kvp("reader_id",
+        //                                                                                                         basic::make_document(basic::kvp("$each",
+        //                                                                                                                                         readers)))))));
+        //
+        //                    MongoDBClient::Free();
+        //
+        //                    for (const auto &reader_info : *reader_ids)
+        //                        if (reader_info.first >= 0)
+        //                        {
+        //                            peer->AsyncWrite(reader_info.first, buf, [peer](std::shared_ptr<Session> session) -> void {
+        //                                if (!session.get() || !session->IsValid())
+        //                                    return;
+        //                                peer->CloseRequest(session->GetID());
+        //                            });
+        //                        }
+        //
+        //                    buf += cur_msg_id;
+        //                    buf += cur_date;
+        //
+        //                    m_request = std::move(buf);
+        //                    boost::asio::async_write(*m_sock,
+        //                                             m_request.AsioBuffer(),
+        //                                             [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
+        //                                                 if (ec != boost::system::errc::success)
+        //                                                 {
+        //                                                     // write에 이상이 있는 경우
+        //                                                 }
+        //                                                 delete this;
+        //                                             });
+        //                }
+        //            });
+        //        });
+        //    });
+        //});
     }
 
     if (logged_in.empty())
@@ -1931,16 +2051,45 @@ void MessengerService::InviteParticipantHandling()
     }
 }
 
+// Server가 받은 버퍼 형식: 로그인 유저 id | ip | port
 void MessengerService::LogOutHandling()
 {
-    std::string user_id, none_ip;
+    using namespace bsoncxx;
+    using namespace bsoncxx::builder;
+
+    std::string user_id, ip;
+    int port;
+
     m_client_request.GetData(user_id);
+    m_client_request.GetData(ip);
+    m_client_request.GetData(port);
 
-    std::cout << "user: " << user_id << " log out" << std::endl;
+    if (m_logging_mode)
+    {
+        std::stringstream ss;
+        ss << std::this_thread::get_id();
+        std::wprintf(L"Thread id: %s / LogOutHandling function called! => ip: %s, port: %d\n",
+                     Utf8ToUtf16(reinterpret_cast<const char8_t *>(ss.str().c_str())),
+                     Utf8ToUtf16(reinterpret_cast<const char8_t *>(ip.c_str())),
+                     port);
+    }
 
-    soci::indicator ind = soci::i_null;
-    *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
-        soci::use(none_ip, ind), soci::use(0, ind), soci::use(user_id);
+    auto &mongo_client = MongoDBClient::Get();
+    auto mongo_db = mongo_client["Minigram"];
+    auto login_user_coll = mongo_db["user_login_info"];
+
+    login_user_coll.update_one(basic::make_document(basic::kvp("login_id", user_id)),
+                               basic::make_document(basic::kvp("$pull",
+                                                               basic::make_document(basic::kvp("login_info",
+                                                                                               basic::make_document(basic::kvp("ip", ip)))))));
+
+    MongoDBClient::Free();
+
+    // std::cout << "user: " << user_id << " log out" << std::endl;
+    //
+    // soci::indicator ind = soci::i_null;
+    // *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
+    //    soci::use(none_ip, ind), soci::use(0, ind), soci::use(user_id);
 
     delete this;
 }

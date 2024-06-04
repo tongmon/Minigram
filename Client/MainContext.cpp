@@ -662,7 +662,7 @@ void MainContext::RecieveSessionInvitation(Service *service)
 }
 
 // 메신저 사용자가 로그인 하는 겨우
-// Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW
+// Server에 전달하는 버퍼 형식: Client IP | Client Port | ID | PW | user img date
 // Server에서 받는 버퍼 형식: 로그인 성공 여부
 void MainContext::tryLogin(const QString &id, const QString &pw)
 {
@@ -950,7 +950,7 @@ void MainContext::tryGetSessionList()
                 {
                     std::filesystem::directory_iterator child{it->path()};
                     if (child != std::filesystem::end(child))
-                        img_update_date = std::atoll(child->path().stem().string().c_str());
+                        img_update_date = std::stoll(child->path().stem().string());
                 }
 
                 // 이미 세션 이미지가 존재하면 서버에 해당 이미지가 언제 생성되었는지 정보를 알려주고 더 최신 이미지가 서버에 존재한다면 이미지를 갈아껴줌
@@ -2762,7 +2762,7 @@ void MainContext::tryInviteParticipant(const QString &session_id, const QString 
 }
 
 // 사용자가 로그아웃 하는 경우
-// Server에 전달하는 버퍼 형식: 로그인 유저 id
+// Server에 전달하는 버퍼 형식: 로그인 유저 id | ip | port
 void MainContext::tryLogOut()
 {
     if (m_user_id.isEmpty())
@@ -2784,7 +2784,9 @@ void MainContext::tryLogOut()
         }
 
         NetworkBuffer net_buf(LOGOUT_TYPE);
-        net_buf += m_user_id; // 로그아웃할 사용자 ID
+        net_buf += m_user_id;               // 로그아웃할 사용자 ID
+        net_buf += m_window.GetLocalIp();   // 로그아웃 사용자의 ip
+        net_buf += m_window.GetLocalPort(); // 로그아웃 사용자의 port
 
         central_server.AsyncWrite(session->GetID(), std::move(net_buf), [&central_server, this](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
