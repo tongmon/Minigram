@@ -113,7 +113,7 @@ void MainContext::RecieveChat(Service *service)
                                  refresh_info.insert("recentMessageId", message_id);
                                  refresh_info.insert("recentContent", content);
 
-                                 if (!is_current_session || !is_foreground)
+                                 if (sender_id != m_user_id && (!is_current_session || !is_foreground))
                                      refresh_info.insert("unreadCntIncreament", 1); // 읽지 않은 경우이기에 안읽은 개수 +1
 
                                  // QMetaObject::invokeMethod(m_session_list_view,
@@ -130,7 +130,7 @@ void MainContext::RecieveChat(Service *service)
                                  if (!is_foreground || !is_current_session)
                                  {
                                      // 메시지를 읽지 않은 경우이기에 메시지 노티창을 띄움
-                                     if (!is_foreground)
+                                     if (sender_id != m_user_id && !is_foreground)
                                      {
                                          // QVariant ret;
                                          // QMetaObject::invokeMethod(m_main_page,
@@ -788,7 +788,7 @@ void MainContext::tryLogin(const QString &id, const QString &pw)
 }
 
 // 채팅을 전송하는 경우
-// Server에 전달하는 버퍼 형식: sender id | session id | content_type | content
+// Server에 전달하는 버퍼 형식: ip | port | sender id | session id | content_type | content
 // Server에서 받는 버퍼 형식: 배열 크기 | reader id 배열 | message id | message send date
 void MainContext::trySendChat(const QString &session_id, unsigned char content_type, const QString &content)
 {
@@ -812,6 +812,8 @@ void MainContext::trySendChat(const QString &session_id, unsigned char content_t
 
         // 서버에 보낸 사람 ID, 채팅이 보내질 세션 ID, 채팅 유형, 채팅 내용을 보낸다.
         NetworkBuffer net_buf(CHAT_SEND_TYPE);
+        net_buf += m_window.GetLocalIp();
+        net_buf += m_window.GetLocalPort();
         net_buf += m_user_id;
         net_buf += session_id;
         net_buf += content_type;
