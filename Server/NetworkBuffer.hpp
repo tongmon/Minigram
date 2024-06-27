@@ -117,6 +117,12 @@ class NetworkBuffer
     }
 
     template <>
+    void Append(const std::u8string &str)
+    {
+        Append(reinterpret_cast<const char *>(str.c_str()));
+    }
+
+    template <>
     void Append(const NetworkBuffer &other)
     {
         m_buf.reserve(m_buf.size() + other.m_buf.size() - type_size * 2);

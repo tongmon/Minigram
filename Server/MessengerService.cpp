@@ -124,7 +124,7 @@ void MessengerService::LoginHandling()
         m_request += user_name;
         m_request += user_info;
         m_request += raw_img;
-        m_request += img_path.empty() ? "" : reinterpret_cast<const char *>(path_info.filename().u8string().c_str());
+        m_request += img_path.empty() ? "" : path_info.filename().u8string();
 
         // *m_sql << "update user_tb set login_ip=:ip, login_port=:port where user_id=:id",
         //     soci::use(ip), soci::use(port), soci::use(id);
@@ -448,13 +448,14 @@ void MessengerService::ChatHandling()
                             if (remaining_ip_cnt->fetch_sub(1) == 1)
                             {
                                 basic::array readers;
-                                NetworkBuffer buf(CHAT_RECEIVE_TYPE);
-                                buf += reader_ids->size();
+
+                                m_request.SetConnectionType(CHAT_RECEIVE_TYPE);
+                                m_request += reader_ids->size();
 
                                 // 읽은 사람 목록 추가
                                 for (const auto &reader_id : *reader_ids)
                                 {
-                                    buf += reader_id.first;
+                                    m_request += reader_id.first;
 
                                     // 보낸 사람은 위에서 이미 추가 해놓은 상태이기에 채팅 로그 읽은 사람 목록에 다시 추가할 필요 없음
                                     if (reader_id.first != sender_id)
@@ -479,7 +480,7 @@ void MessengerService::ChatHandling()
                                 {
                                     for (const auto &connect_id : reader_info.second)
                                     {
-                                        peer->AsyncWrite(connect_id, buf, [peer](std::shared_ptr<Session> session) -> void {
+                                        peer->AsyncWrite(connect_id, m_request, [peer](std::shared_ptr<Session> session) -> void {
                                             if (!session.get() || !session->IsValid())
                                                 return;
                                             peer->CloseRequest(session->GetID());
@@ -488,10 +489,9 @@ void MessengerService::ChatHandling()
                                 }
 
                                 // 채팅 보낸 사람한테는 추가적으로 메시지 ID와 메시지 전송 시간을 보냄
-                                buf += cur_msg_id;
-                                buf += cur_date;
+                                m_request += cur_msg_id;
+                                m_request += cur_date;
 
-                                m_request = std::move(buf);
                                 boost::asio::async_write(*m_sock,
                                                          m_request.AsioBuffer(),
                                                          [this](const boost::system::error_code &ec, std::size_t bytes_transferred) {
@@ -513,9 +513,8 @@ void MessengerService::ChatHandling()
     if (logged_in.empty())
     {
         m_request.SetConnectionType(CHAT_SEND_TYPE);
-        m_request += reader_ids->size();
-        for (const auto &reader_id : *reader_ids)
-            m_request += reader_id.first;
+        m_request += static_cast<size_t>(1);
+        m_request += sender_id;
         m_request += cur_msg_id;
         m_request += cur_date;
 
@@ -739,7 +738,6 @@ void MessengerService::ChatHandling()
     //}
 }
 
-//! 여기서부터 주석 달기
 // Client에서 받는 버퍼 형식: user_id | session_id | 읽어올 메시지 수 | 배열 수 | [ participant id, img date ]
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::RefreshSessionHandling()
@@ -751,17 +749,17 @@ void MessengerService::RefreshSessionHandling()
     int64_t fetch_cnt, p_ary_size, past_recent_message_id;
     std::map<std::string, int64_t> p_img_cache;
 
-    m_client_request.GetData(user_id);
-    m_client_request.GetData(session_id);
-    m_client_request.GetData(fetch_cnt);
-    m_client_request.GetData(p_ary_size);
+    m_client_request.GetData(user_id);    // 세션 갱신을 요청한 사용자 ID
+    m_client_request.GetData(session_id); // 갱신할 세션 ID
+    m_client_request.GetData(fetch_cnt);  // 갱신하여 가져올 채팅 개수
+    m_client_request.GetData(p_ary_size); // 세션 참가자 이미지 배열 길이
 
     for (size_t i = 0; i < p_ary_size; i++)
     {
         std::string p_id;
         int64_t p_img_date;
-        m_client_request.GetData(p_id);
-        m_client_request.GetData(p_img_date);
+        m_client_request.GetData(p_id);       // 참가자 ID
+        m_client_request.GetData(p_img_date); // 참가자 이미지 갱신 날짜
         p_img_cache[p_id] = p_img_date;
     }
 
@@ -769,10 +767,11 @@ void MessengerService::RefreshSessionHandling()
     auto mongo_db = mongo_client["Minigram"];
     auto mongo_coll = mongo_db[session_id + "_log"];
 
+    // 세션 갱신을 요청한 사용자가 가장 최근에 읽은 메시지 ID를 가져옴
     *m_sql << "select message_id from participant_tb where participant_id=:pid and session_id=:sid",
         soci::into(past_recent_message_id), soci::use(user_id), soci::use(session_id);
 
-    // 해당 유저 메시지 읽음 처리
+    // 가장 최근에 읽은 메시지보다 메시지 ID가 큰 메시지들을 모두 읽음 처리함
     auto update_result = mongo_coll.update_many(basic::make_document(basic::kvp("message_id",
                                                                                 basic::make_document(basic::kvp("$gt",
                                                                                                                 past_recent_message_id)))),
@@ -786,7 +785,7 @@ void MessengerService::RefreshSessionHandling()
     sort_order << "message_id" << -1;
     opts.sort(sort_order.view());
 
-    // 주어진 메시지 id보다 큰 채팅은 모두 땡겨옴
+    // 가장 최근에 읽은 메시지보다 메시지 ID가 큰 메시지들을 모두 땡겨옴
     if (fetch_cnt < 0)
     {
         mongo_cursor = std::make_unique<mongocxx::cursor>(mongo_coll.find(basic::make_document(basic::kvp("message_id",
@@ -794,7 +793,7 @@ void MessengerService::RefreshSessionHandling()
                                                                                                                                           past_recent_message_id)))),
                                                                           opts));
     }
-    // 최신 fetch_cnt 개의 채팅만 땡겨옴
+    // fetch_cnt의 개수가 지정되었다면 해당 개수 만큼만 채팅을 땡겨옴
     else
     {
         opts.limit(fetch_cnt);
@@ -803,7 +802,7 @@ void MessengerService::RefreshSessionHandling()
 
     MongoDBClient::Free();
 
-    // 가장 최신 message_id로 설정
+    // 갱신 요청 사용자의 가장 최근에 읽은 message_id를 새로 설정
     if (mongo_cursor->begin() != mongo_cursor->end())
     {
         int64_t recent_message_id = (*mongo_cursor->begin())["message_id"].get_int64().value;
@@ -849,6 +848,7 @@ void MessengerService::RefreshSessionHandling()
     soci::rowset<soci::row> rs = (m_sql->prepare << "select participant_id from participant_tb where session_id=:sid",
                                   soci::use(session_id, "sid"));
 
+    // 참가자의 정보들을 모두 가져옴
     for (soci::rowset<soci::row>::const_iterator it = rs.begin(); it != rs.end(); ++it)
     {
         boost::json::object p_obj;
@@ -865,12 +865,15 @@ void MessengerService::RefreshSessionHandling()
 
         size_t img_update_date = 0;
         std::filesystem::path path_data;
+
+        // 참가자 이미지 이름에서 생성 날짜를 알아냄
         if (!p_img_path.empty())
         {
             path_data = reinterpret_cast<const char8_t *>(p_img_path.c_str());
             img_update_date = std::stoull(path_data.stem().string());
         }
 
+        // 서버의 참가자 이미지가 최신이거나 참가자의 이미지가 없었는데 새로 등록된 경우 새로운 이미지를 클라이언트에 전달
         if ((p_img_cache.find(participant_id) != p_img_cache.end() && img_update_date > p_img_cache[participant_id]) ||
             (p_img_cache.find(participant_id) == p_img_cache.end() && img_update_date))
         {
@@ -884,7 +887,7 @@ void MessengerService::RefreshSessionHandling()
 
         participant_ary.push_back(std::move(p_obj));
 
-        // 로그인을 안했거나 refresh session을 수행한 사람이 자신이거나 업데이트한 채팅이 없을 경우 다른 사람에게 보내지 않음
+        // 로그인을 안했거나 세션 갱신을 요청한 사람 자신이거나 읽음 처리를 업데이트한 채팅이 없을 경우 다른 사람에게 보내지 않음
         if (ip_ind == soci::i_null || participant_id == user_id || !update_result->matched_count())
             continue;
 
@@ -892,7 +895,7 @@ void MessengerService::RefreshSessionHandling()
         std::shared_ptr<NetworkBuffer> buf = std::make_shared<NetworkBuffer>(MESSAGE_READER_UPDATE_TYPE);
         *buf += session_id;
         *buf += user_id;
-        *buf += (past_recent_message_id + 1); // past_recent_message_id + 1 이상인 메시지들의 reader cnt 변경
+        *buf += (past_recent_message_id + 1); // past_recent_message_id + 1 이상인 메시지들의 reader cnt를 클라이언트에서 변경해줘야 함
 
         m_peer->AsyncConnect(login_ip, login_port, [peer = m_peer, buf](std::shared_ptr<Session> session) -> void {
             if (!session.get() || !session->IsValid())
@@ -911,12 +914,10 @@ void MessengerService::RefreshSessionHandling()
     refresh_json["fetched_chat_list"] = fetched_chat_ary;
     refresh_json["participant_infos"] = participant_ary;
 
-    NetworkBuffer net_buf(SESSION_REFRESH_TYPE);
-    net_buf += boost::json::serialize(refresh_json);
+    m_request.SetConnectionType(SESSION_REFRESH_TYPE);
+    m_request += boost::json::serialize(refresh_json);
     for (const auto &img : p_raw_imgs)
-        net_buf += img;
-
-    m_request = std::move(net_buf);
+        m_request += img;
 
     boost::asio::async_write(*m_sock,
                              m_request.AsioBuffer(),
@@ -939,9 +940,9 @@ void MessengerService::FetchMoreMessageHandling()
     std::string session_id;
     int64_t message_id, fetch_cnt;
 
-    m_client_request.GetData(session_id);
-    m_client_request.GetData(message_id);
-    m_client_request.GetData(fetch_cnt);
+    m_client_request.GetData(session_id); // 세션 ID
+    m_client_request.GetData(message_id); // 클라이언트에 남아있는 채팅 중 가장 오래된 채팅 ID
+    m_client_request.GetData(fetch_cnt);  // 읽어올 과거 채팅 개수
 
     auto &mongo_client = MongoDBClient::Get();
     auto mongo_db = mongo_client["Minigram"];
@@ -952,6 +953,7 @@ void MessengerService::FetchMoreMessageHandling()
     sort_order << "message_id" << -1;
     opts.sort(sort_order.view()).limit(fetch_cnt);
 
+    // 주어진 message id보다 작은 채팅을 모두 땡겨옴
     auto mongo_cursor = mongo_coll.find(basic::make_document(basic::kvp("message_id",
                                                                         basic::make_document(basic::kvp("$lt",
                                                                                                         message_id)))),
@@ -989,10 +991,8 @@ void MessengerService::FetchMoreMessageHandling()
     boost::json::object fetched_chat_json;
     fetched_chat_json["fetched_chat_list"] = chat_ary;
 
-    NetworkBuffer net_buf(FETCH_MORE_MESSAGE_TYPE);
-    net_buf += boost::json::serialize(fetched_chat_json);
-
-    m_request = std::move(net_buf);
+    m_request.SetConnectionType(FETCH_MORE_MESSAGE_TYPE);
+    m_request += boost::json::serialize(fetched_chat_json);
 
     boost::asio::async_write(*m_sock,
                              m_request.AsioBuffer(),
