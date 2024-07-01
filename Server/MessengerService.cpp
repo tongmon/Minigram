@@ -1005,6 +1005,7 @@ void MessengerService::FetchMoreMessageHandling()
                              });
 }
 
+// 클라이언트에서 참가 중인 세션 목록들 불러오는 경우 수행되는 함수
 // Client에서 받는 버퍼 형식: current user id | 배열 개수 | ( [ session id | session img date ] 배열 )
 // Client에 전달하는 버퍼 형식: DB Info.txt 참고
 void MessengerService::GetSessionListHandling()
