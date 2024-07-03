@@ -1018,18 +1018,19 @@ void MessengerService::GetSessionListHandling()
     std::string user_id;
     size_t session_ary_size;
 
-    m_client_request.GetData(user_id);
-    m_client_request.GetData(session_ary_size);
+    m_client_request.GetData(user_id);          // 세션 리스트를 요청한 사용자 ID
+    m_client_request.GetData(session_ary_size); // 세션 이미지 캐시 되어있는 리스트 개수
 
     for (size_t i = 0; i < session_ary_size; i++)
     {
         std::string session_id;
         int64_t session_img_date;
-        m_client_request.GetData(session_id);
-        m_client_request.GetData(session_img_date);
+        m_client_request.GetData(session_id);       // 세션 ID
+        m_client_request.GetData(session_img_date); // 세션 이미지 갱신 날짜
         session_cache[session_id] = session_img_date;
     }
 
+    // 사용자가 참가 중인 모든 세션 ID를 획득함
     boost::json::array session_array;
     soci::rowset<soci::row> rs = (m_sql->prepare << "select session_id from participant_tb where participant_id=:id",
                                   soci::use(user_id));
@@ -1052,6 +1053,7 @@ void MessengerService::GetSessionListHandling()
         //     continue;
         // }
 
+        // 각 세션의 세션 이름, 세션 정보, 세션 이미지 경로 등을 획득함
         *m_sql << "select session_nm, session_info, img_path from session_tb where session_id=:id",
             soci::into(session_nm), soci::into(session_info), soci::into(img_path), soci::use(session_id);
 
@@ -1081,6 +1083,7 @@ void MessengerService::GetSessionListHandling()
             }
         }
 
+        // 특정 세션에서 세션 리스트 요청자가 가장 최근에 읽은 메시지 ID를 획득함
         int64_t msg_id;
         *m_sql << "select message_id from participant_tb where participant_id=:pid and session_id=:sid",
             soci::into(msg_id), soci::use(user_id, "pid"), soci::use(session_id, "sid");
@@ -1093,22 +1096,26 @@ void MessengerService::GetSessionListHandling()
         mongocxx::options::find opts;
         opts.limit(1);
         auto cnt_cursor = cnt_coll.find({}, opts);
-        int64_t message_cnt = (*cnt_cursor.begin())["message_cnt"].get_int64().value;
+        int64_t message_cnt = (*cnt_cursor.begin())["message_cnt"].get_int64().value; // 세션에 존재하는 가장 최신 메시지 ID를 알기위해 세션의 채팅 개수를 획득함
 
         boost::json::object descendant;
         if (message_cnt)
         {
+            // 가장 최근 메시지 ID를 획득
             auto log_cursor = log_coll.find_one(basic::make_document(basic::kvp("message_id",
                                                                                 basic::make_document(basic::kvp("$eq",
                                                                                                                 message_cnt - 1)))));
 
             if (log_cursor.has_value())
             {
+                // 가장 최신 메시지에 대한 정보 획득
                 auto doc = log_cursor.value();
-                descendant["sender_id"] = doc["sender_id"].get_string().value;
-                descendant["send_date"] = doc["send_date"].get_int64().value;
-                descendant["message_id"] = doc["message_id"].get_int64().value;
-                descendant["content_type"] = doc["content_type"].get_int32().value;
+                descendant["sender_id"] = doc["sender_id"].get_string().value;      // 보낸 사람 ID
+                descendant["send_date"] = doc["send_date"].get_int64().value;       // 보낸 시점
+                descendant["message_id"] = doc["message_id"].get_int64().value;     // 메시지 ID
+                descendant["content_type"] = doc["content_type"].get_int32().value; // 메시지 유형
+
+                /// 읽지 않은 메시지 개수, DB에서 전달한 세션 리스트 요청자의 가장 최근에 읽은 메시지가 따로 없어서 -1이라면 전체 채팅 개수로 설정한다.
                 session_data["unread_count"] = descendant["message_id"].as_int64() + (msg_id < 0 ? 1 : -msg_id);
 
                 // 컨텐츠 형식이 텍스트가 아니라면 서버 전송률 낮추기 위해 Media라고만 보냄
